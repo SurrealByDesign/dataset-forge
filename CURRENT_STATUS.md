@@ -14,9 +14,23 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
 
 ## Completed
 
+- `src/dataset_forge/analyzers/base.py` — abstract `Analyzer` base class.
+  Defines the `analyze()` contract, `analyzer_id`, `supported_categories`,
+  `benchmark_version`. 12/12 tests passing (`tests/test_analyzer_base.py`).
+- `src/dataset_forge/context.py` — `DatasetContext` dataclass (frozen) and four
+  sub-dataclasses: `ResolutionStats`, `AspectRatioStats`, `TextureDistributions`,
+  `FrequencyDistributions`. Statistical reference frame for all analyzers.
+  32/32 tests passing (`tests/test_context.py`).
 - `src/dataset_forge/finding.py` — `Finding` dataclass (frozen) and `Severity` enum.
   This is the universal output contract. Treat as stable public API.
-  11/11 tests passing (`tests/test_finding.py`).
+  18/18 tests passing (`tests/test_finding.py`).
+- Repository hygiene audit: `.gitignore` now excludes Python caches, local
+  runtimes, generated reports, benchmark outputs, private datasets, temporary
+  files, and model/checkpoint artifacts. No files were deleted.
+- Local/runtime artifact tracking cleanup approved: `.runtime-deps/` and
+  `.claude/settings.local.json` should be removed from Git tracking only and
+  kept locally. `benchmarks/real_samples_manifest.proposal.json` records the
+  metadata needed before replacing tracked real sample images.
 - `analysis/texture.py` — microtexture density, speck density, watercolor smoothness,
   dataset-relative statistics (legacy; not yet wired to Finding)
 - Deterministic cleanup V1 (`presets/cleanup_profiles/watercolor_microcleanup_light.json`) —
@@ -47,8 +61,8 @@ Nothing currently in flight.
 | Type | Status |
 |---|---|
 | `Finding` | **Done** — `src/dataset_forge/finding.py` |
-| `DatasetContext` | Not yet created |
-| `Analyzer` base class | Not yet created |
+| `DatasetContext` | **Done** — `src/dataset_forge/context.py` |
+| `Analyzer` base class | **Done** — `src/dataset_forge/analyzers/base.py` |
 | Glitter analyzer | Not yet created |
 | Frequency/noise analyzer | Partial — `analysis/metrics.py` |
 | Sharpness/halo analyzer | Not yet created |
@@ -59,21 +73,20 @@ Nothing currently in flight.
 
 ## Next Recommended Task
 
-**Create `src/dataset_forge/context.py` — the `DatasetContext` dataclass.**
+**Implement `src/dataset_forge/analyzers/texture.py` — the first concrete analyzer.**
 
-This is the statistical reference frame that all analyzers consume.
-It should be built once per dataset run, before any analyzer executes.
+The core contract chain is complete. The next step is the first real analyzer.
 
-v1 fields (from ARCHITECTURE.md):
-- `schema_version: int`
-- `analyzer_versions: dict[str, str]`
-- `image_paths: list[Path]`
-- `total_images: int`
-- `resolution_stats` — min/max/mean/stddev of width and height
-- `aspect_ratio_stats` — distribution
-- `texture_distributions` — microtexture mean/stddev/p10/p90
-- `frequency_distributions` — periodic noise baseline
-- `duplicate_hashes: set[str]`
+The texture analyzer is the right starting point because:
+- `analysis/texture.py` already measures microtexture density — logic exists to reuse
+- `DatasetContext.texture_distributions` provides the dataset baseline it needs
+- The anthropomorphic dataset's primary artifact (GPT microtexture) is exactly what it detects
 
-Keep it minimal. Do not pre-compute per-image results here.
-DatasetContext is a read-only reference frame, not an accumulator.
+It should:
+- Subclass `Analyzer`
+- name = `"texture_analyzer"`, version = `"v1"`
+- Consume `context.texture_distributions` to compute a z-score for each image
+- Emit a `Finding` with category `"texture.high_microtexture"` when the image
+  score is anomalously high relative to the dataset
+- Return an empty list for images within the normal range
+- Not touch cleanup, AI, or unrelated modules
