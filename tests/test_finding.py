@@ -79,5 +79,35 @@ class TestSeverityOrdering(unittest.TestCase):
         self.assertNotEqual(Severity.LOW, Severity.HIGH)
 
 
+class TestFindingValidation(unittest.TestCase):
+    def test_confidence_above_1_rejected(self):
+        with self.assertRaises(ValueError):
+            _make_finding(confidence=1.01)
+
+    def test_confidence_below_0_rejected(self):
+        with self.assertRaises(ValueError):
+            _make_finding(confidence=-0.01)
+
+    def test_confidence_boundary_values_accepted(self):
+        _make_finding(confidence=0.0)
+        _make_finding(confidence=1.0)
+
+    def test_false_positive_rate_above_1_rejected(self):
+        with self.assertRaises(ValueError):
+            _make_finding(false_positive_rate=1.5)
+
+    def test_false_positive_rate_below_0_rejected(self):
+        with self.assertRaises(ValueError):
+            _make_finding(false_positive_rate=-0.1)
+
+    def test_false_positive_rate_boundary_values_accepted(self):
+        _make_finding(false_positive_rate=0.0)
+        _make_finding(false_positive_rate=1.0)
+
+    def test_invalid_severity_type_rejected(self):
+        with self.assertRaises(TypeError):
+            _make_finding(severity="HIGH")  # type: ignore[arg-type]
+
+
 if __name__ == "__main__":
     unittest.main()

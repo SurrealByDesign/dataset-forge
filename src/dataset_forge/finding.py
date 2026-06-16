@@ -50,6 +50,14 @@ class Finding:
     explanation: str          # human-readable why
     recommendation: str       # human-readable what to do
 
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError(f"confidence must be 0.0–1.0, got {self.confidence}")
+        if not 0.0 <= self.false_positive_rate <= 1.0:
+            raise ValueError(f"false_positive_rate must be 0.0–1.0, got {self.false_positive_rate}")
+        if not isinstance(self.severity, Severity):
+            raise TypeError(f"severity must be a Severity instance, got {type(self.severity)}")
+
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["image_path"] = str(self.image_path)
