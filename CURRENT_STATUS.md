@@ -14,6 +14,9 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
 
 ## Completed
 
+- `src/dataset_forge/cli.py` — `inspect` subcommand wired.
+  `dataset-forge inspect <path>` works end-to-end. Terminal output matches
+  CLI_OUTPUT.md. `--output`, `--recursive`, `--limit` flags supported.
 - `src/dataset_forge/inspect.py` — full v1 spine runner. Discovers images,
   builds `DatasetContext`, runs `TextureAnalyzer`, writes JSON + TXT reports,
   returns `InspectResult`. 23/23 tests passing (`tests/test_inspect.py`).
@@ -85,20 +88,22 @@ Nothing currently in flight.
 | Sharpness/halo analyzer | Not yet created |
 | JSON + TXT report writer | **Done** — `src/dataset_forge/report.py` |
 | Inspect runner | **Done** — `src/dataset_forge/inspect.py` |
-| CLI `inspect` command | Not yet created |
+| CLI `inspect` command | **Done** — `dataset-forge inspect <path>` |
 
 ---
 
 ## Next Recommended Task
 
-**Wire `dataset-forge inspect <path>` into the CLI.**
+**v1 milestone complete.** The vertical slice ships.
 
-The full v1 spine runs end-to-end without a CLI. The only remaining gap
-before `dataset-forge inspect ./dataset` works is a CLI entry point that:
-- Parses `<dataset_path>` and optional `--output`, `--recursive`, `--limit` flags
-- Calls `run_inspect()`
-- Prints terminal output matching `CLI_OUTPUT.md`
-- Exits with code 0 on success, 1 on error
+Suggested next steps (pick one):
 
-The existing `src/dataset_forge/cli.py` may already have a hook point.
-Check it before creating a new entry point.
+1. **Run against the real anthropomorphic dataset** and evaluate finding quality.
+   This is the primary validation test for v1.
+
+2. **Calibration benchmarks** — create synthetic images with known artifact levels
+   to validate and tighten TextureAnalyzer thresholds. Required before findings
+   can be treated as calibrated evidence rather than uncalibrated opinions.
+
+3. **Second analyzer** — glitter or frequency/periodic noise. The Analyzer
+   contract is proven; adding a second analyzer validates it generalizes.

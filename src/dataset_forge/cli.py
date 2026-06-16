@@ -38,6 +38,7 @@ from dataset_forge.core.structured import load_structured_file
 from dataset_forge.discovery import discover_images
 from dataset_forge.analysis.texture import generate_texture_report
 from dataset_forge.analysis.health import generate_health_report
+from dataset_forge.inspect import run_inspect
 
 
 def parse_bool(value: str) -> bool:
@@ -111,6 +112,8 @@ def main(argv: list[str] | None = None) -> int:
         return _pipeline_main(arguments)
     if arguments and arguments[0] == "plugins":
         return _plugins_main(arguments)
+    if arguments and arguments[0] == "inspect":
+        return _inspect_main(arguments)
     if arguments and arguments[0] == "texture-report":
         return _texture_main(arguments)
     if arguments and arguments[0] == "health-report":
@@ -273,6 +276,87 @@ def _pipeline_main(argv: list[str]) -> int:
         print(f"Stages run: {summary.stages_run}")
         print(f"Stages skipped: {summary.stages_skipped}")
         print(f"Pipeline report: {summary.report_path}")
+    return 0
+
+
+def _inspect_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="dataset-forge inspect",
+        description=(
+            "Analyze a dataset folder and produce a calibrated inspection report.\n"
+            "Pipeline: Dataset → DatasetContext → Analyzer → Finding → Report"
+        ),
+    )
+    parser.add_argument("dataset", type=Path, help="Dataset folder to inspect.")
+    parser.add_argument(
+        "--output", type=Path, default=None,
+        help="Output folder for reports. Default: <dataset>/inspect_output/",
+    )
+    parser.add_argument(
+        "--recursive", action="store_true", default=False,
+        help="Scan sub-folders recursively.",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None,
+        help="Maximum number of images to analyze.",
+    )
+    args = parser.parse_args(argv[1:])
+
+    dataset_path = args.dataset.expanduser().resolve()
+    output_dir = (
+        args.output.expanduser().resolve()
+        if args.output
+        else dataset_path / "inspect_output"
+    )
+
+    print("Dataset Forge Inspect")
+    print("=====================")
+    print(f"Dataset:  {dataset_path}")
+    print(f"Output:   {output_dir}")
+    print()
+
+    try:
+        result = run_inspect(
+            dataset_path,
+            output_dir,
+            recursive=args.recursive,
+            limit=args.limit,
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        return 2
+    except OSError as exc:
+        print(f"Error: {exc}")
+        return 2
+
+    # Summary — matches CLI_OUTPUT.md format
+    print(f"Images:   {result.image_count}")
+    print(f"Analyzed: {result.analyzed_count}")
+    print(f"Errors:   {result.error_count}")
+    print()
+    print("Summary")
+    print("-------")
+    print(f"Total findings:  {result.total_findings}")
+    for sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+        count = result.severity_counts.get(sev, 0)
+        if count:
+            print(f"  {sev} severity:  {count}")
+    print()
+    print(f"Images with findings:  {result.images_with_findings} / {result.image_count}")
+    print(f"Images with no issues: {result.images_clean} / {result.image_count}")
+    print()
+    if result.images_clean == result.image_count:
+        print("All images are within normal parameters. No action recommended.")
+    else:
+        print(
+            f"{result.images_clean} images require no action.\n"
+            f"{result.images_with_findings} images have findings. "
+            "Review report for details."
+        )
+    print()
+    print("Report written:")
+    print(f"  {result.json_report}")
+    print(f"  {result.txt_report}")
     return 0
 
 
