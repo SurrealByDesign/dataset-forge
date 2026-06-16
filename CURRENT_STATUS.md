@@ -69,6 +69,16 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
 
 ---
 
+- `scripts/label_ground_truth.py` — interactive CLI labeling tool.
+  Walks dataset images, shows texture metrics from inspection_report.json,
+  accepts ARTIFACT / CLEAN / UNCERTAIN labels with optional notes.
+  Writes resumable `ground_truth.json` (saved after every label).
+  Skips already-labeled images unless `--review` is passed.
+  Excludes `inspect_output/`, `output/`, `_report/` subdirectories.
+  39/39 tests passing (`tests/test_label_ground_truth.py`).
+
+---
+
 ## In Progress
 
 Nothing currently in flight.
@@ -111,11 +121,13 @@ Contact sheet review confirmed analyzer signal is meaningful, not random noise.
 
 Suggested next steps (pick one):
 
-1. **Ground truth labeling** — label the 100-image dataset ARTIFACT/CLEAN/UNCERTAIN
-   while the visual review is fresh. Required for all calibration work.
+1. **Run the labeling session** — execute `scripts/label_ground_truth.py` against
+   the real anthropomorph dataset now, while the contact sheet review is fresh.
+   This produces `ground_truth.json`, the input for all calibration work.
 
-2. **Calibration policy doc** — write `docs/calibration_policy.md` before running
-   threshold sweeps, so changes are judged against pre-committed standards.
+2. **Calibration metrics** — build `scripts/compute_metrics.py` to read
+   `ground_truth.json` + `inspection_report.json` and print precision/recall/F1.
+   Required before any threshold can be adjusted with evidence.
 
-3. **Second analyzer** — glitter or frequency/periodic noise. Defer until the
-   calibration workflow exists so the new analyzer enters with a repeatable process.
+3. **Calibration policy doc** — write `docs/calibration_policy.md` to lock down
+   amendment rules before running the threshold sweep.
