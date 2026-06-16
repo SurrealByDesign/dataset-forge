@@ -1,0 +1,17 @@
+{
+  "name": "Photoreal Cleanup",
+  "description": "Placeholder chain for future cleanup of photographic datasets without changing identity or composition.",
+  "transforms": [
+    {
+      "name": "reduce_compression_artifacts",
+      "strength": 40
+    },
+    {
+      "name": "preserve_natural_texture",
+      "strength": 85
+    }
+  ],
+  "prompt": "natural photographic detail, realistic texture, preserve identity, lighting, and composition",
+  "negative_prompt": "waxy skin, excessive smoothing, halos, compression blocks, invented detail"
+}
+

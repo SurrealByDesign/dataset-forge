@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+.gallery-preview/
+benchmarks/reference/*
+benchmarks/synthetic_defects/*
+!benchmarks/reference/.gitkeep
+!benchmarks/synthetic_defects/.gitkeep
+!benchmarks/README.md

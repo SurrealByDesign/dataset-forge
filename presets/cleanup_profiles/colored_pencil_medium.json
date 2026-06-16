@@ -1,0 +1,42 @@
+{
+  "name": "colored_pencil_medium",
+  "description": "Medium deterministic cleanup for colored pencil illustrations. Combines speck removal, adaptive bilateral smoothing, and contrast normalization for heavier paper texture.",
+  "operations": [
+    {
+      "name": "isolated_pixel_removal",
+      "parameters": {
+        "threshold": 16,
+        "max_cluster_size": 3
+      }
+    },
+    {
+      "name": "speck_removal",
+      "parameters": {
+        "min_area": 3,
+        "sensitivity": 30
+      }
+    },
+    {
+      "name": "adaptive_bilateral",
+      "parameters": {
+        "diameter": 7,
+        "sigma_color": 30,
+        "sigma_space": 30
+      }
+    },
+    {
+      "name": "local_contrast_normalization",
+      "parameters": {
+        "window_size": 11,
+        "strength": 15
+      }
+    },
+    {
+      "name": "morphology_cleanup",
+      "parameters": {
+        "operation": "open",
+        "kernel_size": 2
+      }
+    }
+  ]
+}

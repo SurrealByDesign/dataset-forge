@@ -1,0 +1,12 @@
+{
+  "name": "General Artifact Cleanup",
+  "description": "General-purpose guidance for reducing visible digital and scan artifacts.",
+  "prompt": "clean source artwork, consistent texture, clear edges, preserve original composition and style",
+  "negative_prompt": "jpeg artifacts, noise, dust, scratches, halos, banding, blur, unwanted text, watermark",
+  "strengths": {
+    "light": 0.15,
+    "medium": 0.4,
+    "strong": 0.65
+  },
+  "notes": "This preset records future processing intent only; Step 2 does not edit images."
+}

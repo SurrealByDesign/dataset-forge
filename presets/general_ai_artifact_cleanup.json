@@ -1,0 +1,17 @@
+{
+  "name": "General AI Artifact Cleanup",
+  "description": "Placeholder general-purpose chain for future artifact reduction while preserving the source style.",
+  "transforms": [
+    {
+      "name": "reduce_ai_artifacts",
+      "strength": 50
+    },
+    {
+      "name": "preserve_composition",
+      "strength": 90
+    }
+  ],
+  "prompt": "clean source artwork, coherent details, consistent texture, preserve original composition and style",
+  "negative_prompt": "warped details, noise, halos, banding, unwanted text, watermark, plastic texture"
+}
+

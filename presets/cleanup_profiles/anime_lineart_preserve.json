@@ -1,0 +1,27 @@
+{
+  "name": "anime_lineart_preserve",
+  "description": "Deterministic cleanup for anime-style line art. Removes scanner specks and isolated pixels with low-strength morphology to avoid breaking thin lines.",
+  "operations": [
+    {
+      "name": "isolated_pixel_removal",
+      "parameters": {
+        "threshold": 8,
+        "max_cluster_size": 1
+      }
+    },
+    {
+      "name": "speck_removal",
+      "parameters": {
+        "min_area": 2,
+        "sensitivity": 15
+      }
+    },
+    {
+      "name": "morphology_cleanup",
+      "parameters": {
+        "operation": "close",
+        "kernel_size": 1
+      }
+    }
+  ]
+}

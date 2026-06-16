@@ -1,0 +1,28 @@
+{
+  "name": "watercolor_microcleanup_light",
+  "description": "Conservative deterministic microcleanup for watercolor and colored-pencil images. Reduces crystalline speckles, recursive high-frequency texture, and crunchy local contrast while preserving linework, silhouettes, color, and broad pigment washes.",
+  "operations": [
+    {
+      "name": "speck_removal",
+      "parameters": {
+        "sensitivity": 32,
+        "max_area": 5,
+        "replacement_blend": 0.72,
+        "median_kernel": 5
+      }
+    },
+    {
+      "name": "edge_preserving_smoothing",
+      "parameters": {
+        "sigma_spatial": 18,
+        "sigma_range": 0.12,
+        "blend": 0.22
+      }
+    }
+  ],
+  "acceptance_checks": {
+    "max_average_pixel_difference": 14.0,
+    "max_color_histogram_difference": 0.18,
+    "max_edge_difference": 0.12
+  }
+}

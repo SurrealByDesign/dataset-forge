@@ -1,0 +1,47 @@
+{
+  "thresholds": {
+    "artifact_light": 45,
+    "artifact_medium": 60,
+    "artifact_strong": 75,
+    "texture_light": 75,
+    "very_low_resolution_mp": 0.25,
+    "low_resolution_mp": 1.0,
+    "healthy_quality": 75,
+    "conflicting_margin": 8
+  },
+  "confidence_base": 68,
+  "confidence_margin_scale": 1.2,
+  "quality_gains": {
+    "light": 8,
+    "medium": 14,
+    "strong": 20,
+    "caption_only": 0
+  },
+  "actions": {
+    "exact_duplicate": "EXCLUDE",
+    "very_low_resolution": "REGENERATE"
+  },
+  "presets": {
+    "artifact_cleanup": "general_ai_artifact_cleanup",
+    "watercolor_cleanup": "watercolor_pencil_cleanup",
+    "anime_lineart_cleanup": "anime_lineart_cleanup",
+    "photoreal_cleanup": "photoreal_cleanup",
+    "captioning": ""
+  },
+  "capabilities": {
+    "CLEAN_LIGHT": "artifact_cleanup",
+    "CLEAN_MEDIUM": "artifact_cleanup",
+    "CLEAN_STRONG": "artifact_cleanup",
+    "TEXTURE_NORMALIZE_LIGHT": "artifact_cleanup",
+    "TEXTURE_NORMALIZE_MEDIUM": "artifact_cleanup",
+    "CAPTION_ONLY": "captioning"
+  },
+  "decision_engine": {
+    "reference_baseline_microtexture": 26.86,
+    "generation_mean_microtexture": 39.89,
+    "generation_stddev_microtexture": 11.62,
+    "microtexture_neutral_zone": 10.0,
+    "ai_model_confidence_factor": 0.5,
+    "confidence_threshold": 60
+  }
+}

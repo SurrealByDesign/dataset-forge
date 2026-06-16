@@ -1,0 +1,26 @@
+{
+  "name": "watercolor_light",
+  "description": "Light deterministic cleanup for watercolor-style images. Removes scanner speckle and isolated pixels while preserving soft paper texture and pigment washes.",
+  "operations": [
+    {
+      "name": "isolated_pixel_removal",
+      "parameters": {
+        "threshold": 12,
+        "max_cluster_size": 2
+      }
+    },
+    {
+      "name": "median_filter",
+      "parameters": {
+        "kernel_size": 3
+      }
+    },
+    {
+      "name": "edge_preserving_smoothing",
+      "parameters": {
+        "strength": 10,
+        "edge_threshold": 30
+      }
+    }
+  ]
+}

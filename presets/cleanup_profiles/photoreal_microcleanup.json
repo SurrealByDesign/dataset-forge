@@ -1,0 +1,28 @@
+{
+  "name": "photoreal_microcleanup",
+  "description": "Subtle deterministic cleanup for photorealistic images. Reduces sensor noise and minor frequency artifacts while preserving fine detail and natural contrast.",
+  "operations": [
+    {
+      "name": "adaptive_bilateral",
+      "parameters": {
+        "diameter": 5,
+        "sigma_color": 15,
+        "sigma_space": 15
+      }
+    },
+    {
+      "name": "frequency_smoothing",
+      "parameters": {
+        "cutoff": 0.85,
+        "strength": 10
+      }
+    },
+    {
+      "name": "local_contrast_normalization",
+      "parameters": {
+        "window_size": 7,
+        "strength": 5
+      }
+    }
+  ]
+}

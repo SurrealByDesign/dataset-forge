@@ -1,0 +1,28 @@
+{
+  "name": "colored_pencil_light",
+  "description": "Light deterministic cleanup for colored pencil illustrations. Targets paper grain and small smudges without flattening pencil strokes.",
+  "operations": [
+    {
+      "name": "isolated_pixel_removal",
+      "parameters": {
+        "threshold": 10,
+        "max_cluster_size": 2
+      }
+    },
+    {
+      "name": "adaptive_bilateral",
+      "parameters": {
+        "diameter": 5,
+        "sigma_color": 20,
+        "sigma_space": 20
+      }
+    },
+    {
+      "name": "local_contrast_normalization",
+      "parameters": {
+        "window_size": 9,
+        "strength": 8
+      }
+    }
+  ]
+}

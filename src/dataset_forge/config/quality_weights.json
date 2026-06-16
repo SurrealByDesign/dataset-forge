@@ -1,0 +1,20 @@
+{
+  "image_weights": {
+    "artifact_quality": 0.25,
+    "texture_quality": 0.15,
+    "duplicate_quality": 0.20,
+    "resolution": 0.15,
+    "brightness_consistency": 0.10,
+    "contrast": 0.15
+  },
+  "dataset_weights": {
+    "exact_duplicates": 0.15,
+    "probable_duplicates": 0.10,
+    "artifact_burden": 0.20,
+    "texture_burden": 0.10,
+    "resolution_consistency": 0.15,
+    "brightness_consistency": 0.10,
+    "contrast_consistency": 0.10,
+    "aspect_ratio_consistency": 0.10
+  }
+}

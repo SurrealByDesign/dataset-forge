@@ -1,0 +1,17 @@
+{
+  "name": "Anime Lineart Cleanup",
+  "description": "Placeholder chain for preserving deliberate anime linework while reducing unwanted generation artifacts.",
+  "transforms": [
+    {
+      "name": "preserve_lineart",
+      "strength": 85
+    },
+    {
+      "name": "reduce_microtexture",
+      "strength": 30
+    }
+  ],
+  "prompt": "clean anime illustration, intentional line weight, stable flat colors, preserve composition",
+  "negative_prompt": "broken lineart, noisy edges, color bleed, compression artifacts, oversharpening"
+}
+

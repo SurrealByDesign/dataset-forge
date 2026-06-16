@@ -1,0 +1,41 @@
+{
+  "name": "watercolor_medium",
+  "description": "Medium deterministic cleanup for watercolor-style images. Adds bilateral smoothing and speck removal for heavier scanner noise while keeping wash gradients intact.",
+  "operations": [
+    {
+      "name": "isolated_pixel_removal",
+      "parameters": {
+        "threshold": 18,
+        "max_cluster_size": 3
+      }
+    },
+    {
+      "name": "speck_removal",
+      "parameters": {
+        "min_area": 4,
+        "sensitivity": 25
+      }
+    },
+    {
+      "name": "median_filter",
+      "parameters": {
+        "kernel_size": 3
+      }
+    },
+    {
+      "name": "bilateral_filter",
+      "parameters": {
+        "diameter": 5,
+        "sigma_color": 35,
+        "sigma_space": 35
+      }
+    },
+    {
+      "name": "edge_preserving_smoothing",
+      "parameters": {
+        "strength": 20,
+        "edge_threshold": 28
+      }
+    }
+  ]
+}

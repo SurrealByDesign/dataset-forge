@@ -1,0 +1,22 @@
+{
+  "name": "Watercolor Pencil Cleanup",
+  "description": "Preserves watercolor washes and pencil linework while describing common cleanup goals.",
+  "transforms": [
+    {
+      "name": "reduce_microtexture",
+      "strength": 35
+    },
+    {
+      "name": "preserve_lineart",
+      "strength": 80
+    }
+  ],
+  "prompt": "clean watercolor pencil illustration, preserve paper texture, crisp intentional linework, balanced color washes",
+  "negative_prompt": "compression artifacts, scanner dust, color banding, muddy edges, oversharpening, plastic texture",
+  "strengths": {
+    "light": 0.2,
+    "medium": 0.45,
+    "strong": 0.7
+  },
+  "notes": "Start with light strength for delicate paper grain and faint pencil details."
+}
