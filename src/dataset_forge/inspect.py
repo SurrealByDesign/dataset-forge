@@ -29,6 +29,7 @@ from dataset_forge.context import (
 )
 from dataset_forge.discovery import discover_images
 from dataset_forge.finding import Finding
+from dataset_forge.inspect_gallery import write_inspection_gallery
 from dataset_forge.report import write_inspection_report
 
 
@@ -49,24 +50,32 @@ class InspectResult:
     images_with_findings: int
     images_clean: int
     severity_counts: dict[str, int]
+    gallery_path: Path | None = None
 
 
 # ---------------------------------------------------------------------------
 # DatasetContext builder
 # ---------------------------------------------------------------------------
 
-def _build_context(image_paths: list[Path]) -> DatasetContext:
+def _build_context(
+    image_paths: list[Path],
+) -> tuple[DatasetContext, dict[str, dict]]:
     """Measure all images and assemble a DatasetContext.
 
     Uses evaluate_texture() for microtexture measurements and
     extract_image_metrics() for resolution/aspect-ratio/hash data.
     Falls back gracefully when individual images cannot be opened.
+
+    Returns (context, image_scores) where image_scores maps str(path) →
+    raw metric dict for every successfully measured image. These scores
+    are captured here for free — no extra image reads needed downstream.
     """
     widths: list[int] = []
     heights: list[int] = []
     aspects: list[float] = []
     microtextures: list[float] = []
     file_hashes: dict[str, list[Path]] = {}  # hash → paths
+    image_scores: dict[str, dict] = {}
     error_count = 0
 
     for path in image_paths:
@@ -86,6 +95,13 @@ def _build_context(image_paths: list[Path]) -> DatasetContext:
         tex = evaluate_texture(path)
         if tex.status == "analyzed":
             microtextures.append(tex.microtexture_density_score)
+            image_scores[str(path)] = {
+                "microtexture_density": tex.microtexture_density_score,
+                "watercolor_smoothness": tex.watercolor_smoothness_score,
+                "highlight_speck": tex.highlight_speck_score,
+            }
+        else:
+            image_scores[str(path)] = {"error": tex.error}
 
     # Resolution stats
     if widths:
@@ -140,7 +156,7 @@ def _build_context(image_paths: list[Path]) -> DatasetContext:
     )
     all_hashes = frozenset(file_hashes.keys())
 
-    return DatasetContext(
+    context = DatasetContext(
         schema_version=CONTEXT_SCHEMA_VERSION,
         analyzer_versions={"texture_analyzer": "v1"},
         image_paths=tuple(image_paths),
@@ -153,6 +169,7 @@ def _build_context(image_paths: list[Path]) -> DatasetContext:
         duplicate_hashes=all_hashes,
         duplicate_groups=dup_groups,
     )
+    return context, image_scores
 
 
 # ---------------------------------------------------------------------------
@@ -165,6 +182,7 @@ def run_inspect(
     *,
     recursive: bool = False,
     limit: int | None = None,
+    gallery: bool = False,
 ) -> InspectResult:
     """Run the full v1 inspect pipeline on a dataset folder.
 
@@ -189,8 +207,8 @@ def run_inspect(
     )
     image_paths = discovery.images
 
-    # 2. Build context
-    context = _build_context(image_paths)
+    # 2. Build context — also returns per-image raw scores at no extra I/O cost
+    context, image_scores = _build_context(image_paths)
 
     # 3. Analyze
     analyzer = TextureAnalyzer()
@@ -200,10 +218,21 @@ def run_inspect(
 
     # 4. Write reports
     json_path, txt_path = write_inspection_report(
-        findings, context, output_dir, dataset_path=dataset_path
+        findings, context, output_dir,
+        dataset_path=dataset_path,
+        image_scores=image_scores,
     )
 
-    # 5. Summarize
+    # 5. Optionally write gallery PNG
+    gallery_path: Path | None = None
+    if gallery and image_scores:
+        gallery_path = write_inspection_gallery(
+            findings, context,
+            output_dir / "inspection_gallery.png",
+            image_scores,
+        )
+
+    # 6. Summarize
     affected = {str(f.image_path) for f in findings}
     sev_counts: dict[str, int] = {}
     for f in findings:
@@ -221,4 +250,5 @@ def run_inspect(
         images_with_findings=len(affected),
         images_clean=context.image_count - len(affected),
         severity_counts=sev_counts,
+        gallery_path=gallery_path,
     )

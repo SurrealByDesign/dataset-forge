@@ -307,5 +307,127 @@ class TestWriteInspectionReport(unittest.TestCase):
         self.assertEqual(txt_p.name, "inspection_report.txt")
 
 
+# ---------------------------------------------------------------------------
+# Score table tests
+# ---------------------------------------------------------------------------
+
+def _scores(paths: list[str], micro_values: list[float]) -> dict[str, dict]:
+    """Build a minimal image_scores dict for testing."""
+    return {
+        p: {
+            "microtexture_density": m,
+            "watercolor_smoothness": 80.0 - m,
+            "highlight_speck": m * 0.1,
+        }
+        for p, m in zip(paths, micro_values)
+    }
+
+
+class TestScoreTable(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.out = Path(self.tmp.name) / "inspection_report.txt"
+        self.ctx = _ctx(n=3)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _write(self, findings, scores) -> str:
+        return write_txt_report(
+            findings, self.ctx, self.out,
+            dataset_path="dataset/",
+            generated_at_display=TS_DISPLAY,
+            image_scores=scores,
+        )
+
+    def test_score_table_section_present_when_scores_provided(self):
+        paths = ["img_000.png", "img_001.png", "img_002.png"]
+        scores = _scores(paths, [50.0, 35.0, 20.0])
+        txt = self._write([], scores)
+        self.assertIn("DATASET TEXTURE SCORES", txt)
+
+    def test_score_table_absent_when_no_scores(self):
+        txt = self._write([], None)
+        self.assertNotIn("DATASET TEXTURE SCORES", txt)
+
+    def test_all_images_appear_in_score_table(self):
+        paths = ["img_000.png", "img_001.png", "img_002.png"]
+        scores = _scores(paths, [50.0, 35.0, 20.0])
+        txt = self._write([], scores)
+        for p in paths:
+            self.assertIn(Path(p).name, txt)
+
+    def test_finding_images_tagged_as_finding(self):
+        paths = ["img_000.png", "img_001.png", "img_002.png"]
+        scores = _scores(paths, [50.0, 35.0, 20.0])
+        f = _finding(image="img_000.png")
+        txt = self._write([f], scores)
+        # The high-micro image (img_000) should be tagged FINDING
+        self.assertIn("[FINDING]", txt)
+
+    def test_clean_images_tagged_as_clean(self):
+        paths = ["img_000.png", "img_001.png", "img_002.png"]
+        scores = _scores(paths, [50.0, 35.0, 20.0])
+        f = _finding(image="img_000.png")
+        txt = self._write([f], scores)
+        self.assertIn("[clean  ]", txt)
+
+    def test_score_table_sorted_descending_by_microtexture(self):
+        paths = ["img_000.png", "img_001.png", "img_002.png"]
+        # Assign micro in reverse order so default sort would be wrong
+        scores = _scores(paths, [20.0, 50.0, 35.0])
+        txt = self._write([], scores)
+        table_start = txt.index("DATASET TEXTURE SCORES")
+        summary_start = txt.index("SUMMARY")
+        table_section = txt[table_start:summary_start]
+        # img_001 (micro=50) should appear before img_002 (micro=35)
+        pos_001 = table_section.find("img_001")
+        pos_002 = table_section.find("img_002")
+        pos_000 = table_section.find("img_000")
+        self.assertLess(pos_001, pos_002)
+        self.assertLess(pos_002, pos_000)
+
+    def test_score_table_shows_microtexture_values(self):
+        paths = ["img_000.png"]
+        scores = _scores(paths, [42.7])
+        txt = self._write([], scores)
+        self.assertIn("42.7", txt)
+
+    def test_score_table_shows_baseline(self):
+        paths = ["img_000.png"]
+        scores = _scores(paths, [30.0])
+        txt = self._write([], scores)
+        self.assertIn("mean=", txt)
+        self.assertIn("stddev=", txt)
+
+    def test_score_table_shows_z_score(self):
+        paths = ["img_000.png"]
+        scores = _scores(paths, [70.0])   # well above dataset mean of 39.9
+        f = _finding(image="img_000.png")
+        txt = self._write([f], scores)
+        # z-score should appear as a signed float
+        self.assertIn("+", txt)
+
+    def test_end_to_end_score_table_via_run_inspect(self):
+        """Score table appears in the TXT report produced by run_inspect()."""
+        import numpy as np
+        from PIL import Image
+        from dataset_forge.inspect import run_inspect
+        tmp2 = tempfile.TemporaryDirectory()
+        try:
+            ds = Path(tmp2.name) / "ds"
+            out = Path(tmp2.name) / "out"
+            ds.mkdir()
+            for i in range(3):
+                arr = np.full((64, 64, 3), 128 + i * 10, dtype=np.uint8)
+                Image.fromarray(arr).save(ds / f"img_{i}.png")
+            result = run_inspect(ds, out)
+            txt = result.txt_report.read_text(encoding="utf-8")
+            self.assertIn("DATASET TEXTURE SCORES", txt)
+            self.assertIn("img_0", txt)
+        finally:
+            tmp2.cleanup()
+
+
 if __name__ == "__main__":
     unittest.main()

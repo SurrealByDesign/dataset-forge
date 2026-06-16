@@ -142,11 +142,59 @@ def _evidence_line(evidence: dict[str, Any]) -> str:
     return "  Evidence: " + ", ".join(parts) if parts else ""
 
 
+def _score_table_rows(
+    image_scores: dict[str, dict],
+    findings: list[Finding],
+    context: DatasetContext,
+) -> list[str]:
+    """Build the full per-image texture score table, sorted by microtexture desc.
+
+    Shows every analyzed image — not just those with findings. This lets the
+    reviewer see the full distribution and judge the flagging threshold visually.
+    """
+    affected = _images_with_findings(findings)
+    dist = context.texture_distributions
+
+    # Build one row per image
+    rows: list[tuple[float, str]] = []  # (sort_key, rendered_line)
+    for path_str, scores in image_scores.items():
+        name = Path(path_str).name
+        if "error" in scores:
+            rows.append((
+                -1.0,
+                f"  [ERROR ] {name:<40}  error: {scores['error']}"
+            ))
+            continue
+
+        micro = scores.get("microtexture_density", 0.0)
+        smooth = scores.get("watercolor_smoothness", 0.0)
+        speck = scores.get("highlight_speck", 0.0)
+
+        if dist.stddev > 0:
+            z = (micro - dist.mean) / dist.stddev
+            z_str = f"{z:+.2f}"
+        else:
+            z = 0.0
+            z_str = "  n/a"
+
+        tag = "[FINDING]" if path_str in affected else "[clean  ]"
+        line = (
+            f"  {tag} {name:<40} "
+            f"micro={micro:5.1f}  z={z_str:>6}  "
+            f"smooth={smooth:5.1f}  speck={speck:5.1f}"
+        )
+        rows.append((micro, line))
+
+    rows.sort(key=lambda r: r[0], reverse=True)
+    return [r[1] for r in rows]
+
+
 def _build_txt(
     findings: list[Finding],
     context: DatasetContext,
     dataset_path: Path | str,
     generated_at_display: str,
+    image_scores: dict[str, dict] | None = None,
 ) -> str:
     total = context.image_count
     affected = _images_with_findings(findings)
@@ -204,6 +252,21 @@ def _build_txt(
         lines.append("All images produced at least one finding.")
     lines.append("")
 
+    # Full dataset score table (validation aid)
+    if image_scores:
+        dist = context.texture_distributions
+        lines += [
+            "DATASET TEXTURE SCORES (all images, sorted by microtexture density)",
+            "--------------------------------------------------------------------",
+            f"  Dataset baseline:  mean={dist.mean:.1f}  stddev={dist.stddev:.1f}"
+            f"  p10={dist.p10:.1f}  p90={dist.p90:.1f}",
+            f"  {'Tag':<9}  {'Filename':<40}  {'micro':>5}  {'z':>6}  "
+            f"{'smooth':>6}  {'speck':>5}",
+            "",
+        ]
+        lines += _score_table_rows(image_scores, findings, context)
+        lines.append("")
+
     # Summary
     lines += ["SUMMARY", "-------"]
     sev_parts = ", ".join(
@@ -252,10 +315,11 @@ def write_txt_report(
     dataset_path: Path | str = "",
     *,
     generated_at_display: str | None = None,
+    image_scores: dict[str, dict] | None = None,
 ) -> str:
     """Write inspection_report.txt and return the report text."""
     ts = generated_at_display or _now_local_display()
-    text = _build_txt(findings, context, dataset_path, ts)
+    text = _build_txt(findings, context, dataset_path, ts, image_scores=image_scores)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(text, encoding="utf-8")
     return text
@@ -270,6 +334,8 @@ def write_inspection_report(
     context: DatasetContext,
     output_dir: Path,
     dataset_path: Path | str = "",
+    *,
+    image_scores: dict[str, dict] | None = None,
 ) -> tuple[Path, Path]:
     """Write both report files to output_dir. Returns (json_path, txt_path)."""
     ts_utc = _now_utc()
@@ -279,6 +345,10 @@ def write_inspection_report(
     txt_path = output_dir / "inspection_report.txt"
 
     write_json_report(findings, context, json_path, dataset_path, generated_at=ts_utc)
-    write_txt_report(findings, context, txt_path, dataset_path, generated_at_display=ts_local)
+    write_txt_report(
+        findings, context, txt_path, dataset_path,
+        generated_at_display=ts_local,
+        image_scores=image_scores,
+    )
 
     return json_path, txt_path

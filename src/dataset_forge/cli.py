@@ -300,6 +300,10 @@ def _inspect_main(argv: list[str]) -> int:
         "--limit", type=int, default=None,
         help="Maximum number of images to analyze.",
     )
+    parser.add_argument(
+        "--gallery", action="store_true", default=False,
+        help="Generate inspection_gallery.png for visual review of findings.",
+    )
     args = parser.parse_args(argv[1:])
 
     dataset_path = args.dataset.expanduser().resolve()
@@ -321,6 +325,7 @@ def _inspect_main(argv: list[str]) -> int:
             output_dir,
             recursive=args.recursive,
             limit=args.limit,
+            gallery=args.gallery,
         )
     except ValueError as exc:
         print(f"Error: {exc}")
@@ -357,6 +362,8 @@ def _inspect_main(argv: list[str]) -> int:
     print("Report written:")
     print(f"  {result.json_report}")
     print(f"  {result.txt_report}")
+    if result.gallery_path:
+        print(f"  {result.gallery_path}")
     return 0
 
 

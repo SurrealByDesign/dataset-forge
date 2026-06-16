@@ -19,11 +19,21 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
   CLI_OUTPUT.md. `--output`, `--recursive`, `--limit` flags supported.
 - `src/dataset_forge/inspect.py` — full v1 spine runner. Discovers images,
   builds `DatasetContext`, runs `TextureAnalyzer`, writes JSON + TXT reports,
-  returns `InspectResult`. 23/23 tests passing (`tests/test_inspect.py`).
+  optionally writes inspection gallery PNG. Returns `InspectResult`
+  (includes `gallery_path: Path | None`).
+  23/23 tests passing (`tests/test_inspect.py`).
+- `src/dataset_forge/inspect_gallery.py` — PNG contact-sheet writer.
+  Four groups: HIGH findings, MEDIUM findings, threshold boundary, clean
+  reference. Receives `image_scores` from `run_inspect()` — no extra I/O.
+  Exposed helpers: `build_image_records()`, `select_gallery_groups()`.
+  45/45 tests passing (`tests/test_inspect_gallery.py`).
+- CLI `--gallery` flag: `dataset-forge inspect <path> --gallery` writes
+  `inspection_gallery.png` to the inspect output folder and prints the path.
 - `src/dataset_forge/report.py` — JSON and TXT report writers.
   `write_json_report()`, `write_txt_report()`, `write_inspection_report()`.
   Output matches CLI_OUTPUT.md schema. Deterministic sort order.
-  40/40 tests passing (`tests/test_report.py`).
+  Score table (all images ranked by microtexture, [FINDING]/[clean] tagged).
+  50/50 tests passing (`tests/test_report.py`).
 - `src/dataset_forge/analyzers/texture.py` — first concrete `Analyzer`.
   Wraps `analysis/texture.py`'s `evaluate_texture()`. Emits
   `texture.high_microtexture` and `texture.error` Findings.
@@ -94,16 +104,18 @@ Nothing currently in flight.
 
 ## Next Recommended Task
 
-**v1 milestone complete.** The vertical slice ships.
+**v1 milestone complete.** Gallery and score table added. Visual validation confirmed.
+
+Real-dataset run (100 images): 19 findings (2 HIGH, 17 MEDIUM), 81 clean.
+Contact sheet review confirmed analyzer signal is meaningful, not random noise.
 
 Suggested next steps (pick one):
 
-1. **Run against the real anthropomorphic dataset** and evaluate finding quality.
-   This is the primary validation test for v1.
+1. **Ground truth labeling** — label the 100-image dataset ARTIFACT/CLEAN/UNCERTAIN
+   while the visual review is fresh. Required for all calibration work.
 
-2. **Calibration benchmarks** — create synthetic images with known artifact levels
-   to validate and tighten TextureAnalyzer thresholds. Required before findings
-   can be treated as calibrated evidence rather than uncalibrated opinions.
+2. **Calibration policy doc** — write `docs/calibration_policy.md` before running
+   threshold sweeps, so changes are judged against pre-committed standards.
 
-3. **Second analyzer** — glitter or frequency/periodic noise. The Analyzer
-   contract is proven; adding a second analyzer validates it generalizes.
+3. **Second analyzer** — glitter or frequency/periodic noise. Defer until the
+   calibration workflow exists so the new analyzer enters with a repeatable process.
