@@ -55,11 +55,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import queue
 import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "src"))
@@ -199,47 +199,123 @@ def _print_image_header(
     print(_BAR)
 
 
-def _open_image(path: Path) -> Callable[[], None] | None:
-    """Open image in a tkinter preview window in a background thread.
+class _PreviewWindow:
+    """Single persistent tkinter window reused across all images in a session.
 
-    Returns a closer callable that dismisses the window, or None on failure.
-    Using tkinter (instead of os.startfile) lets us close the window
-    programmatically so the desktop doesn't flood with viewer windows.
+    Creates one Tk root in a background thread and updates its image via a
+    queue. This avoids the fatal limitation of creating multiple Tk() instances
+    (only the first succeeds; subsequent ones fail silently).
+
+    Usage::
+        win = _PreviewWindow()   # starts the window thread
+        win.show(path)           # display an image
+        win.hide()               # blank/withdraw between images
+        win.close()              # destroy and join thread
     """
-    try:
-        import tkinter as tk
-        from PIL import Image, ImageTk
 
-        close_event = threading.Event()
+    _HIDE = object()
+    _QUIT = object()
 
-        def _run() -> None:
-            try:
-                root = tk.Tk()
-                root.title(path.name)
-                root.configure(bg="black")
-                root.attributes("-topmost", True)
+    def __init__(self) -> None:
+        self._q: queue.Queue = queue.Queue()
+        self._ready = threading.Event()
+        self._ok = False
+        threading.Thread(target=self._run, daemon=True).start()
+        self._ready.wait(timeout=3.0)
 
-                img = Image.open(path)
-                img.thumbnail((900, 700))
-                photo = ImageTk.PhotoImage(img)
-                tk.Label(root, image=photo, bg="black").pack()
+    def _run(self) -> None:
+        try:
+            import tkinter as tk
+            from PIL import Image, ImageTk
 
-                def _poll() -> None:
-                    if close_event.is_set():
-                        root.destroy()
-                    else:
-                        root.after(50, _poll)
+            root = tk.Tk()
+            root.title("Dataset Forge — Preview")
+            root.configure(bg="black")
+            root.attributes("-topmost", True)
+            root.withdraw()
 
+            canvas = tk.Canvas(root, bg="black", width=900, height=700,
+                               highlightthickness=0)
+            canvas.pack(fill="both", expand=True)
+
+            hint = tk.Label(root, text="scroll to zoom  •  drag to pan",
+                            bg="black", fg="#555555", font=("Helvetica", 9))
+            hint.pack(pady=(0, 4))
+
+            _ref:       list = [None]   # ImageTk reference (prevent GC)
+            _orig:      list = [None]   # original PIL Image for re-render
+            _scale:     list = [1.0]
+            _img_id:    list = [None]
+
+            def _render() -> None:
+                if _orig[0] is None:
+                    return
+                w = max(1, int(_orig[0].width  * _scale[0]))
+                h = max(1, int(_orig[0].height * _scale[0]))
+                resized = _orig[0].resize((w, h), Image.LANCZOS)
+                _ref[0] = ImageTk.PhotoImage(resized)
+                if _img_id[0] is None:
+                    _img_id[0] = canvas.create_image(0, 0, anchor="nw",
+                                                     image=_ref[0])
+                else:
+                    canvas.itemconfigure(_img_id[0], image=_ref[0])
+                canvas.configure(scrollregion=canvas.bbox("all"))
+
+            def _on_wheel(event: tk.Event) -> None:
+                factor = 1.15 if event.delta > 0 else (1.0 / 1.15)
+                _scale[0] = max(0.1, min(8.0, _scale[0] * factor))
+                _render()
+
+            canvas.bind("<MouseWheel>", _on_wheel)
+            canvas.bind("<ButtonPress-1>",
+                        lambda e: canvas.scan_mark(e.x, e.y))
+            canvas.bind("<B1-Motion>",
+                        lambda e: canvas.scan_dragto(e.x, e.y, gain=1))
+
+            self._ok = True
+            self._ready.set()
+
+            def _poll() -> None:
+                try:
+                    while True:
+                        msg = self._q.get_nowait()
+                        if msg is self._QUIT:
+                            root.destroy()
+                            return
+                        if msg is self._HIDE:
+                            root.withdraw()
+                        else:
+                            img = Image.open(msg)
+                            # fit to canvas on first load; preserve original for zoom
+                            fit = min(900 / img.width, 700 / img.height, 1.0)
+                            _orig[0]  = img
+                            _scale[0] = fit
+                            canvas.xview_moveto(0)
+                            canvas.yview_moveto(0)
+                            _render()
+                            root.title(f"{Path(msg).name}   (scroll=zoom  drag=pan)")
+                            root.deiconify()
+                            root.lift()
+                except queue.Empty:
+                    pass
                 root.after(50, _poll)
-                root.mainloop()
-            except Exception:
-                pass
 
-        threading.Thread(target=_run, daemon=True).start()
-        return close_event.set
+            root.after(0, _poll)
+            root.mainloop()
+        except Exception:
+            self._ready.set()
 
-    except Exception:
-        return None
+    def show(self, path: Path) -> None:
+        if self._ok:
+            self._q.put(path)
+
+    def hide(self) -> None:
+        if self._ok:
+            self._q.put(self._HIDE)
+
+    def close(self) -> None:
+        if self._ok:
+            self._q.put(self._QUIT)
 
 
 def _prompt_review() -> tuple[str, str] | None:
@@ -285,8 +361,13 @@ def run_review_session(
     review: bool = False,
     recursive: bool = False,
     preview: bool = True,
+    focus: set[str] | None = None,
 ) -> dict:
     """Run an interactive decision-review session and return the final data dict.
+
+    focus: if provided, only images whose filename is in this set are presented.
+           Existing reviews for those images are always overwritten (implies --review
+           for the focused subset).
 
     Designed to be testable: patch ``builtins.input`` before calling, and
     pass preview=False to suppress OS file-open calls during tests.
@@ -310,10 +391,16 @@ def run_review_session(
 
     existing_reviews: dict[str, dict] = data.setdefault("reviews", {})
 
-    to_review = [
-        p for p in all_images
-        if review or p.name not in existing_reviews
-    ]
+    if focus is not None:
+        # Only present the focused subset; always re-present even if already reviewed
+        to_review = [p for p in all_images if p.name in focus]
+        mode_label = f"--focus ({len(to_review)} images)"
+    else:
+        to_review = [
+            p for p in all_images
+            if review or p.name not in existing_reviews
+        ]
+        mode_label = "--review (re-reviewing existing entries)" if review else None
 
     skipped_count  = len(all_images) - len(to_review)
     reviewed_count = 0
@@ -325,19 +412,27 @@ def run_review_session(
     print(f"Dataset:   {dataset_path}")
     print(f"Report:    {report_path}")
     print(f"Output:    {output_path}")
-    print(f"Images:    {len(all_images)} total, {skipped_count} already reviewed, "
-          f"{total} to review")
-    if review:
-        print("Mode:      --review (re-reviewing existing entries)")
+    if focus is not None:
+        print(f"Focus:     {total} specific images")
+    else:
+        print(f"Images:    {len(all_images)} total, {skipped_count} already reviewed, "
+              f"{total} to review")
+    if mode_label:
+        print(f"Mode:      {mode_label}")
     if not preview:
         print("Preview:   disabled (--no-preview)")
     print()
     print("Review: A=agree  D=disagree  U=unsure  S=skip  Q=quit+save")
 
     if total == 0:
-        print("\nNothing to review. Pass --review to re-examine existing entries.")
+        if focus is not None:
+            print("\nNo focused images found in dataset. Check filenames.")
+        else:
+            print("\nNothing to review. Pass --review to re-examine existing entries.")
         _save_review_file(data, output_path)
         return data
+
+    win = _PreviewWindow() if preview else None
 
     for idx, image_path in enumerate(to_review, start=1):
         name = image_path.name
@@ -346,14 +441,15 @@ def run_review_session(
         df_decision = "FINDING" if finding is not None else "CLEAN"
         existing_review = existing_reviews.get(name, {}).get("review")
 
-        closer = _open_image(image_path) if preview else None
+        if win:
+            win.show(image_path)
 
         _print_image_header(idx, total, name, df_decision, metrics, existing_review)
 
         result = _prompt_review()
 
-        if closer:
-            closer()
+        if win:
+            win.hide()
 
         if result is None:
             print(f"\nSaving and quitting after {reviewed_count} reviews.")
@@ -376,6 +472,9 @@ def run_review_session(
         }
         reviewed_count += 1
         _save_review_file(data, output_path)
+
+    if win:
+        win.close()
 
     print()
     total_reviewed = len(existing_reviews)
@@ -410,6 +509,10 @@ def _parse_args() -> argparse.Namespace:
                    help="Search dataset sub-folders recursively.")
     p.add_argument("--no-preview", action="store_true",
                    help="Do not open images automatically before each prompt.")
+    p.add_argument("--focus", type=str, default=None,
+                   help="Comma-separated list of filenames to re-review, or path "
+                        "to a text file with one filename per line. Overrides "
+                        "--review for the focused subset only.")
     return p.parse_args()
 
 
@@ -431,6 +534,15 @@ def main() -> None:
         print(f"ERROR: Report file not found: {report_path}", file=sys.stderr)
         sys.exit(1)
 
+    focus: set[str] | None = None
+    if args.focus:
+        focus_arg = args.focus.strip()
+        focus_path = Path(focus_arg)
+        if focus_path.exists():
+            focus = {l.strip() for l in focus_path.read_text(encoding="utf-8").splitlines() if l.strip()}
+        else:
+            focus = {f.strip() for f in focus_arg.split(",") if f.strip()}
+
     run_review_session(
         dataset_path,
         report_path,
@@ -438,6 +550,7 @@ def main() -> None:
         review=args.review,
         recursive=args.recursive,
         preview=not args.no_preview,
+        focus=focus,
     )
 
 

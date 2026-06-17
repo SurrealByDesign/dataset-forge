@@ -132,6 +132,50 @@ report. That slice must work before anything else is added.
 
 ---
 
+## Why Artifact Families Are Treated Separately
+
+During calibration review of the anthropomorph dataset, eleven images the
+analyzer marked CLEAN were flagged by the human reviewer. Investigation showed
+that these images shared a specific artifact — crystalline surface faceting,
+angular micro-polygon shading — that is distinct from the elevated high-frequency
+noise the microtexture analyzer was measuring.
+
+Diagnostic analysis across all seven available texture metrics confirmed the
+distinction with statistical evidence:
+
+- `highlight_speck`: Cohen's d = −0.01 against the clean population. No signal.
+  The speck metric counts near-white isolated pixels. Crystalline faceting
+  produces mid-frequency angular texture, not bright isolated points.
+- `pencil_grain`: Cohen's d = +0.80. Strong signal. Pencil grain measures
+  medium-frequency texture uniformly distributed across the image — which is
+  exactly what faceted surfaces produce.
+- `microtexture_density`: Cohen's d = +0.99. The primary signal, but the
+  current threshold is too conservative to catch the faceting population.
+
+The lesson: using a single score as a proxy for all GPT contamination produces
+a system that is well-calibrated for one artifact family and blind to others.
+Treating them separately — each with its own analyzer, evidence schema, and
+threshold — is not premature abstraction. It is the correct response to
+empirical evidence that they are different phenomena.
+
+---
+
+## Why Cleanup Must Be Artifact-Specific
+
+A generic texture smoothing filter applied across all findings would damage
+healthy image characteristics:
+
+- Legitimate pencil grain is indistinguishable from GPT microtexture by any
+  smoothing filter that does not understand what it is removing.
+- Intentional specular highlights (eyes, metallic surfaces, water) are
+  destroyed by speck-suppression logic targeting glitter artifacts.
+- Genuine watercolor edge variation is harmed by halo-removal filters.
+
+The cleanup strategy must be derived from the finding category, not applied
+uniformly. This is why Finding carries a `category` field, not just a severity.
+
+---
+
 ## Why "Leave Healthy Images Alone" Is a Design Goal
 
 Most tools measure success by the number of changes made.

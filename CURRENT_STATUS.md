@@ -82,6 +82,14 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
 
 ---
 
+- `scripts/compute_metrics.py` — calibration metrics from inspection report +
+  decision review. Outputs: agreement summary, finding/clean review, missed-
+  detection table (sorted by z-score), false-positive table, threshold
+  diagnostics. Optional `--dataset` flag re-runs `evaluate_texture` on missed
+  detections to fill in metrics not stored in the report. Optional `--output`
+  writes `metrics_report.json`. No core contracts changed.
+  30/30 tests passing (`tests/test_compute_metrics.py`).
+
 - `scripts/review_decisions.py` — interactive decision-review tool.
   Shows each image alongside Dataset Forge's current decision (FINDING/CLEAN),
   severity, and texture metrics. Reviewer marks AGREE / DISAGREE / UNSURE.

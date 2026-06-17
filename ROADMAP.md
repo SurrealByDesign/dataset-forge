@@ -1,28 +1,34 @@
-# Dataset Forge – Roadmap
+# Dataset Forge - Roadmap
 
 ---
 
 ## Version 1: Dataset Forge Inspect (current)
 
-**Goal:** Produce calibrated, explainable findings for the anthropomorphic dataset.
+**Goal:** Produce explainable, read-only findings for image datasets, with
+calibration driven by reviewer ground truth.
 
-**Pipeline:** `Dataset → DatasetContext → Analyzer → Finding → Report`
+**Pipeline:** `Dataset -> DatasetContext -> Analyzer -> Finding -> Report`
 
 ### v1 Milestones
 
 | Milestone | Status |
 |---|---|
-| `Finding` dataclass defined | pending |
-| `DatasetContext` dataclass defined | pending |
-| `Analyzer` base class defined | pending |
-| Frequency analyzer (periodic noise, microtexture) | in progress |
-| Glitter analyzer | pending |
-| Sharpness / halo analyzer | pending |
-| Synthetic benchmarks (glitter, noise, sharpness, speckle, halo) | blocked |
-| JSON report writer | next |
-| TXT report writer | pending |
-| CLI: `dataset-forge inspect <path>` | pending |
-| Calibration benchmark pass | blocked |
+| `Finding` dataclass defined | done |
+| `DatasetContext` dataclass defined | done |
+| `Analyzer` base class defined | done |
+| Texture analyzer (microtexture, speckle, watercolor smoothness signal) | done |
+| JSON report writer | done |
+| TXT report writer | done |
+| CLI: `dataset-forge inspect <path>` | done |
+| Inspect gallery output | done |
+| Labeling tool for `ground_truth.json` | done |
+| Decision review tool for `decision_review.json` | done |
+| Crystalline faceting analyzer (`artifact.crystalline_faceting`) — pencil_grain + texture_consistency signal | pending |
+| Speck / glitter analyzer (`artifact.speck`) — independent speck threshold | pending |
+| Frequency / periodic noise analyzer (`artifact.recursive_detail`) | pending |
+| Sharpness / halo analyzer (`artifact.oversharpening`) | pending |
+| Calibration metrics from ground truth | done |
+| Calibration benchmark pass | in progress — decision_review.json collected, diagnostic complete |
 
 **v1 does not include:** cleanup, AI, UI, captions, plugins, exporters.
 
@@ -30,14 +36,23 @@
 
 ## Version 2: Dataset Forge Clean (future)
 
-**Goal:** Apply deterministic cleanup to images where Findings justify it.
+**Goal:** Apply deterministic, artifact-specific cleanup to images where Findings justify it.
 
-- Speck removal
-- Edge-preserving smoothing
-- Frequency artifact suppression
-- Acceptance checks against originals
-- Dry-run / preview mode
-- No originals overwritten
+Cleanup is per artifact family — not a single generic filter:
+
+| Finding category | Cleanup strategy |
+|---|---|
+| `artifact.microtexture` | Edge-preserving denoise |
+| `artifact.speck` | Isolated bright-pixel suppression with local inpainting |
+| `artifact.crystalline_faceting` | Mid-frequency band suppression |
+| `artifact.recursive_detail` | Frequency-domain attenuation |
+| `artifact.oversharpening` | Unsharp-mask reversal; edge deconvolution |
+
+Non-destructive pipeline (absolute):
+- Originals are never modified
+- Candidates written to separate output folder
+- Side-by-side human review required before export
+- Final export assembled from individually approved images only
 
 **Prerequisite:** v1 findings are trusted.
 
@@ -69,16 +84,20 @@
 
 ## What Blocks v1
 
-1. **Calibration benchmarks** — synthetic images with known artifact levels
-   needed to validate analyzer thresholds before trusting findings.
+1. **Calibration evidence** - reviewer labels and decision reviews are needed
+   before analyzer thresholds can be trusted. The tools now write local
+   `ground_truth.json` and `decision_review.json` artifacts, which are generated
+   review data and should remain untracked.
 
-2. **`Finding` and `DatasetContext` formalization** — `ImageEvidence` in
-   `evidence.py` is a predecessor but does not match the Bible schema.
+2. **Benchmark coverage** - local generated assets cover several artifact
+   classes, but duplicate detection, halo-only samples, multi-strength
+   calibration sets, and real-sample provenance are still missing.
 
 ---
 
 ## Priority Order
 
-Shipping a complete v1 vertical slice > expanding architecture.
+Reviewer-backed calibration > new analyzers > future cleanup work.
 
-The benchmark blocker is the most important thing to resolve.
+The v1 vertical slice exists; the most important next step is turning review
+labels into precision/recall/F1 so thresholds can be adjusted with evidence.

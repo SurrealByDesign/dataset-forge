@@ -53,7 +53,11 @@ reports/
 report/
 processed/
 precleanup/
+gallery/
+galleries/
 review_gallery/
+generated_gallery/
+generated_galleries/
 texture_thumbnails/
 manifest.csv
 manifest_v*.csv
@@ -75,10 +79,13 @@ cleanup_plan.json
 cleanup_plan.csv
 approved_cleanup_plan.json
 approved_cleanup_plan.csv
+ground_truth.json
+decision_review.json
 execution_report.json
 execution_report.csv
 user_overrides.json
 decision_audit_log.jsonl
+inspection_gallery.png
 
 # Benchmark/generated outputs
 benchmarks/results/

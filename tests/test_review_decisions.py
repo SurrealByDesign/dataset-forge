@@ -37,6 +37,7 @@ sys.path.insert(0, str(_REPO / "scripts"))
 from review_decisions import (
     DECISION_REVIEW_SCHEMA,
     VALID_REVIEWS,
+    _PreviewWindow,
     _build_findings_index,
     _extract_metrics,
     _is_excluded,
@@ -439,6 +440,65 @@ class TestRunReviewSession(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Focus mode
+# ---------------------------------------------------------------------------
+
+class TestFocusMode(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.dataset = self.root / "dataset"
+        self.dataset.mkdir()
+        self.rv_path = self.root / "decision_review.json"
+        self.report_path = self.root / "report.json"
+        _write_image(self.dataset / "img_001.png")
+        _write_image(self.dataset / "img_002.png")
+        _write_image(self.dataset / "img_003.png")
+        _write_report(self.report_path, _minimal_report(self.dataset))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, inputs, focus=None):
+        responses = iter(inputs)
+        with patch("builtins.input", side_effect=lambda _p="": next(responses)):
+            return run_review_session(
+                self.dataset, self.report_path, self.rv_path,
+                preview=False, focus=focus,
+            )
+
+    def test_focus_only_presents_named_images(self):
+        rv = self._run(["a", ""], focus={"img_001.png"})
+        self.assertIn("img_001.png", rv["reviews"])
+        self.assertNotIn("img_002.png", rv["reviews"])
+        self.assertNotIn("img_003.png", rv["reviews"])
+
+    def test_focus_overwrites_existing_review(self):
+        # First pass: label all three
+        self._run(["a", "", "a", "", "a", ""])
+        # Focus re-review just img_001 with different answer
+        rv = self._run(["d", "changed"], focus={"img_001.png"})
+        self.assertEqual(rv["reviews"]["img_001.png"]["review"], "DISAGREE")
+        # Others unchanged
+        self.assertEqual(rv["reviews"]["img_002.png"]["review"], "AGREE")
+
+    def test_focus_empty_set_reviews_nothing(self):
+        rv = self._run([], focus=set())
+        self.assertEqual(rv["reviews"], {})
+
+    def test_focus_unknown_filename_reviews_nothing(self):
+        rv = self._run([], focus={"nonexistent.png"})
+        self.assertEqual(rv["reviews"], {})
+
+    def test_focus_multiple_filenames(self):
+        rv = self._run(["a", "", "d", ""], focus={"img_001.png", "img_002.png"})
+        self.assertIn("img_001.png", rv["reviews"])
+        self.assertIn("img_002.png", rv["reviews"])
+        self.assertNotIn("img_003.png", rv["reviews"])
+
+
+# ---------------------------------------------------------------------------
 # Preview behavior
 # ---------------------------------------------------------------------------
 
@@ -458,41 +518,62 @@ class TestPreviewBehavior(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_preview_calls_open_image_once_per_image(self):
+    def test_preview_shows_image_once_per_image(self):
         import review_decisions as rd
-        calls: list[Path] = []
-        # Mock returns None (no-op closer); the loop handles None gracefully.
-        with patch.object(rd, "_open_image", side_effect=lambda p: calls.append(p) or None):
+        show_calls: list[Path] = []
+
+        class _FakeWin:
+            def show(self, p): show_calls.append(p)
+            def hide(self): pass
+            def close(self): pass
+
+        with patch.object(rd, "_PreviewWindow", return_value=_FakeWin()):
             with patch("builtins.input", side_effect=iter(["a", "", "d", ""])):
                 run_review_session(
                     self.dataset, self.report_path, self.rv_path, preview=True
                 )
-        self.assertEqual(len(calls), 2)
+        self.assertEqual(len(show_calls), 2)
 
-    def test_preview_false_never_calls_open_image(self):
+    def test_preview_false_never_creates_window(self):
         import review_decisions as rd
-        calls: list[Path] = []
-        with patch.object(rd, "_open_image", side_effect=lambda p: calls.append(p) or None):
+        with patch.object(rd, "_PreviewWindow") as mock_cls:
             with patch("builtins.input", side_effect=iter(["a", "", "d", ""])):
                 run_review_session(
                     self.dataset, self.report_path, self.rv_path, preview=False
                 )
-        self.assertEqual(len(calls), 0)
+        mock_cls.assert_not_called()
 
-    def test_open_image_returns_closer_or_none(self):
+    def test_preview_window_hide_called_after_each_review(self):
         import review_decisions as rd
-        # tkinter may not be available in all test environments; result is None or callable
-        result = rd._open_image(self.dataset / "img_001.png")
-        if result is not None:
-            self.assertTrue(callable(result))
-            result()   # close the window if it opened
+        hide_calls: list = []
 
-    def test_open_image_never_raises(self):
+        class _FakeWin:
+            def show(self, p): pass
+            def hide(self): hide_calls.append(1)
+            def close(self): pass
+
+        with patch.object(rd, "_PreviewWindow", return_value=_FakeWin()):
+            with patch("builtins.input", side_effect=iter(["a", "", "d", ""])):
+                run_review_session(
+                    self.dataset, self.report_path, self.rv_path, preview=True
+                )
+        self.assertEqual(len(hide_calls), 2)
+
+    def test_preview_window_closed_at_end_of_session(self):
         import review_decisions as rd
-        # Patch tkinter to be unavailable; _open_image must return None, not raise.
-        with patch.dict(sys.modules, {"tkinter": None}):
-            result = rd._open_image(self.dataset / "img_001.png")
-        self.assertIsNone(result)
+        closed: list = []
+
+        class _FakeWin:
+            def show(self, p): pass
+            def hide(self): pass
+            def close(self): closed.append(1)
+
+        with patch.object(rd, "_PreviewWindow", return_value=_FakeWin()):
+            with patch("builtins.input", side_effect=iter(["a", "", "a", ""])):
+                run_review_session(
+                    self.dataset, self.report_path, self.rv_path, preview=True
+                )
+        self.assertEqual(len(closed), 1)
 
 
 # ---------------------------------------------------------------------------
