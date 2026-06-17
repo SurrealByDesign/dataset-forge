@@ -18,6 +18,7 @@ from pathlib import Path
 
 from dataset_forge.analysis.metrics import extract_image_metrics
 from dataset_forge.analysis.texture import evaluate_texture
+from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
 from dataset_forge.analyzers.texture import TextureAnalyzer
 from dataset_forge.context import (
     CONTEXT_SCHEMA_VERSION,
@@ -158,7 +159,10 @@ def _build_context(
 
     context = DatasetContext(
         schema_version=CONTEXT_SCHEMA_VERSION,
-        analyzer_versions={"texture_analyzer": "v1"},
+        analyzer_versions={
+            "texture_analyzer": "v1",
+            "crystalline_faceting_analyzer": "v1",
+        },
         image_paths=tuple(image_paths),
         image_count=len(image_paths),
         error_count=error_count,
@@ -210,11 +214,12 @@ def run_inspect(
     # 2. Build context — also returns per-image raw scores at no extra I/O cost
     context, image_scores = _build_context(image_paths)
 
-    # 3. Analyze
-    analyzer = TextureAnalyzer()
+    # 3. Analyze — run all registered analyzers
+    analyzers = [TextureAnalyzer(), CrystallineFacetingAnalyzer()]
     findings: list[Finding] = []
     for path in image_paths:
-        findings.extend(analyzer.analyze(path, context))
+        for analyzer in analyzers:
+            findings.extend(analyzer.analyze(path, context))
 
     # 4. Write reports
     json_path, txt_path = write_inspection_report(

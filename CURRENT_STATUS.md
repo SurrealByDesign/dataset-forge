@@ -101,6 +101,29 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
 
 ---
 
+## Completed (continued)
+
+- `src/dataset_forge/analyzers/crystalline.py` — `CrystallineFacetingAnalyzer`.
+  First-pass uncalibrated detector for the crystalline faceting artifact family.
+  Category: `artifact.crystalline_faceting`. Detection rule (from calibration
+  diagnostic): `pencil_grain >= 45 AND watercolor_smoothness < 52 AND micro >= 20`.
+  Confidence capped at 0.45 (uncalibrated). FP rate conservative at 0.28.
+  Wired into `run_inspect()` alongside TextureAnalyzer.
+  35/35 tests passing (`tests/test_analyzer_crystalline.py`).
+
+  Live run on anthropomorph dataset (100 images):
+  - Group A (TextureAnalyzer already found): 18 images — crystalline also flags all 18
+  - Group B (missed by TextureAnalyzer): 9/11 caught ← new signal
+  - Group C (agreed clean → false positives): 13 images
+  - Group U (unsure — needs re-review): 14 images flagged
+  - abesteak.jpg (grain=43.3) and appledoctor.jpg (grain=33.1) remain uncaught —
+    both below grain threshold; may require frequency-domain signal
+
+  Precision against labeled data (B vs B+C): 9 / (9+13) = 40.9%  ← matches diagnostic
+  Recall against Group B: 9 / 11 = 81.8%  ← matches diagnostic
+
+---
+
 ## In Progress
 
 Nothing currently in flight.
@@ -125,6 +148,7 @@ Nothing currently in flight.
 | `DatasetContext` | **Done** — `src/dataset_forge/context.py` |
 | `Analyzer` base class | **Done** — `src/dataset_forge/analyzers/base.py` |
 | Texture analyzer | **Done** — `src/dataset_forge/analyzers/texture.py` |
+| Crystalline faceting analyzer | **Done** — `src/dataset_forge/analyzers/crystalline.py` |
 | Glitter analyzer | Not yet created |
 | Frequency/noise analyzer | Not yet created |
 | Sharpness/halo analyzer | Not yet created |
@@ -136,20 +160,23 @@ Nothing currently in flight.
 
 ## Next Recommended Task
 
-**v1 milestone complete.** Gallery and score table added. Visual validation confirmed.
-
-Real-dataset run (100 images): 19 findings (2 HIGH, 17 MEDIUM), 81 clean.
-Contact sheet review confirmed analyzer signal is meaningful, not random noise.
+**CrystallineFacetingAnalyzer is live.** First-pass precision: 40.9%, recall: 81.8%.
+13 false positives against agreed-clean group; 14 UNSURE images also flagged.
 
 Suggested next steps (pick one):
 
-1. **Run the labeling session** — execute `scripts/label_ground_truth.py` against
-   the real anthropomorph dataset now, while the contact sheet review is fresh.
-   This produces `ground_truth.json`, the input for all calibration work.
+1. **Re-review the 13 false positives** — run `scripts/review_decisions.py`
+   with `--focus` on the 13 Group C images that crystalline now flags. Some may
+   be genuine faceting that was reviewed as AGREE-clean but actually have faceting
+   artifacts. This would adjust the effective precision upward.
 
-2. **Calibration metrics** — build `scripts/compute_metrics.py` to read
-   `ground_truth.json` + `inspection_report.json` and print precision/recall/F1.
-   Required before any threshold can be adjusted with evidence.
+2. **Review the 14 UNSURE catches** — the 14 Group U images that crystalline flags
+   were marked UNSURE in the original decision review. Re-reviewing them with the
+   crystalline finding visible may break the UNSURE tie.
 
-3. **Calibration policy doc** — write `docs/calibration_policy.md` to lock down
-   amendment rules before running the threshold sweep.
+3. **Synthetic benchmark** — create benchmark images with known crystalline faceting
+   to calibrate the pencil_grain / smoothness thresholds properly. This is required
+   before the uncalibrated flags are removed.
+
+4. **Threshold tightening experiment** — try `pencil_grain >= 50` to reduce FP to
+   ~5 while keeping recall at ~72%. Run pencil_grain_diagnostic.py to evaluate.

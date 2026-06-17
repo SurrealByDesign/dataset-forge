@@ -23,12 +23,12 @@ calibration driven by reviewer ground truth.
 | Inspect gallery output | done |
 | Labeling tool for `ground_truth.json` | done |
 | Decision review tool for `decision_review.json` | done |
-| Crystalline faceting analyzer (`artifact.crystalline_faceting`) — pencil_grain + texture_consistency signal | pending |
+| Crystalline faceting analyzer (`artifact.crystalline_faceting`) — pencil_grain + texture_consistency signal | done — first-pass uncalibrated; 9/11 known missed cases caught |
 | Speck / glitter analyzer (`artifact.speck`) — independent speck threshold | pending |
 | Frequency / periodic noise analyzer (`artifact.recursive_detail`) | pending |
 | Sharpness / halo analyzer (`artifact.oversharpening`) | pending |
 | Calibration metrics from ground truth | done |
-| Calibration benchmark pass | in progress — decision_review.json collected, diagnostic complete |
+| Calibration benchmark pass | in progress — crystalline detector live, FP review needed |
 
 **v1 does not include:** cleanup, AI, UI, captions, plugins, exporters.
 
