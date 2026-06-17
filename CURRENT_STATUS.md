@@ -75,7 +75,10 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
   Writes resumable `ground_truth.json` (saved after every label).
   Skips already-labeled images unless `--review` is passed.
   Excludes `inspect_output/`, `output/`, `_report/` subdirectories.
-  39/39 tests passing (`tests/test_label_ground_truth.py`).
+  Opens each image in the system viewer before the prompt by default
+  (`os.startfile` on Windows, `open`/`xdg-open` elsewhere). Disable with
+  `--no-preview`. Preview failures are silently swallowed; session continues.
+  42/42 tests passing (`tests/test_label_ground_truth.py`).
 
 ---
 

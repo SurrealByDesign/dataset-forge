@@ -255,6 +255,7 @@ class TestRunLabelingSession(unittest.TestCase):
                 self.report_path,
                 self.gt_path,
                 review=review,
+                preview=False,  # never open OS viewer during tests
             )
 
     # ---- output file structure -----------------------------------------
@@ -450,6 +451,7 @@ class TestRunLabelingSession(unittest.TestCase):
                     self.dataset,
                     self.report_path,
                     self.gt_path,
+                    preview=False,
                 )
 
         # Should have been saved at least once (after the label) + once at end
@@ -471,6 +473,67 @@ class TestRunLabelingSession(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Preview behavior
+# ---------------------------------------------------------------------------
+
+class TestPreviewBehavior(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.dataset = self.root / "dataset"
+        self.dataset.mkdir()
+        self.gt_path = self.root / "ground_truth.json"
+        self.report_path = self.root / "report.json"
+        _write_image(self.dataset / "img_001.png")
+        _write_image(self.dataset / "img_002.png")
+        _write_report(
+            self.report_path,
+            _minimal_report(self.dataset),
+        )
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_preview_calls_open_image_once_per_image(self):
+        import label_ground_truth as lgt
+        calls: list[Path] = []
+        with patch.object(lgt, "_open_image", side_effect=calls.append):
+            with patch("builtins.input", side_effect=iter(["a", "", "c", ""])):
+                run_labeling_session(
+                    self.dataset,
+                    self.report_path,
+                    self.gt_path,
+                    preview=True,
+                )
+        self.assertEqual(len(calls), 2)
+
+    def test_preview_false_never_calls_open_image(self):
+        import label_ground_truth as lgt
+        calls: list[Path] = []
+        with patch.object(lgt, "_open_image", side_effect=calls.append):
+            with patch("builtins.input", side_effect=iter(["a", "", "c", ""])):
+                run_labeling_session(
+                    self.dataset,
+                    self.report_path,
+                    self.gt_path,
+                    preview=False,
+                )
+        self.assertEqual(len(calls), 0)
+
+    def test_open_image_swallows_os_errors(self):
+        """_open_image must never raise, even when the viewer command fails."""
+        import label_ground_truth as lgt
+        # Patch the underlying OS launcher to raise; _open_image's try/except
+        # must absorb it so the caller loop is never interrupted.
+        with patch.object(lgt.os, "startfile", side_effect=OSError("no viewer")):
+            with patch.object(lgt, "sys") as mock_sys:
+                mock_sys.platform = "win32"
+                # Should complete without raising
+                lgt._open_image(self.dataset / "img_001.png")
+
+
+# ---------------------------------------------------------------------------
 # Round-trip: write and re-read ground_truth.json
 # ---------------------------------------------------------------------------
 
@@ -489,7 +552,7 @@ class TestGroundTruthRoundTrip(unittest.TestCase):
             gt_path = root / "ground_truth.json"
 
             with patch("builtins.input", side_effect=iter(["c", "nice image"])):
-                run_labeling_session(ds, rpt, gt_path)
+                run_labeling_session(ds, rpt, gt_path, preview=False)
 
             raw  = json.loads(gt_path.read_text(encoding="utf-8"))
             self.assertEqual(raw["schema"], GROUND_TRUTH_SCHEMA)

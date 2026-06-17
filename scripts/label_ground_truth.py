@@ -16,12 +16,14 @@ Usage
 
 Options
 -------
-    --dataset   Path to the image folder (required).
-    --report    Path to inspection_report.json (required).
-    --output    Where to write ground_truth.json.
-                Default: <dataset>/ground_truth.json
-    --review    Re-label already-labeled images as well.
-    --recursive Scan sub-folders recursively.
+    --dataset     Path to the image folder (required).
+    --report      Path to inspection_report.json (required).
+    --output      Where to write ground_truth.json.
+                  Default: <dataset>/ground_truth.json
+    --review      Re-label already-labeled images as well.
+    --recursive   Scan sub-folders recursively.
+    --no-preview  Do not open images automatically (default: images open
+                  in the system viewer before each prompt).
 
 ground_truth.json schema
 ------------------------
@@ -51,6 +53,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -193,6 +197,21 @@ def _print_image_header(
     print(_BAR)
 
 
+def _open_image(path: Path) -> None:
+    """Open the image in the system default viewer. Best-effort; never raises."""
+    try:
+        if sys.platform == "win32":
+            os.startfile(path)          # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(path)], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+    except Exception:
+        pass    # preview is a convenience, never a requirement
+
+
 def _prompt_label() -> tuple[str, str] | None:
     """Prompt for a label and optional note. Returns (label, note) or None to quit."""
     print("  Label:  [A] ARTIFACT   [C] CLEAN   [U] UNCERTAIN")
@@ -232,10 +251,15 @@ def run_labeling_session(
     *,
     review: bool = False,
     recursive: bool = False,
+    preview: bool = True,
 ) -> dict:
     """Run an interactive labeling session and return the final ground_truth dict.
 
-    Designed to be testable: callers can monkey-patch ``input`` before calling.
+    When preview=True (default) each image is opened in the system viewer
+    before the prompt so the reviewer can see it while labeling.
+
+    Designed to be testable: callers can monkey-patch ``input`` before calling,
+    and pass preview=False to skip OS file-open calls during tests.
     """
     dataset_path = dataset_path.resolve()
     report_path  = report_path.resolve()
@@ -275,6 +299,8 @@ def run_labeling_session(
           f"{total} to label")
     if review:
         print("Mode:      --review (re-labeling existing entries)")
+    if not preview:
+        print("Preview:   disabled (--no-preview)")
     print()
     print("Labels: A=ARTIFACT  C=CLEAN  U=UNCERTAIN  S=skip  Q=quit+save")
 
@@ -288,6 +314,9 @@ def run_labeling_session(
         finding = findings_index.get(name)
         metrics = _extract_metrics(finding)
         existing_label = existing_labels.get(name, {}).get("label")
+
+        if preview:
+            _open_image(image_path)
 
         _print_image_header(idx, total, name, metrics, existing_label)
 
@@ -342,10 +371,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--output",    type=Path, default=None,
                    help="Where to write ground_truth.json. "
                         "Default: <dataset>/ground_truth.json")
-    p.add_argument("--review",    action="store_true",
+    p.add_argument("--review",     action="store_true",
                    help="Re-label already-labeled images.")
-    p.add_argument("--recursive", action="store_true",
+    p.add_argument("--recursive",  action="store_true",
                    help="Search dataset sub-folders recursively.")
+    p.add_argument("--no-preview", action="store_true",
+                   help="Do not open images automatically before each prompt.")
     return p.parse_args()
 
 
@@ -373,6 +404,7 @@ def main() -> None:
         output_path,
         review=args.review,
         recursive=args.recursive,
+        preview=not args.no_preview,
     )
 
 
