@@ -82,6 +82,17 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
 
 ---
 
+- `scripts/review_decisions.py` — interactive decision-review tool.
+  Shows each image alongside Dataset Forge's current decision (FINDING/CLEAN),
+  severity, and texture metrics. Reviewer marks AGREE / DISAGREE / UNSURE.
+  Writes resumable `decision_review.json` (saved after every review).
+  Excludes `inspect_output/`, `output/`, `_report/` subdirectories.
+  Opens images in system viewer by default; `--no-preview` to disable.
+  Schema: `dataset-forge/decision-review/v1`.
+  42/42 tests passing (`tests/test_review_decisions.py`).
+
+---
+
 ## In Progress
 
 Nothing currently in flight.
