@@ -124,6 +124,27 @@ Pipeline: `Dataset → DatasetContext → Analyzer → Finding → Report`
 
 ---
 
+- `scripts/review_decisions.py` — updated for multi-analyzer reports.
+  - `_build_findings_index` now keeps the **first** finding per image (TextureAnalyzer),
+    preventing the crystalline finding from silently overwriting it in the stored record.
+  - `_build_crystalline_index` — new function; indexes `artifact.crystalline_faceting`
+    findings by filename for separate display and storage.
+  - `_extract_crystalline_evidence` — new function; extracts `grain`, `smooth`, `micro`
+    from a crystalline finding's evidence dict.
+  - `_extract_metrics` now returns a `category` field (primary finding category).
+  - `_print_image_header` now shows:
+    - Primary finding category next to DF decision
+    - Crystalline evidence line (`grain`, `smooth`, `micro`, `[uncalibrated]`) when present
+  - Stored review record now includes `category` and `grain` fields (additive; old records
+    remain valid).
+  - `--focus` flag and file-based focus list already existed; no new CLI flags needed.
+  - Focus list for the 13 FP + 14 UNSURE re-review at:
+    `scripts/crystalline_focus_review.txt`
+  - 70/70 tests passing (`tests/test_review_decisions.py`).
+  - 22 new tests added (total 548 passing across all suites).
+
+---
+
 ## In Progress
 
 Nothing currently in flight.

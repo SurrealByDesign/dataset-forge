@@ -38,7 +38,9 @@ from review_decisions import (
     DECISION_REVIEW_SCHEMA,
     VALID_REVIEWS,
     _PreviewWindow,
+    _build_crystalline_index,
     _build_findings_index,
+    _extract_crystalline_evidence,
     _extract_metrics,
     _is_excluded,
     _load_review_file,
@@ -74,6 +76,35 @@ def _finding_entry(image_name: str, severity: str = "MEDIUM") -> dict:
         },
         "explanation": "High microtexture.",
         "recommendation": "Review.",
+        "schema": "dataset-forge/finding/v1",
+    }
+
+
+def _crystalline_finding_entry(
+    image_name: str,
+    grain: float = 50.0,
+    smooth: float = 45.0,
+    micro: float = 38.0,
+) -> dict:
+    return {
+        "image_path": image_name,
+        "analyzer": "crystalline_faceting_analyzer/v1",
+        "category": "artifact.crystalline_faceting",
+        "severity": "MEDIUM",
+        "confidence": 0.45,
+        "false_positive_rate": 0.28,
+        "benchmark_version": "uncalibrated",
+        "evidence": {
+            "pencil_grain_score": grain,
+            "watercolor_smoothness_score": smooth,
+            "microtexture_density_score": micro,
+            "grain_threshold": 45.0,
+            "smoothness_ceiling": 52.0,
+            "micro_floor": 20.0,
+            "calibrated": False,
+        },
+        "explanation": "Crystalline faceting detected.",
+        "recommendation": "Review manually.",
         "schema": "dataset-forge/finding/v1",
     }
 
@@ -574,6 +605,212 @@ class TestPreviewBehavior(unittest.TestCase):
                     self.dataset, self.report_path, self.rv_path, preview=True
                 )
         self.assertEqual(len(closed), 1)
+
+
+# ---------------------------------------------------------------------------
+# _build_crystalline_index
+# ---------------------------------------------------------------------------
+
+class TestBuildCrystallineIndex(unittest.TestCase):
+
+    def test_empty_report_returns_empty(self):
+        self.assertEqual(_build_crystalline_index({"findings": []}), {})
+
+    def test_crystalline_finding_indexed(self):
+        idx = _build_crystalline_index(
+            {"findings": [_crystalline_finding_entry("img.png")]}
+        )
+        self.assertIn("img.png", idx)
+
+    def test_non_crystalline_finding_not_indexed(self):
+        idx = _build_crystalline_index(
+            {"findings": [_finding_entry("img.png")]}
+        )
+        self.assertNotIn("img.png", idx)
+
+    def test_indexes_by_basename(self):
+        idx = _build_crystalline_index(
+            {"findings": [_crystalline_finding_entry("/abs/path/img.png")]}
+        )
+        self.assertIn("img.png", idx)
+
+    def test_both_types_only_crystalline_returned(self):
+        idx = _build_crystalline_index({"findings": [
+            _finding_entry("img.png"),
+            _crystalline_finding_entry("img.png"),
+        ]})
+        self.assertIn("img.png", idx)
+        self.assertEqual(idx["img.png"]["category"], "artifact.crystalline_faceting")
+
+
+# ---------------------------------------------------------------------------
+# _build_findings_index keeps first finding per image
+# ---------------------------------------------------------------------------
+
+class TestBuildFindingsIndexKeepsFirst(unittest.TestCase):
+
+    def test_multiple_findings_same_image_keeps_first(self):
+        """Texture finding must not be overwritten by a later crystalline finding."""
+        idx = _build_findings_index({"findings": [
+            _finding_entry("img.png", "HIGH"),
+            _crystalline_finding_entry("img.png"),
+        ]})
+        self.assertEqual(idx["img.png"]["category"], "texture.high_microtexture")
+
+    def test_single_finding_unchanged(self):
+        idx = _build_findings_index({"findings": [_finding_entry("img.png")]})
+        self.assertIn("img.png", idx)
+
+
+# ---------------------------------------------------------------------------
+# _extract_crystalline_evidence
+# ---------------------------------------------------------------------------
+
+class TestExtractCrystallineEvidence(unittest.TestCase):
+
+    def test_none_returns_none(self):
+        self.assertIsNone(_extract_crystalline_evidence(None))
+
+    def test_extracts_all_three_fields(self):
+        ev = _extract_crystalline_evidence(
+            _crystalline_finding_entry("img.png", grain=60.1, smooth=45.9, micro=50.1)
+        )
+        self.assertAlmostEqual(ev["grain"],  60.1)
+        self.assertAlmostEqual(ev["smooth"], 45.9)
+        self.assertAlmostEqual(ev["micro"],  50.1)
+
+    def test_missing_evidence_returns_none_values(self):
+        finding = {"category": "artifact.crystalline_faceting", "evidence": {}}
+        ev = _extract_crystalline_evidence(finding)
+        self.assertIsNone(ev["grain"])
+        self.assertIsNone(ev["smooth"])
+        self.assertIsNone(ev["micro"])
+
+    def test_non_crystalline_finding_still_extracts_if_keys_present(self):
+        """_extract_crystalline_evidence works on any finding dict with the right keys."""
+        finding = {
+            "evidence": {
+                "pencil_grain_score": 55.0,
+                "watercolor_smoothness_score": 44.0,
+                "microtexture_density_score": 40.0,
+            }
+        }
+        ev = _extract_crystalline_evidence(finding)
+        self.assertAlmostEqual(ev["grain"], 55.0)
+
+
+# ---------------------------------------------------------------------------
+# _extract_metrics — category field
+# ---------------------------------------------------------------------------
+
+class TestExtractMetricsCategory(unittest.TestCase):
+
+    def test_none_finding_returns_null_category(self):
+        m = _extract_metrics(None)
+        self.assertIsNone(m["category"])
+
+    def test_category_extracted_from_finding(self):
+        m = _extract_metrics(_finding_entry("img.png"))
+        self.assertEqual(m["category"], "texture.high_microtexture")
+
+    def test_crystalline_category_extracted(self):
+        m = _extract_metrics(_crystalline_finding_entry("img.png"))
+        self.assertEqual(m["category"], "artifact.crystalline_faceting")
+
+
+# ---------------------------------------------------------------------------
+# Crystalline evidence in review session
+# ---------------------------------------------------------------------------
+
+class TestCrystallineInReviewSession(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.dataset = self.root / "dataset"
+        self.dataset.mkdir()
+        self.rv_path = self.root / "decision_review.json"
+        self.report_path = self.root / "report.json"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, inputs, findings=None):
+        _write_image(self.dataset / "img_001.png")
+        _write_report(
+            self.report_path,
+            _minimal_report(self.dataset, findings or []),
+        )
+        responses = iter(inputs)
+        with patch("builtins.input", side_effect=lambda _p="": next(responses)):
+            return run_review_session(
+                self.dataset, self.report_path, self.rv_path, preview=False
+            )
+
+    def test_grain_stored_when_crystalline_present(self):
+        rv = self._run(
+            ["a", ""],
+            findings=[_crystalline_finding_entry("img_001.png", grain=60.1)],
+        )
+        self.assertAlmostEqual(rv["reviews"]["img_001.png"]["grain"], 60.1)
+
+    def test_grain_null_when_no_crystalline_finding(self):
+        rv = self._run(
+            ["a", ""],
+            findings=[_finding_entry("img_001.png")],
+        )
+        self.assertIsNone(rv["reviews"]["img_001.png"]["grain"])
+
+    def test_grain_null_when_no_findings_at_all(self):
+        rv = self._run(["a", ""], findings=[])
+        self.assertIsNone(rv["reviews"]["img_001.png"]["grain"])
+
+    def test_category_stored_from_primary_finding(self):
+        rv = self._run(
+            ["a", ""],
+            findings=[_finding_entry("img_001.png", "HIGH")],
+        )
+        self.assertEqual(
+            rv["reviews"]["img_001.png"]["category"],
+            "texture.high_microtexture",
+        )
+
+    def test_category_null_for_clean_image(self):
+        rv = self._run(["a", ""], findings=[])
+        self.assertIsNone(rv["reviews"]["img_001.png"]["category"])
+
+    def test_both_findings_grain_stored_category_is_texture(self):
+        """When both texture and crystalline findings exist, texture is primary
+        (df_decision=FINDING, category=texture.high_microtexture) and grain
+        comes from the crystalline finding."""
+        rv = self._run(
+            ["a", ""],
+            findings=[
+                _finding_entry("img_001.png", "MEDIUM"),
+                _crystalline_finding_entry("img_001.png", grain=55.0),
+            ],
+        )
+        entry = rv["reviews"]["img_001.png"]
+        self.assertEqual(entry["category"], "texture.high_microtexture")
+        self.assertAlmostEqual(entry["grain"], 55.0)
+
+    def test_only_crystalline_finding_df_decision_is_finding(self):
+        """Crystalline-only finding should still produce df_decision=FINDING."""
+        rv = self._run(
+            ["a", ""],
+            findings=[_crystalline_finding_entry("img_001.png")],
+        )
+        self.assertEqual(rv["reviews"]["img_001.png"]["df_decision"], "FINDING")
+
+    def test_only_crystalline_finding_category_is_crystalline(self):
+        rv = self._run(
+            ["a", ""],
+            findings=[_crystalline_finding_entry("img_001.png")],
+        )
+        self.assertEqual(
+            rv["reviews"]["img_001.png"]["category"],
+            "artifact.crystalline_faceting",
+        )
 
 
 # ---------------------------------------------------------------------------

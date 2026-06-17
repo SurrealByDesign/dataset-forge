@@ -201,7 +201,7 @@ evidence schema, benchmark, and (eventually) cleanup strategy.
 |---|---|---|---|
 | **Microtexture** | Elevated high-frequency noise across image surfaces; GPT rendering fingerprint | `microtexture_density`, z-score vs dataset | Implemented (`analyzers/texture.py`) |
 | **Speck / Glitter** | Isolated near-white specular points; appears as scattered bright dots | `highlight_speck` (pixels ≥242, locally isolated) | Partially captured; no independent threshold yet |
-| **Crystalline Faceting** | Angular micro-polygon shading; surfaces appear carved from facets; distributed mid-frequency texture | `pencil_grain`, `texture_consistency`, `local_contrast` | Not yet implemented; identified as primary recall gap |
+| **Crystalline Faceting** | Angular micro-polygon shading; surfaces appear carved from facets; distributed mid-frequency texture | `pencil_grain`, `watercolor_smoothness`, `microtexture_density` | First-pass implemented (`analyzers/crystalline.py`); uncalibrated; benchmark pending |
 | **Recursive Detail Overload** | Compulsive synthetic detail in every region; no restful areas; entire surface treated as foreground | Frequency distribution, detail density | Not yet implemented |
 | **Oversharpening / Halos** | Edge ringing, halo artifacts around transitions, over-accentuated outlines | Edge sharpness, frequency analysis | Planned (`analyzers/sharpness.py`) |
 
@@ -237,7 +237,116 @@ analyzer's.
 
 ---
 
-### Cleanup Architecture (future — v2+)
+### Severity Philosophy
+
+Every artifact family supports the same four active severity levels. Thresholds
+for each level are set per family, calibrated against labeled review data and
+synthetic benchmarks. They are never shared between families.
+
+| Severity | Meaning | Action implied |
+|---|---|---|
+| `LOW` | Weak signal; likely within normal variation | Note only; no cleanup recommended |
+| `MEDIUM` | Measurable artifact; above dataset baseline | Candidate for cleanup; human review required |
+| `HIGH` | Strong artifact; clear outlier in dataset context | Prioritise for cleanup; high confidence |
+| `CRITICAL` | Severe contamination; dominant visual artifact | Near-certain cleanup candidate; review before including in dataset at all |
+
+`NONE` is not emitted as a finding. An image with no issues produces no Findings.
+
+**Severity is per-family, not per-image.** An image can simultaneously hold a
+`HIGH artifact.crystalline_faceting` finding and a `LOW artifact.speck` finding.
+Neither severity rolls up to a combined image score. The report presents each
+Finding independently; the human reviewer decides what action to take for each.
+
+Confidence is distinct from severity. Severity describes how bad the artifact is;
+confidence describes how certain the analyzer is. An uncalibrated analyzer should
+cap confidence conservatively (≤ 0.70) regardless of the severity it emits.
+
+---
+
+### Multi-Finding Model
+
+A single image may carry zero, one, or many Findings from different analyzers:
+
+```
+image: onionwizard.jpg
+  Finding 1:  MEDIUM  artifact.microtexture        confidence=0.65  (calibrated)
+  Finding 2:  HIGH    artifact.crystalline_faceting confidence=0.45  (uncalibrated)
+  Finding 3:  LOW     artifact.speck               confidence=0.30  (uncalibrated)
+```
+
+Rules that must hold:
+
+- Each Finding is emitted by exactly one analyzer.
+- No analyzer emits more than one Finding per image per category.
+- Findings are independent. One Finding does not suppress or modify another.
+- The report layer presents all Findings for an image without merging them.
+- Cleanup routing uses each Finding independently: a `HIGH crystalline_faceting`
+  finding triggers mid-frequency suppression; a co-occurring `MEDIUM microtexture`
+  finding triggers edge-preserving denoise. These are separate passes, not combined.
+
+The report JSON preserves all Findings in a flat list. Consumers that need
+per-image grouping build the index themselves (`findings_index` in the review
+tooling is an example).
+
+**Primary finding convention:** When a report is displayed to a human and only
+one finding can be shown per image in summary view, the first finding in the list
+is treated as primary. Within the v1 pipeline, `TextureAnalyzer` runs before
+`CrystallineFacetingAnalyzer`, so microtexture findings appear first. This order
+should be preserved as new analyzers are added.
+
+---
+
+### Evidence Model
+
+Every Finding carries an `evidence` dict. Its contents are family-specific but
+must always include the following keys:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `calibrated` | `bool` | Whether thresholds have been validated against a benchmark |
+
+Family-specific evidence examples:
+
+```python
+# artifact.microtexture
+evidence = {
+    "microtexture_density": 58.2,
+    "dataset_mean": 38.6,
+    "dataset_stddev": 11.6,
+    "z_score": 1.69,
+    "dataset_p10": 21.0,
+    "dataset_p90": 56.0,
+    "watercolor_smoothness": 44.1,
+    "highlight_speck": 3.2,
+    "calibrated": False,
+}
+
+# artifact.crystalline_faceting
+evidence = {
+    "pencil_grain_score": 60.1,
+    "watercolor_smoothness_score": 47.3,
+    "microtexture_density_score": 47.6,
+    "grain_threshold": 45.0,
+    "smoothness_ceiling": 52.0,
+    "micro_floor": 20.0,
+    "calibrated": False,
+}
+```
+
+Evidence values must be the raw measurements, not the derived decision. The
+decision (emit / suppress) lives in the analyzer logic. The evidence records
+what was measured so the decision can be audited or replayed.
+
+When an analyzer is uncalibrated:
+- `calibrated: False` must be in evidence
+- `confidence` must be capped conservatively (≤ 0.70 in practice, lower for
+  first-pass detectors)
+- `false_positive_rate` must be set to the observed rate from labeled review
+  data, or a conservative estimate if no labeled data exists yet
+
+---
+
+### Cleanup Routing (future — v2+)
 
 Cleanup must be artifact-specific. A single generic smoothing filter applied
 to all findings would:
@@ -259,6 +368,24 @@ characteristics. The correspondence is:
 
 Cleanup families inherit their scope from the corresponding Finding. An image
 with a `artifact.speck` Finding receives speck cleanup, not microtexture cleanup.
+
+**Cleanup routing flow (v2 target):**
+
+```
+Finding (per family, per image)
+  └─► Severity gate       LOW findings are skipped; MEDIUM+ are candidates
+        └─► Cleanup pass  family-specific deterministic operation
+              └─► Comparison gallery  original | cleaned side-by-side contact sheet
+                    └─► Human approval  per-image ACCEPT / REJECT
+                          └─► Final export  only ACCEPT images written to output folder
+```
+
+Severity gates are advisory, not mandatory. The reviewer may override a LOW
+finding for manual cleanup, or skip a HIGH finding on artistic grounds. The gate
+just determines the default path.
+
+Cleanup is never automatic. Every finding-triggered cleanup must pass through
+the human approval step before it affects any exported file.
 
 ---
 

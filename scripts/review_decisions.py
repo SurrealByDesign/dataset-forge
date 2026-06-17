@@ -40,11 +40,13 @@ decision_review.json schema
             "review":      "AGREE" | "DISAGREE" | "UNSURE",
             "notes":       "<optional free text>",
             "df_decision": "FINDING" | "CLEAN",
+            "category":    "<primary finding category>" | null,
             "severity":    "HIGH" | "MEDIUM" | "CRITICAL" | null,
             "micro":       <float | null>,
             "z":           <float | null>,
             "smooth":      <float | null>,
             "speck":       <float | null>,
+            "grain":       <float | null>,   # pencil_grain_score if crystalline finding present
             "reviewed_at": "ISO timestamp"
         }
     }
@@ -119,25 +121,64 @@ def _load_report(report_path: Path) -> dict:
 
 
 def _build_findings_index(report: dict) -> dict[str, dict]:
-    """Map filename → finding dict for every flagged image."""
+    """Map filename → primary finding dict (first finding) for flagged images.
+
+    Keeps the first finding per image so that the TextureAnalyzer finding is
+    not silently overwritten when multiple analyzers both flag the same image.
+    """
     index: dict[str, dict] = {}
     for f in report.get("findings", []):
         name = Path(f.get("image_path", "")).name
-        if name:
+        if name and name not in index:
+            index[name] = f
+    return index
+
+
+def _build_crystalline_index(report: dict) -> dict[str, dict]:
+    """Map filename → crystalline faceting finding for images that have one."""
+    index: dict[str, dict] = {}
+    for f in report.get("findings", []):
+        name = Path(f.get("image_path", "")).name
+        if name and f.get("category") == "artifact.crystalline_faceting":
             index[name] = f
     return index
 
 
 def _extract_metrics(finding: dict | None) -> dict:
     if finding is None:
-        return {"severity": None, "micro": None, "z": None, "smooth": None, "speck": None}
+        return {
+            "category": None,
+            "severity": None,
+            "micro": None,
+            "z": None,
+            "smooth": None,
+            "speck": None,
+        }
     ev = finding.get("evidence", {})
     return {
+        "category": finding.get("category"),
         "severity": finding.get("severity"),
         "micro":    ev.get("microtexture_density"),
         "z":        ev.get("z_score"),
         "smooth":   ev.get("watercolor_smoothness"),
         "speck":    ev.get("highlight_speck"),
+    }
+
+
+def _extract_crystalline_evidence(finding: dict | None) -> dict | None:
+    """Extract pencil-grain evidence from a crystalline finding.
+
+    Returns a dict with 'grain', 'smooth', 'micro' keys, or None if the
+    finding is None.  All three values may themselves be None if the
+    evidence dict is incomplete.
+    """
+    if finding is None:
+        return None
+    ev = finding.get("evidence", {})
+    return {
+        "grain":  ev.get("pencil_grain_score"),
+        "smooth": ev.get("watercolor_smoothness_score"),
+        "micro":  ev.get("microtexture_density_score"),
     }
 
 
@@ -169,15 +210,24 @@ def _print_image_header(
     df_decision: str,
     metrics: dict,
     existing_review: str | None,
+    *,
+    crystalline: dict | None = None,
 ) -> None:
-    sev = metrics.get("severity")
-    marker = _SEV_MARKERS.get(sev, "[       ]")
-    decision_tag = f"FINDING  {marker}" if df_decision == "FINDING" else "CLEAN    [  ----  ]"
+    sev      = metrics.get("severity")
+    category = metrics.get("category")
+    marker   = _SEV_MARKERS.get(sev, "[       ]")
+
+    if df_decision == "FINDING":
+        decision_tag = f"FINDING  {marker}"
+        cat_str = f"  category: {category}" if category else ""
+    else:
+        decision_tag = "CLEAN    [  ----  ]"
+        cat_str = ""
 
     print()
     print(_BAR)
     print(f"  [{idx}/{total}]  {name}")
-    print(f"  DF decision: {decision_tag}  severity: {sev or 'none'}")
+    print(f"  DF decision: {decision_tag}  severity: {sev or 'none'}{cat_str}")
 
     micro  = metrics.get("micro")
     z      = metrics.get("z")
@@ -192,6 +242,17 @@ def _print_image_header(
         )
     else:
         print("  (no texture metrics)")
+
+    if crystalline is not None:
+        grain  = crystalline.get("grain")
+        csmooth = crystalline.get("smooth")
+        cmicro  = crystalline.get("micro")
+        print(
+            f"  Crystalline:  grain={_fmt_float(grain)}  "
+            f"smooth={_fmt_float(csmooth)}  "
+            f"micro={_fmt_float(cmicro)}  "
+            f"[uncalibrated]"
+        )
 
     if existing_review:
         print(f"  Current review: {existing_review}")
@@ -377,7 +438,8 @@ def run_review_session(
     output_path  = output_path.resolve()
 
     report = _load_report(report_path)
-    findings_index = _build_findings_index(report)
+    findings_index     = _build_findings_index(report)
+    crystalline_index  = _build_crystalline_index(report)
 
     discovery = discover_images(dataset_path, recursive=recursive)
     all_images = [
@@ -436,15 +498,20 @@ def run_review_session(
 
     for idx, image_path in enumerate(to_review, start=1):
         name = image_path.name
-        finding = findings_index.get(name)
-        metrics = _extract_metrics(finding)
-        df_decision = "FINDING" if finding is not None else "CLEAN"
-        existing_review = existing_reviews.get(name, {}).get("review")
+        finding           = findings_index.get(name)
+        cryst_finding     = crystalline_index.get(name)
+        metrics           = _extract_metrics(finding)
+        cryst_ev          = _extract_crystalline_evidence(cryst_finding)
+        df_decision       = "FINDING" if finding is not None else "CLEAN"
+        existing_review   = existing_reviews.get(name, {}).get("review")
 
         if win:
             win.show(image_path)
 
-        _print_image_header(idx, total, name, df_decision, metrics, existing_review)
+        _print_image_header(
+            idx, total, name, df_decision, metrics, existing_review,
+            crystalline=cryst_ev,
+        )
 
         result = _prompt_review()
 
@@ -463,11 +530,13 @@ def run_review_session(
             "review":      rev,
             "notes":       note,
             "df_decision": df_decision,
+            "category":    metrics.get("category"),
             "severity":    metrics.get("severity"),
             "micro":       metrics.get("micro"),
             "z":           metrics.get("z"),
             "smooth":      metrics.get("smooth"),
             "speck":       metrics.get("speck"),
+            "grain":       cryst_ev.get("grain") if cryst_ev else None,
             "reviewed_at": _now(),
         }
         reviewed_count += 1
