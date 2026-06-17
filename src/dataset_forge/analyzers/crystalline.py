@@ -20,6 +20,15 @@ Calibration history:
   lifting F1 to 0.545. The microtexture floor (>= 20) excludes genuinely smooth
   images that scored slightly above the grain threshold by chance.
 
+Severity calibration (grain-only model, post-focused-review):
+  Review of 54 crystalline-flagged images against human labels shows that the
+  single-tier MEDIUM assignment overstates severity. Grain-based tiers:
+    grain >= 65 -> HIGH   (cryst-only: 100% precision in calibration set)
+    grain >= 55 -> MEDIUM (cryst-only: 33% precision; often co-detected w/ texture)
+    grain <  55 -> LOW    (cryst-only: 28% precision; weak or borderline signal)
+  Still uncalibrated against synthetic benchmarks; reviewer-validated only.
+  Detection thresholds must NOT change without new benchmark evidence.
+
 Calibration status: UNCALIBRATED.
   No synthetic benchmark exists yet. Confidence is capped conservatively.
   Thresholds must NOT be tightened or loosened without new benchmark evidence.
@@ -52,7 +61,22 @@ _GRAIN_THRESHOLD = 45.0               # pencil_grain_score lower bound
 _SMOOTHNESS_CEILING = 52.0            # watercolor_smoothness_score upper bound
 _MICRO_FLOOR = 20.0                   # microtexture_density_score lower bound
 
+# Severity tiers (grain-only model, post-focused-review calibration).
+# Derived from reviewer-validated labels on 54 crystalline-flagged images.
+# Do not change without new benchmark evidence.
+_SEVERITY_MEDIUM_GRAIN = 55.0         # grain >= this → MEDIUM (else LOW)
+_SEVERITY_HIGH_GRAIN   = 65.0         # grain >= this → HIGH
+
 BENCHMARK_VERSION = "uncalibrated"
+
+
+def _severity_for_grain(grain: float) -> "Severity":
+    """Map pencil_grain_score to calibrated severity tier."""
+    if grain >= _SEVERITY_HIGH_GRAIN:
+        return Severity.HIGH
+    if grain >= _SEVERITY_MEDIUM_GRAIN:
+        return Severity.MEDIUM
+    return Severity.LOW
 
 
 class CrystallineFacetingAnalyzer(Analyzer):
@@ -149,7 +173,7 @@ class CrystallineFacetingAnalyzer(Analyzer):
                 image_path=image_path,
                 analyzer=self.analyzer_id,
                 category="artifact.crystalline_faceting",
-                severity=Severity.MEDIUM,  # uncalibrated; all findings are MEDIUM until benchmark
+                severity=_severity_for_grain(grain),
                 confidence=_UNCALIBRATED_CONFIDENCE,
                 false_positive_rate=_UNCALIBRATED_FP_RATE,
                 benchmark_version=BENCHMARK_VERSION,
@@ -160,6 +184,8 @@ class CrystallineFacetingAnalyzer(Analyzer):
                     "grain_threshold": _GRAIN_THRESHOLD,
                     "smoothness_ceiling": _SMOOTHNESS_CEILING,
                     "micro_floor": _MICRO_FLOOR,
+                    "severity_medium_grain": _SEVERITY_MEDIUM_GRAIN,
+                    "severity_high_grain": _SEVERITY_HIGH_GRAIN,
                     "calibrated": False,
                 },
                 explanation=explanation,

@@ -24,6 +24,8 @@ from dataset_forge.analyzers.crystalline import (
     _GRAIN_THRESHOLD,
     _MICRO_FLOOR,
     _SMOOTHNESS_CEILING,
+    _SEVERITY_MEDIUM_GRAIN,
+    _SEVERITY_HIGH_GRAIN,
     _UNCALIBRATED_CONFIDENCE,
     _UNCALIBRATED_FP_RATE,
     BENCHMARK_VERSION,
@@ -250,8 +252,9 @@ class TestCrystallineFacetingFindingFields(unittest.TestCase):
     def test_finding_category(self):
         self.assertEqual(self._finding().category, "artifact.crystalline_faceting")
 
-    def test_finding_severity_is_medium(self):
-        self.assertEqual(self._finding().severity, Severity.MEDIUM)
+    def test_finding_severity_is_low_for_grain_below_medium_threshold(self):
+        # _finding() uses grain=50.0 which is below _SEVERITY_MEDIUM_GRAIN (55)
+        self.assertEqual(self._finding().severity, Severity.LOW)
 
     def test_finding_confidence_is_uncalibrated(self):
         self.assertAlmostEqual(self._finding().confidence, _UNCALIBRATED_CONFIDENCE)
@@ -276,6 +279,8 @@ class TestCrystallineFacetingFindingFields(unittest.TestCase):
             "grain_threshold",
             "smoothness_ceiling",
             "micro_floor",
+            "severity_medium_grain",
+            "severity_high_grain",
             "calibrated",
         ):
             self.assertIn(key, ev, f"Missing evidence key: {key}")
@@ -303,6 +308,90 @@ class TestCrystallineFacetingFindingFields(unittest.TestCase):
     def test_recommendation_mentions_review(self):
         rec = self._finding().recommendation
         self.assertIn("Review", rec)
+
+    def test_evidence_severity_medium_grain_matches_constant(self):
+        ev = self._finding().evidence
+        self.assertEqual(ev["severity_medium_grain"], _SEVERITY_MEDIUM_GRAIN)
+
+    def test_evidence_severity_high_grain_matches_constant(self):
+        ev = self._finding().evidence
+        self.assertEqual(ev["severity_high_grain"], _SEVERITY_HIGH_GRAIN)
+
+
+# ---------------------------------------------------------------------------
+# Severity tier tests
+# ---------------------------------------------------------------------------
+
+class TestCrystallineFacetingSeverityTiers(unittest.TestCase):
+    """Verify the grain-based severity model: LOW / MEDIUM / HIGH."""
+
+    MODULE = "dataset_forge.analyzers.crystalline.evaluate_texture"
+
+    def setUp(self):
+        self.analyzer = CrystallineFacetingAnalyzer()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / "img.png"
+        _write_smooth_image(self.path)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _severity(self, grain: float) -> Severity:
+        tex = _mock_texture(grain=grain, smoothness=45.0, micro=38.0)
+        with patch(self.MODULE, return_value=tex):
+            findings = self.analyzer.analyze(self.path, _ctx())
+        self.assertEqual(len(findings), 1)
+        return findings[0].severity
+
+    def test_grain_below_medium_threshold_is_low(self):
+        # grain = 45.0 (at detection threshold, below MEDIUM boundary)
+        self.assertEqual(self._severity(_GRAIN_THRESHOLD), Severity.LOW)
+
+    def test_grain_just_below_medium_threshold_is_low(self):
+        self.assertEqual(self._severity(_SEVERITY_MEDIUM_GRAIN - 0.1), Severity.LOW)
+
+    def test_grain_at_medium_threshold_is_medium(self):
+        self.assertEqual(self._severity(_SEVERITY_MEDIUM_GRAIN), Severity.MEDIUM)
+
+    def test_grain_just_above_medium_threshold_is_medium(self):
+        self.assertEqual(self._severity(_SEVERITY_MEDIUM_GRAIN + 0.1), Severity.MEDIUM)
+
+    def test_grain_just_below_high_threshold_is_medium(self):
+        self.assertEqual(self._severity(_SEVERITY_HIGH_GRAIN - 0.1), Severity.MEDIUM)
+
+    def test_grain_at_high_threshold_is_high(self):
+        self.assertEqual(self._severity(_SEVERITY_HIGH_GRAIN), Severity.HIGH)
+
+    def test_grain_above_high_threshold_is_high(self):
+        self.assertEqual(self._severity(_SEVERITY_HIGH_GRAIN + 5.0), Severity.HIGH)
+
+    def test_mid_range_low(self):
+        # grain = 50.0: clearly between detection threshold (45) and MEDIUM boundary (55)
+        self.assertEqual(self._severity(50.0), Severity.LOW)
+
+    def test_mid_range_medium(self):
+        # grain = 60.0: between MEDIUM boundary (55) and HIGH boundary (65)
+        self.assertEqual(self._severity(60.0), Severity.MEDIUM)
+
+    def test_mid_range_high(self):
+        # grain = 70.0: above HIGH boundary (65)
+        self.assertEqual(self._severity(70.0), Severity.HIGH)
+
+    def test_severity_constants_ordered_correctly(self):
+        # Detection threshold < MEDIUM boundary < HIGH boundary
+        self.assertLess(_GRAIN_THRESHOLD, _SEVERITY_MEDIUM_GRAIN)
+        self.assertLess(_SEVERITY_MEDIUM_GRAIN, _SEVERITY_HIGH_GRAIN)
+
+    def test_severity_tiers_are_contiguous(self):
+        # No gap or overlap: thresholds are grain < 55 = LOW, 55-65 = MEDIUM, 65+ = HIGH
+        tex_lo = _mock_texture(grain=_SEVERITY_MEDIUM_GRAIN - 0.001, smoothness=45.0, micro=38.0)
+        tex_hi = _mock_texture(grain=_SEVERITY_MEDIUM_GRAIN,         smoothness=45.0, micro=38.0)
+        with patch(self.MODULE, return_value=tex_lo):
+            sev_lo = self.analyzer.analyze(self.path, _ctx())[0].severity
+        with patch(self.MODULE, return_value=tex_hi):
+            sev_hi = self.analyzer.analyze(self.path, _ctx())[0].severity
+        self.assertEqual(sev_lo, Severity.LOW)
+        self.assertEqual(sev_hi, Severity.MEDIUM)
 
 
 # ---------------------------------------------------------------------------
