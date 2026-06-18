@@ -5,6 +5,7 @@ import csv
 import hashlib
 import json
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from dataset_forge.execution.default import build_default_pipeline
@@ -41,6 +42,30 @@ from dataset_forge.analysis.health import generate_health_report
 from dataset_forge.inspect import run_inspect
 
 
+_FUTURE_COMMANDS = {
+    "run",
+    "resume",
+    "simulate",
+    "plugins",
+    "texture-report",
+    "health-report",
+    "plan",
+    "summarize-plan",
+    "explain",
+    "override",
+    "lock",
+    "unlock",
+    "approve",
+    "reject",
+    "approve-all",
+    "reset-overrides",
+    "show-overrides",
+    "review-plan",
+    "execute-plan",
+    "traditional-cleanup",
+}
+
+
 def parse_bool(value: str) -> bool:
     normalized = value.strip().lower()
     if normalized in {"true", "1", "yes", "y"}:
@@ -51,6 +76,79 @@ def parse_bool(value: str) -> bool:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="dataset-forge",
+        description=(
+            "Dataset Forge v0.1 alpha: inspect image datasets and write "
+            "evidence-backed, read-only reports."
+        ),
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"dataset-forge {_package_version()}",
+    )
+    commands = parser.add_subparsers(dest="command", metavar="command")
+    inspect_parser = commands.add_parser(
+        "inspect",
+        help="Inspect an image dataset without modifying source images.",
+    )
+    inspect_parser.add_argument("dataset", type=Path, help="Dataset folder to inspect.")
+    inspect_parser.add_argument(
+        "--output", type=Path, default=None,
+        help="Output folder for reports. Default: <dataset>/inspect_output/",
+    )
+    inspect_parser.add_argument(
+        "--recursive", action="store_true", default=False,
+        help="Scan sub-folders recursively.",
+    )
+    inspect_parser.add_argument(
+        "--limit", type=int, default=None,
+        help="Maximum number of images to analyze.",
+    )
+    inspect_parser.add_argument(
+        "--gallery", action="store_true", default=False,
+        help="Generate inspection_gallery.png for visual review of findings.",
+    )
+    return parser
+
+
+def _package_version() -> str:
+    try:
+        return version("dataset-forge")
+    except PackageNotFoundError:
+        return "0.1.0a1"
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    parser = build_parser()
+    if not arguments:
+        parser.print_help()
+        return 0
+    if arguments[0] in {"-h", "--help"}:
+        parser.print_help()
+        return 0
+    if arguments[0] == "--version":
+        print(f"dataset-forge {_package_version()}")
+        return 0
+    if arguments[0] == "inspect":
+        try:
+            return _inspect_main(arguments)
+        except SystemExit as exc:
+            return int(exc.code or 0)
+    if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
+        print(
+            "Error: this command is not part of the public v0.1 alpha CLI. "
+            "Use 'dataset-forge inspect', '--help', or '--version'.",
+            file=sys.stderr,
+        )
+        return 2
+    print(f"Error: unknown command: {arguments[0]}", file=sys.stderr)
+    return 2
+
+
+def build_future_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
@@ -106,7 +204,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def future_main(argv: list[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments and arguments[0] in {"run", "resume", "simulate"}:
         return _pipeline_main(arguments)
@@ -135,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
         "traditional-cleanup",
     }:
         return _cleanup_main(arguments)
-    parser = build_parser()
+    parser = build_future_parser()
     args = parser.parse_args(arguments)
     try:
         if args.list_presets:
@@ -283,7 +381,8 @@ def _inspect_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="dataset-forge inspect",
         description=(
-            "Analyze a dataset folder and produce a calibrated inspection report.\n"
+            "Read an image dataset and write evidence-backed inspection reports.\n"
+            "v0.1 alpha is analysis only: findings are candidates for review.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )

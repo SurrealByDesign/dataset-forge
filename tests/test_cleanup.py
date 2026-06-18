@@ -10,7 +10,7 @@ from tempfile import TemporaryDirectory
 from dataset_forge.cleanup import CleanupAction, CleanupOrchestrator
 from dataset_forge.cleanup.io import write_cleanup_plan
 from dataset_forge.cleanup.rules import default_cleanup_rules_path, load_cleanup_rules
-from dataset_forge.cli import main
+from dataset_forge.cli import future_main as main
 from dataset_forge.plugins import PluginRegistry
 from dataset_forge.resources import ResourceManager
 
