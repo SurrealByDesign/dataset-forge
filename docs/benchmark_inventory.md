@@ -1,96 +1,102 @@
 # Benchmark Inventory
 
-This document records the benchmark material currently present in the repository
-workspace and the benchmark categories Dataset Forge intends to support.
+Current state of the Dataset Forge benchmark system as of v0.1 alpha.
 
-The benchmark system is documentation and calibration support for analysis. It
-does not modify source images, does not run cleanup, and does not make
-recommendations by itself.
+---
 
-## Benchmark Folders
+## Public benchmark suite
 
-| Folder | Current contents | Purpose | Git status |
+Runs immediately from a fresh clone. No private images or generation step required.
+
+```
+uv run python scripts/run_benchmarks.py
+```
+
+**Status: 10 / 10 expectations passing.**
+
+Manifest: `benchmarks/benchmark_manifest.json`
+
+### Committed fixtures (`benchmarks/synthetic_defects/`)
+
+Five PNG fixtures are committed to git. They are deterministic and reproducible.
+
+| File | Generator script | Analyzer tested | Expected result |
 |---|---|---|---|
-| `benchmarks/` | README, real sample manifest proposal, benchmark subfolders | Root for benchmark guidance and local benchmark assets | README and real sample proposal are tracked |
-| `benchmarks/reference/` | `.gitkeep`, local `banana_reference.jpg` | Local clean reference images used to generate synthetic defect sets | Reference images are ignored; `.gitkeep` is tracked |
-| `benchmarks/synthetic_defects/` | `.gitkeep`, generated PNG variants, generated manifest | Deterministic synthetic defect benchmark outputs | Generated outputs are ignored; `.gitkeep` is tracked |
-| `benchmarks/real_samples/` | Five JPG samples | Real-world sample images for future benchmark classification | Currently tracked |
-| `benchmarks/results/` | Not present in this workspace | Intended location for benchmark run outputs | Ignored if created |
-| `benchmarks/generated/` | Not present in this workspace | Intended location for generated benchmark artifacts | Ignored if created |
-| `benchmarks/output/`, `benchmarks/outputs/` | Not present in this workspace | Alternate generated benchmark output locations | Ignored if created |
+| `06_crystalline_low.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | Fires LOW (grain=45.1) |
+| `07_crystalline_medium.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | Fires MEDIUM (grain=64.2) |
+| `08_crystalline_negative_smooth.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | No finding (smooth guard: smooth=53.2 > 52 ceiling) |
+| `09_texture_clean.png` | `generate_texture_fixtures.py` | TextureAnalyzer | No finding (micro=0.0, below absolute floor) |
+| `10_texture_positive.png` | `generate_texture_fixtures.py` | TextureAnalyzer | Fires MEDIUM (micro=88.7, z=1.0) |
 
-## Benchmark-Related Files
+Generators are deterministic and seeded. Re-running them reproduces identical pixel values:
 
-| File | Purpose |
-|---|---|
-| `benchmarks/README.md` | Explains private benchmark image handling and deterministic synthetic defect generation. |
-| `benchmarks/real_samples_manifest.proposal.json` | Proposed metadata replacement for tracked real sample images. Includes dimensions, hashes, byte sizes, provenance placeholders, and category placeholders. |
-| `benchmarks/synthetic_defects/benchmark_manifest.json` | Local generated manifest for the current synthetic defect set. Records source image hash, seed, strength, generated files, and parameters. |
-| `scripts/generate_benchmark_defects.py` | Deterministic local generator for synthetic defect variants. |
-| `tests/test_benchmark_generator.py` | Tests the synthetic benchmark generator behavior. |
+```
+uv run python scripts/generate_crystalline_fixtures.py
+uv run python scripts/generate_texture_fixtures.py
+```
 
-## Synthetic Benchmark Assets
+### Skipped cases (synthetic-generated, not committed)
 
-The current local generated set was produced from
-`benchmarks/reference/banana_reference.jpg` with seed `1234` and strength
-`medium`.
+Cases `00-05` in the public manifest reference images that are NOT committed.
+They are marked `private: true` and are skipped automatically. A local reference
+image is required to generate them (`scripts/generate_benchmark_defects.py`).
+These skips do not count as failures.
 
-| Asset | Defect type | Intended purpose | Category coverage |
-|---|---|---|---|
-| `00_reference.png` | `reference` | Baseline image copied into normalized PNG form for comparison against generated variants. | Clean reference |
-| `01_glitter_speckles.png` | `glitter_speckles` | Bright small speckles for highlight/glitter contamination detection. | Glitter contamination, speckle noise |
-| `02_recursive_microtexture.png` | `recursive_microtexture` | Repeating microtexture pattern for texture-density and periodic pattern sensitivity. | Periodic noise, over-textured surfaces |
-| `03_crunchy_oversharpened.png` | `crunchy_oversharpened` | Unsharp-mask style crunchy detail for sharpness and halo sensitivity. | Oversharpening halos, edge artifacts |
-| `04_color_noise.png` | `color_noise` | Per-channel noise variation for noisy-color and speckle-like artifact checks. | Speckle/noise coverage, but not a dedicated luminance speckle set |
-| `05_mixed_artifacts.png` | `mixed_artifacts` | Combined microtexture, color noise, oversharpening, and glitter speckles. | Compound artifact stress case |
+---
 
-The generator supports `light`, `medium`, and `strong` strengths, but this
-workspace currently contains only one generated strength level.
+## Local benchmark suite (optional)
 
-## Real Benchmark Assets
+Manifest: `benchmarks/local_benchmark_manifest.json` (gitignored -- never commit this)
 
-`benchmarks/real_samples/` currently contains five JPG images:
+References private real-sample images in `benchmarks/real_samples/` (also gitignored).
+Place images there manually. Missing images are skipped, not failed.
 
-| Asset | Dimensions | Current metadata status | Intended purpose |
-|---|---:|---|---|
-| `1steak.jpg` | 1085 x 1450 | Hash and size documented; provenance and category still TODO. | Future real-world artifact classification sample. |
-| `gimpfrog.jpg` | 1085 x 1450 | Hash and size documented; provenance and category still TODO. | Future real-world artifact classification sample. |
-| `picklewizard.jpg` | 1083 x 1453 | Hash and size documented; provenance and category still TODO. | Future real-world artifact classification sample. |
-| `snakemountain.jpg` | 1118 x 1407 | Hash and size documented; provenance and category still TODO. | Future real-world artifact classification sample. |
-| `vtp4jc1040s51.jpg` | 1920 x 2400 | Hash and size documented; provenance and category still TODO. | Future real-world artifact classification sample or clean reference candidate. |
+```
+uv run python scripts/run_benchmarks.py --manifest benchmarks/local_benchmark_manifest.json
+```
 
-These files should not be treated as redistribution-safe until their provenance,
-license, and intended defect category are documented. The manifest proposal is
-the right replacement path if the images should stop being tracked while staying
-available locally.
+---
 
-## Proposed Benchmark Categories
+## Benchmark folders
 
-| Category | Current asset coverage | Notes |
+| Folder | Git status | Purpose |
 |---|---|---|
-| Periodic noise | Partial | `02_recursive_microtexture.png` provides a repeating microtexture pattern, but there is no separately named `periodic_noise` folder or multi-strength matrix. |
-| Glitter contamination | Present | `01_glitter_speckles.png` and `05_mixed_artifacts.png` cover bright speckle contamination. |
-| Oversharpening halos | Partial | `03_crunchy_oversharpened.png` covers oversharpening. Dedicated halo-only assets are not present. |
-| Speckle noise | Partial | Glitter speckles and color noise exist. A dedicated neutral speckle-noise benchmark is not present. |
-| Duplicate detection | Missing | No duplicate or near-duplicate benchmark set is present. |
+| `benchmarks/synthetic_defects/` | Committed fixtures only (see above); other generated files ignored | Synthetic fixture images |
+| `benchmarks/real_samples/` | All image files gitignored | Private calibration images (optional, local only) |
+| `benchmarks/reference/` | All image files gitignored | Local reference images for generating synthetic defects |
+| `benchmarks/results/` | Gitignored | Per-run benchmark output and research probe reports |
 
-## Known Gaps
+---
 
-- No canonical `benchmarks/synthetic/<category>/` hierarchy exists yet, even
-  though the architecture describes that layout.
-- Only one generated synthetic set is present locally; there is no committed
-  manifest matrix for multiple strengths, seeds, or reference images.
-- Real samples still need provenance, license status, and intended defect
-  categories before they can be safely used as durable project benchmarks.
-- There is no dedicated duplicate-detection benchmark set.
-- There is no dedicated halo-only benchmark distinct from general
-  oversharpening.
-- There is no benchmark results history under `benchmarks/results/`.
+## Benchmark coverage
 
-## Recommended Next Benchmark Task
+| Artifact family | Public fixture coverage | Analyzer tested |
+|---|---|---|
+| Microtexture | 2 cases (clean + MEDIUM) | TextureAnalyzer |
+| Crystalline faceting | 3 cases (LOW, MEDIUM, negative) | CrystallineFacetingAnalyzer |
+| Speck / glitter | None | Not yet implemented |
+| Recursive detail overload | None | Not yet implemented |
+| Oversharpening / halos | None | Not yet implemented |
 
-Create a versioned benchmark manifest that classifies each synthetic and real
-asset by category, expected detector response, provenance status, and allowed
-redistribution status. After that, add missing duplicate-detection and halo-only
-synthetic sets so analyzer calibration can compare expected findings against
-known defects.
+---
+
+## Known gaps
+
+- No synthetic fixtures for speck/glitter, recursive detail, or oversharpening families.
+- No fixture exercises the HIGH severity tier for either analyzer.
+- No fixture exercises TextureAnalyzer CRITICAL tier.
+- Real-sample benchmark cases are private and optional; not reproducible from a fresh clone.
+- Benchmark results history is not versioned (results/ is gitignored).
+
+---
+
+## Analyzer regression tests
+
+In addition to the benchmark manifests, committed fixtures have dedicated
+regression tests:
+
+| Test file | Fixtures tested | Tests |
+|---|---|---|
+| `tests/test_crystalline_fixtures.py` | 06, 07, 08 | 32 |
+| `tests/test_texture_fixtures.py` | 09, 10 | 21 |
+| `tests/test_benchmark.py` | Benchmark framework | 29 |
