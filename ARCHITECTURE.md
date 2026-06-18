@@ -406,6 +406,210 @@ Silent or automatic modification would corrupt it with no recovery path.
 
 ---
 
+## Batch Exclusion and Export Workflow (future — v2+)
+
+> This section describes the planned non-destructive export mechanism.
+> It is not yet implemented. Nothing in v1 should be designed around it.
+
+---
+
+### Purpose
+
+After a full inspect run and human review, the user may want to produce a
+curated final dataset. Two complementary outputs serve this purpose:
+
+1. **Exclusion list** — a text file naming images that should be excluded from
+   training. The source images are never touched.
+2. **Final dataset copy** — an optional folder of included images assembled
+   by copying (never moving) from the source dataset.
+
+Both outputs are derived from Findings and reviewer decisions. Neither modifies,
+moves, or deletes any source image.
+
+---
+
+### Guiding Constraints
+
+These are absolute. They extend the Non-Destructive Requirement to the
+export layer.
+
+1. **Source images are read-only throughout.** No rename, no move, no
+   modification of any file in the original dataset folder.
+2. **Exclusion lists record intent, not action.** An exclusion list says which
+   images to leave out; downstream tooling (trainer, data loader) acts on it.
+   Dataset Forge never enforces it by deleting files.
+3. **Final dataset is assembled by copy.** `final_dataset/` contains
+   hard-copies of approved images. It is a derived artifact, not a view or
+   a symlink tree.
+4. **Human review is the gate before export.** The workflow surfaces a review
+   step. Batch auto-approval must not be offered as a default path.
+5. **Export is repeatable.** Given the same inspection report and review file,
+   re-running the export produces the same final dataset. It is deterministic
+   and idempotent.
+
+---
+
+### Filtering Contract
+
+The export workflow must support all of the following filter dimensions,
+composable with AND logic by default:
+
+| Dimension | Filter examples | Notes |
+|---|---|---|
+| Severity | `>= MEDIUM`, `== HIGH`, `!= LOW` | Compared against the highest severity across all findings for the image |
+| Category | `artifact.crystalline_faceting`, `texture.*` | Glob-style or exact match; multiple categories are OR'd within this dimension |
+| Confidence | `>= 0.50` | Compared against the highest confidence finding matching the category filter |
+| Finding count | `>= 2`, `== 0` | Number of distinct findings on an image (0 = clean images only) |
+| Analyzer | `texture_analyzer/v1` | Filter by which analyzer emitted the finding |
+| Review decision | `AGREE`, `DISAGREE`, `UNSURE` | From `decision_review.json` if available |
+
+**Excluded images** are those matching the filter criteria — i.e., images the
+filter says are problematic. **Included images** are the complement.
+
+Both sides of the split must be inspectable before the export is committed.
+
+---
+
+### File Contracts
+
+#### Exclusion list — `exclusion_list.txt`
+
+Plain text, one absolute or relative path per line. UTF-8.
+
+```
+# Dataset Forge exclusion list
+# Generated: 2026-06-18T14:22:00Z
+# Source: C:/Users/someo/Desktop/ANTHROPOMORPHS
+# Filter: severity>=MEDIUM OR finding_count>=2
+# Total excluded: 34 / 100
+
+C:/Users/someo/Desktop/ANTHROPOMORPHS/yagahut.jpg
+C:/Users/someo/Desktop/ANTHROPOMORPHS/olivespartans.jpg
+...
+```
+
+The header block is always emitted. Lines beginning with `#` are comments and
+are ignored by any consumer that processes the list programmatically.
+
+Alternative format: `exclusion_list.json` for machine consumers, containing
+the filter parameters, timestamp, source path, and a structured list of
+excluded files with the findings that caused their exclusion.
+
+#### Final dataset — `final_dataset/`
+
+A flat folder (or optionally mirroring the source subdirectory structure) of
+copied images. The copy operation preserves the original filename. If two
+source paths produce the same filename (recursive scan across subdirectories),
+the conflict must be surfaced to the user before any copy proceeds.
+
+```
+final_dataset/
+  lemonknight.jpg          # copy of source
+  vtp4jc1040s51.jpg
+  candycornjason.jpg
+  ...
+  export_manifest.json     # records what was copied and why
+```
+
+`export_manifest.json` records:
+- Source dataset path
+- Filter parameters used
+- Total images in source
+- Total images included (copied)
+- Total images excluded
+- Per-image decision (included / excluded) with the findings and filter match
+  that drove each exclusion
+- Timestamp and Dataset Forge version
+
+The manifest is the audit trail. It makes every export reproducible and
+explainable.
+
+---
+
+### Workflow Steps
+
+```
+1. Run inspect
+      dataset-forge inspect <path>
+      → inspection_report.json
+
+2. (Optional) Human review
+      scripts/review_decisions.py
+      → decision_review.json
+
+3. Configure export filter
+      Severity gate, category filter, confidence threshold, etc.
+      Preview: show counts of included / excluded before committing.
+
+4. Review exclusion preview
+      Contact sheet of excluded images (thumbnails + finding summary)
+      Contact sheet of included images
+      Human confirms or adjusts filter.
+
+5. Write exclusion list
+      exclusion_list.txt  (always written)
+      exclusion_list.json (optional)
+
+6. (Optional) Copy included images
+      final_dataset/  populated by copy
+      export_manifest.json  written alongside
+
+7. Final check
+      Verify final_dataset/ count matches expected.
+      Verify no source files were modified (hash check optional).
+```
+
+Steps 1–4 are the recommended path. Steps 5–6 are the commit step. The
+workflow must never allow skipping step 4 silently — the preview is the gate.
+
+---
+
+### Severity-Only Fast Path
+
+The most common use case is a simple severity gate with no category filter:
+
+> "Exclude all images with any finding at MEDIUM or above."
+
+This must work with a single flag, defaulting to a recommended threshold, and
+producing the exclusion list in one command without requiring a review pass.
+The review pass is still recommended but not mandatory for this path.
+
+The fast path must display a summary (N images excluded, N included, severity
+distribution of excluded set) before writing any file.
+
+---
+
+### Integration with Review Tooling
+
+If `decision_review.json` exists for the dataset, the export workflow can
+use reviewer decisions as an additional filter dimension:
+
+- Exclude images where the reviewer **AGREED** with a finding (confirmed
+  artifacts).
+- Exclude images where the reviewer **DISAGREED** with a clean decision
+  (missed detections surfaced by reviewer).
+- Hold images where the reviewer marked **UNSURE** for a second pass rather
+  than silently including or excluding them.
+
+If no review file exists, the export workflow falls back to findings-only
+filtering with a warning that unreviewed findings may have a higher false-
+positive rate than the calibrated estimate.
+
+---
+
+### What the Export Workflow Must Not Do
+
+- Auto-approve any exclusion without surfacing a preview.
+- Delete, rename, or move any file in the source dataset.
+- Create symlinks in place of copies (symlinks break when the source moves).
+- Silently skip images with I/O errors — they must be listed in the manifest
+  under an `errors` key.
+- Apply cleanup to images before export. Export is post-inspection,
+  post-review. Cleanup is a separate pipeline (cleanup routing, v2+).
+  An export of uncleaned originals is a valid and common workflow.
+
+---
+
 ## Guiding Rule
 
 > Core should orchestrate. Analyzers should specialize. Finding is the contract.
