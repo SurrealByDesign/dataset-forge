@@ -37,10 +37,12 @@ uv run python scripts/generate_texture_fixtures.py
 
 ### Skipped cases (synthetic-generated, not committed)
 
-Cases `00-05` in the public manifest reference images that are NOT committed.
-They are marked `private: true` and are skipped automatically. A local reference
-image is required to generate them (`scripts/generate_benchmark_defects.py`).
-These skips do not count as failures.
+Cases `00`, `04`, and `05` in the public manifest are marked `private: true`
+and are skipped automatically when the referenced images are absent. Cases `01`,
+`02`, and `03` are not in the public manifest (files exist locally if generated,
+but are gitignored and have no manifest expectations). A local reference image
+is required to generate any of these via `scripts/generate_benchmark_defects.py`.
+Skipped cases do not count as failures.
 
 ---
 

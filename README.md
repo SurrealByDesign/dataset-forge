@@ -76,9 +76,12 @@ edge halos.
   dataset-relative z-scores. On a dataset of fewer than five images the baseline
   statistics are not meaningful.
 
-- **Scripts prefixed with `_` are internal.** Files in `scripts/` starting with
-  `_` are calibration, diagnostic, or research tools. `scripts/research/` holds
-  artifact-family research probes. Neither is part of the public API.
+- **Most scripts are internal development utilities.** The public scripts are
+  `run_benchmarks.py`, `generate_crystalline_fixtures.py`,
+  `generate_texture_fixtures.py`, and `generate_benchmark_defects.py`.
+  All other files in `scripts/` -- whether prefixed with `_` or not -- are
+  internal calibration, diagnostic, or research tools and are not part of the
+  public API. `scripts/research/` holds artifact-family research probes.
 
 ---
 
@@ -97,7 +100,7 @@ edge halos.
 ## Install
 
 ```
-git clone <repo-url>
+git clone https://github.com/surrealbydesign/dataset-forge.git
 cd dataset-forge
 uv sync
 ```
@@ -233,9 +236,9 @@ for the full manifest description.
 uv run pytest tests/
 ```
 
-644 tests passing. Tests cover the full v1 pipeline: Finding, DatasetContext,
+648 tests passing. Tests cover the full v1 pipeline: Finding, DatasetContext,
 Analyzer contracts, report writers, CLI, inspect runner, gallery, benchmark
-framework, and all committed fixtures.
+framework, committed fixtures, and public CLI surface.
 
 ---
 

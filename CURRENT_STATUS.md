@@ -29,10 +29,11 @@ Not supported in v0.1 alpha (planned for later releases):
 
 ## Test suite
 
-**644 tests passing.**
+**648 tests passing.**
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
-inspect runner, gallery, benchmark framework, and all committed fixtures.
+inspect runner, gallery, benchmark framework, committed fixtures, and public
+CLI surface.
 
 ```
 uv run pytest tests/
@@ -86,13 +87,33 @@ The public benchmark runs immediately from a fresh clone. No generation step req
 
 ---
 
-## Scripts (internal / calibration)
+## Scripts
 
-Files in `scripts/` beginning with `_` are internal calibration, diagnostic, or
-research tools. They are not part of the public API.
+**Public tools** (documented, supported in v0.1 alpha):
 
-Files in `scripts/research/` are artifact-family research probes. Both current
-probes (oversharpening, speck/glitter) are DEFERRED per their research reports.
+| Script | Purpose |
+|---|---|
+| `scripts/run_benchmarks.py` | Run the public benchmark suite |
+| `scripts/generate_crystalline_fixtures.py` | Regenerate committed crystalline PNG fixtures |
+| `scripts/generate_texture_fixtures.py` | Regenerate committed texture PNG fixtures |
+| `scripts/generate_benchmark_defects.py` | Generate private synthetic defect images (requires local reference image) |
+
+**Internal development utilities** (not part of the public API):
+
+Files beginning with `_` (`scripts/_*.py`) are internal calibration, diagnostic,
+or development scripts. The following non-prefixed scripts are also internal
+calibration utilities, not supported public tools:
+
+`compute_metrics.py`, `crystalline_fp_characterization.py`,
+`crystalline_severity_calibration.py`, `diagnostic_report.py`,
+`label_ground_truth.py`, `pencil_grain_diagnostic.py`,
+`review_decisions.py`, `validation_contact_sheet.py`
+
+**Research probes** (`scripts/research/`):
+
+Artifact-family research probes. Both current probes (oversharpening,
+speck/glitter) are DEFERRED per their research reports in
+`benchmarks/results/`.
 
 ---
 

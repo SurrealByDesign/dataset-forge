@@ -2,39 +2,75 @@
 
 ---
 
-## Version 1: Dataset Forge Inspect (current)
+## v0.1 alpha: Dataset Forge Inspect -- Released
 
-**Goal:** Produce explainable, read-only findings for image datasets, with
-calibration driven by reviewer ground truth.
+**Goal:** Produce explainable, read-only findings for image datasets.
 
 **Pipeline:** `Dataset -> DatasetContext -> Analyzer -> Finding -> Report`
 
-### v1 Milestones
+**Status:** Released. See [CURRENT_STATUS.md](CURRENT_STATUS.md) for the
+authoritative implementation state.
 
-| Milestone | Status |
+### v0.1 alpha -- Shipped
+
+| Component | Status |
 |---|---|
-| `Finding` dataclass defined | done |
-| `DatasetContext` dataclass defined | done |
-| `Analyzer` base class defined | done |
-| Texture analyzer (microtexture, speckle, watercolor smoothness signal) | done |
-| JSON report writer | done |
-| TXT report writer | done |
-| CLI: `dataset-forge inspect <path>` | done |
-| Inspect gallery output | done |
-| Labeling tool for `ground_truth.json` | done |
-| Decision review tool for `decision_review.json` | done |
-| Crystalline faceting analyzer (`artifact.crystalline_faceting`)  --  pencil_grain + texture_consistency signal | done  --  first-pass uncalibrated; 9/11 known missed cases caught |
-| Speck / glitter analyzer (`artifact.speck`)  --  independent speck threshold | pending |
-| Frequency / periodic noise analyzer (`artifact.recursive_detail`) | pending |
-| Sharpness / halo analyzer (`artifact.oversharpening`) | pending |
-| Calibration metrics from ground truth | done |
-| Calibration benchmark pass | in progress  --  crystalline detector live, FP review needed |
+| `Finding` dataclass | shipped |
+| `DatasetContext` dataclass | shipped |
+| `Analyzer` base class | shipped |
+| `TextureAnalyzer` -- microtexture, watercolor smoothness signal | shipped; first-pass uncalibrated |
+| `CrystallineFacetingAnalyzer` -- pencil_grain + texture_consistency | shipped; first-pass uncalibrated |
+| JSON + TXT report writers | shipped |
+| CLI: `dataset-forge inspect <path>` | shipped |
+| Optional gallery PNG output | shipped |
+| Public benchmark suite (10 expectations, synthetic fixtures committed) | shipped |
+| Public CLI surface locked to inspect-only | shipped |
 
-**v1 does not include:** cleanup, AI, UI, captions, plugins, exporters.
+**v0.1 alpha does not include:** cleanup, AI, UI, captions, plugins, exporters.
+
+### v0.1 alpha -- Deferred analyzer research
+
+Two artifact families were investigated and deferred after research probes
+found no reliable pixel-neighborhood signal for the primary use case:
+
+| Artifact family | Status | Reason |
+|---|---|---|
+| Speck / glitter (`artifact.speck`) | deferred | highlight_speck signal inverts vs clean images; clean watercolor scores higher than artifact images |
+| Oversharpening / halo (`artifact.oversharpening`) | deferred | halo_score inverts; ringing_score has near-zero variance across dataset |
+| Periodic frequency / recursive detail (`artifact.recursive_detail`) | not yet investigated | no probe conducted; no partial signal |
+
+Research reports: `benchmarks/results/probe_speck_glitter/` and
+`benchmarks/results/probe_oversharpening/`.
+
+### v0.1 alpha -- Known limitations
+
+- Analyzer thresholds are uncalibrated against published ground truth.
+  Confidence is capped (TextureAnalyzer: 0.70, CrystallineFacetingAnalyzer: 0.45).
+  Both emit `"calibrated": false` in evidence dicts.
+- Crystalline grain 45-55 range has significant TP/FP interleaving;
+  a fourth discriminating signal is needed before precision improves.
+- TextureAnalyzer z-score thresholds are derived from one private dataset.
 
 ---
 
-## Version 2: Dataset Forge Clean (future)
+## v0.2+: Dataset Forge -- Post-Alpha Work
+
+The following items were deferred from v0.1 alpha and belong in subsequent releases.
+No timeline is set for any of these.
+
+### Analyzer improvement (v1.x)
+
+- Fourth discriminating signal for `CrystallineFacetingAnalyzer` -- resolve
+  grain 45-55 TP/FP interleaving (spatial coherence, directional frequency
+  energy, or micro-edge profile).
+- TextureAnalyzer calibration against labeled ground truth.
+- Research probe for `artifact.recursive_detail` (no signal investigation yet).
+- Reconsider speck/oversharpening once a better signal approach is available
+  (USM residual, directional signed undershoot, or semantic approach).
+
+---
+
+## v2: Dataset Forge Clean (future, no timeline)
 
 **Goal:** Apply deterministic, artifact-specific cleanup to images where Findings justify it.
 
@@ -58,7 +94,7 @@ Non-destructive pipeline (absolute):
 
 ---
 
-## Version 3: Semantic Conservator (future)
+## v3: Semantic Conservator (future, no timeline)
 
 **Goal:** Reduce GPT fingerprints that deterministic methods cannot reach.
 
@@ -82,22 +118,11 @@ Non-destructive pipeline (absolute):
 
 ---
 
-## What Blocks v1
+## Priority Order (post v0.1 alpha)
 
-1. **Calibration evidence** - reviewer labels and decision reviews are needed
-   before analyzer thresholds can be trusted. The tools now write local
-   `ground_truth.json` and `decision_review.json` artifacts, which are generated
-   review data and should remain untracked.
+Calibration against labeled ground truth > fourth crystalline discriminating
+signal > new artifact family research > v2 cleanup work.
 
-2. **Benchmark coverage** - local generated assets cover several artifact
-   classes, but duplicate detection, halo-only samples, multi-strength
-   calibration sets, and real-sample provenance are still missing.
-
----
-
-## Priority Order
-
-Reviewer-backed calibration > new analyzers > future cleanup work.
-
-The v1 vertical slice exists; the most important next step is turning review
-labels into precision/recall/F1 so thresholds can be adjusted with evidence.
+The inspect vertical slice is shipped. The most valuable next step is
+calibrating existing analyzer thresholds with precision/recall/F1 evidence
+from labeled ground truth, then resolving the crystalline 45-55 TP/FP problem.
