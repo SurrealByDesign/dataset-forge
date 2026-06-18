@@ -422,6 +422,75 @@ a fresh clone.
 
 ---
 
+## Research: Speck / Glitter Artifact Family (2026-06-18)
+
+Probe: `scripts/_probe_speck_glitter.py` — 100 images × 15 signals.
+Report: `benchmarks/results/probe_speck_glitter/SPECK_GLITTER_RESEARCH_REPORT.md`
+
+**Recommendation: DEFER.**
+
+**Key findings:**
+- Cohen's d = −0.181 (inverted): clean images score higher than artifact images on highlight_speck
+- Root cause: microtexture raises local blur baseline → isolated-bright condition harder to satisfy in
+  artifact images. Clean watercolor has isolated whites against smooth washes → scores high.
+- r(highlight_speck, microtexture) = −0.089: near-zero. Independent phenomena.
+- vtp4jc (clean reference) ranks 13th in dataset (speck=69.8) — detector would trigger on clean art.
+- New signals (component count, scatter index, brightness excess) all correlate with highlight_speck
+  at r > 0.93 and inherit the same failure.
+- 70% of top-30 speck images are crystalline-flagged; glitter-like facets are already caught.
+- Estimated independent speck-only prevalence: ~3% — below threshold for a dedicated family.
+
+**`highlight_speck` role:** Appropriate as a component of `watercolor_smoothness` (weight=0.15).
+Not suitable as a primary artifact classifier.
+
+---
+
+## Research: Oversharpening / Halo Artifact Family (2026-06-18)
+
+Probe: `scripts/_probe_oversharpening.py` — 100 images × 6 signals.
+Report: `benchmarks/results/probe_oversharpening/OVERSHARPENING_RESEARCH_REPORT.md`
+
+**Recommendation: DEFER.**
+
+Key findings: ringing_score has stddev=2.19 (no variance). halo_score inverts — clean images
+score higher than artifact images (same mechanism as speck). 60% overlap with crystalline.
+Better signal requires USM residual approach or directional undershoot measurement.
+
+---
+
+## Performance: Phase 1 — evaluate_texture() caching (2026-06-18)
+
+**`@functools.lru_cache(maxsize=None)` added to `evaluate_texture()` in
+`src/dataset_forge/analysis/texture.py`.**
+
+**Change:** 2 lines (add `import functools`, add `@functools.lru_cache(maxsize=None)` decorator).
+No contract changes. No test changes. All 644 tests pass.
+
+**Measured on anthropomorph dataset (100 images, 2 analyzers):**
+
+| | Texture-pass time | Per image |
+|---|---|---|
+| Before (3 uncached calls per image) | 7.43s | 74.3ms |
+| After (1 miss + 2 hits per image) | 2.44s | 24.4ms |
+| **Speedup** | **3.04×** | |
+
+End-to-end `run_inspect()` wall clock: 10.15s (was ~15s estimated before cache).
+Cache profile: 100 misses + 200 hits = 67% hit rate (correct: 1 miss + 2 hits per image × 2 analyzers).
+
+**Extrapolated savings (texture passes only):**
+
+| Dataset size | Before | After | Saved |
+|---|---|---|---|
+| 100 images | 7.4s | 2.5s | 5.0s |
+| 1,000 images | 74s | 25s | 50s |
+| 10,000 images | 743s | 248s | 495s |
+
+**Behavior:** Cache persists within a Python process. For the CLI (one process per invocation),
+this is correct — no staleness risk. Phase 2 (`ImageMeasurements` dataclass + explicit cache
+routing) will replace the `lru_cache` with a proper measurements cache and remove this decorator.
+
+---
+
 ## In Progress
 
 Nothing currently in flight.
@@ -454,18 +523,18 @@ Nothing currently in flight.
 
 ## Next Recommended Task
 
-**Benchmark framework is live (591/591 tests).** All 10 expectations pass against local images.
+**Benchmark framework is live (644/644 tests).** All 10 public expectations pass from fresh clone.
+
+Two artifact family research probes complete (oversharpening and speck/glitter) — both DEFERRED.
 
 Suggested next steps (pick one):
 
-1. **Synthetic crystalline benchmark image** — create a programmatically-generated
-   image that reliably triggers CrystallineFacetingAnalyzer (grain >= 45, smooth < 52,
-   micro >= 20) so the crystalline positive benchmark case does not depend on a private
-   real sample. Add it to `benchmarks/synthetic_defects/` and track it in git.
-
-2. **Fourth discriminating signal** — the 24 Cluster C FPs (grain 45-55) can only be
-   reduced by a signal that separates their spatial pattern from confirmed TPs.
+1. **Fourth discriminating signal for crystalline** — the 24 Cluster C FPs (grain 45-55) can only
+   be reduced by a signal that separates their spatial pattern from confirmed TPs.
    Candidates: spatial coherence, directional frequency energy, micro-edge profile.
 
-3. **TextureAnalyzer calibration** — separate pass for the 11 remaining UNSURE images
+2. **TextureAnalyzer calibration** — separate pass for the 11 remaining UNSURE images
    (all TextureAnalyzer-only findings). Current z-score thresholds are uncalibrated.
+
+3. **Recursive detail overload** — next artifact family from ARCHITECTURE.md not yet investigated.
+   No existing partial signal; would require a fresh probe before any implementation.
