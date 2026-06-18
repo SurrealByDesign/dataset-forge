@@ -18,7 +18,7 @@ from dataset_forge.cleanup.controls import (
     AUDIT_LOG,
     OVERRIDES_JSON,
 )
-from dataset_forge.cli import main
+from dataset_forge.cli import future_main as main
 
 
 class PlanControlTests(unittest.TestCase):

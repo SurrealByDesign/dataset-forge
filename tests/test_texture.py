@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 
 from dataset_forge.analysis.texture import evaluate_texture, generate_texture_report
-from dataset_forge.cli import main
+from dataset_forge.cli import future_main as main
 from dataset_forge.evidence import Evidence, ImageEvidence
 from dataset_forge.recommendations.engine import recommend_evidence
 

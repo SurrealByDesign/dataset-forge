@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 
 from PIL import Image
 
-from dataset_forge.cli import main
+from dataset_forge.cli import future_main as main
 from dataset_forge.execution import Pipeline
 from dataset_forge.plugins import (
     Analyzer,

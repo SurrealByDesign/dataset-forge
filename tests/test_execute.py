@@ -16,7 +16,7 @@ from dataset_forge.cleanup.execute import (
     EXECUTION_REPORT_JSON,
     PROCESSED_DIR,
 )
-from dataset_forge.cli import main
+from dataset_forge.cli import future_main as main
 
 
 class ExecutePlanTests(unittest.TestCase):

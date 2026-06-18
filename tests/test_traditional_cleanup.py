@@ -17,7 +17,7 @@ from dataset_forge.cleanup import (
 )
 from dataset_forge.cleanup.execute import PRECLEANUP_DIR
 from dataset_forge.cleanup.profiles import OPERATION_NAMES
-from dataset_forge.cli import main
+from dataset_forge.cli import future_main as main
 from dataset_forge.plugins.builtin.traditional_cleanup import (
     TraditionalCleanupTransform,
 )

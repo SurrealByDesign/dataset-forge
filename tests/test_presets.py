@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from dataset_forge.cli import main
+from dataset_forge.cli import future_main as main
 from dataset_forge.presets import PresetError, list_presets, load_preset
 
 
