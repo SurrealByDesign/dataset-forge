@@ -1,4 +1,4 @@
-# Dataset Forge – Project Bible
+# Dataset Forge -- Project Bible
 
 > This document is the project constitution.
 > It has higher priority than all previous conversations, implementation decisions, and architectural drafts.
@@ -73,7 +73,7 @@ It should optimize for producing better training datasets.
 ## Primary Use Case
 
 The first and most important use case is improving the existing anthropomorphic
-training dataset: hotdogs, bananas, pickle wizard, armored characters — watercolor
+training dataset: hotdogs, bananas, pickle wizard, armored characters  --  watercolor
 and colored-pencil style with GPT-style artifacts including glitter, crystalline
 microtexture, speckle, oversharpening, periodic noise, and edge halos.
 
@@ -100,7 +100,7 @@ Version 1 is analysis only.
 Its pipeline is:
 
 ```
-Dataset → DatasetContext → Analyzer → Finding → Report
+Dataset -> DatasetContext -> Analyzer -> Finding -> Report
 ```
 
 No cleanup is required for v1.

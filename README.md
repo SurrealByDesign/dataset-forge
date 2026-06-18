@@ -1,13 +1,16 @@
 # Dataset Forge
 
+**v0.1 alpha** -- implements the v1 Inspect slice.
+
 Dataset Forge inspects image datasets for GPT-style artifacts and produces
 explainable, evidence-backed findings.
 
 It is designed for practitioners preparing LoRA training datasets who want to
-understand what is wrong with their data — and what should be left alone —
+understand what is wrong with their data -- and what should be left alone --
 before doing anything to it.
 
-**Version 1 is analysis only.** It reads your dataset. It does not touch your images.
+**v0.1 alpha is analysis only.** It reads your dataset. It does not touch your images.
+Cleanup, UI, plugins, and additional analyzers are not part of this release.
 
 ---
 
@@ -51,24 +54,31 @@ edge halos.
 
 ---
 
-## Current limitations
+## Current limitations (v0.1 alpha)
 
-- **Analyzers are not yet calibrated to published ground truth.** Thresholds
-  were derived from an initial labeled review of one private dataset. Precision
-  and recall numbers are known for that dataset but are not general. Take findings
-  as informed candidates, not certified detections.
+- **Analyzers are not calibrated to published ground truth.** Thresholds were
+  derived from an initial labeled review of one private dataset. Precision and
+  recall are known for that dataset but are not general. Treat findings as
+  informed candidates for human review, not certified detections.
 
-- **Three planned analyzers are not yet implemented:** speck/glitter, periodic
-  frequency noise, and oversharpening/halo detection.
+- **Two analyzers ship in v0.1 alpha.** Three planned families (speck/glitter,
+  periodic frequency noise, oversharpening/halo) are not yet implemented.
+  Research probes for two of these have been completed and deferred.
 
-- **No cleanup.** Version 1 is read-only. Cleanup is planned for v2 and will
+- **No cleanup.** v0.1 alpha is read-only. Cleanup is planned for v2 and will
   require human approval at every step. See [ROADMAP.md](ROADMAP.md).
+  Code for future cleanup phases exists in the repository but is not active or
+  supported in v0.1 alpha.
 
-- **No UI.** Dataset Forge is a CLI tool. The report output is JSON and plain text.
+- **No UI.** Dataset Forge is a CLI tool. Report output is JSON and plain text.
 
 - **z-score findings require dataset context.** `texture_analyzer/v1` uses
   dataset-relative z-scores. On a dataset of fewer than five images the baseline
   statistics are not meaningful.
+
+- **Scripts prefixed with `_` are internal.** Files in `scripts/` starting with
+  `_` are calibration, diagnostic, or research tools. `scripts/research/` holds
+  artifact-family research probes. Neither is part of the public API.
 
 ---
 
@@ -79,8 +89,8 @@ edge halos.
 
 **Runtime dependencies** (installed automatically):
 
-- Pillow ≥ 10.0
-- opencv-python ≥ 4.10
+- Pillow >= 10.0
+- opencv-python >= 4.10
 
 ---
 
@@ -154,7 +164,7 @@ touched.
 uv run dataset-forge inspect path/to/dataset/ --gallery
 ```
 
-Writes `inspection_gallery.png` — a contact sheet with findings grouped by
+Writes `inspection_gallery.png`  --  a contact sheet with findings grouped by
 severity alongside clean reference images.
 
 ---
@@ -165,7 +175,7 @@ Each finding in `inspection_report.txt` looks like this:
 
 ```
 image_023.png
-  [MEDIUM] artifact.crystalline_faceting — confidence 0.45 (FP rate ~28%)
+  [MEDIUM] artifact.crystalline_faceting  --  confidence 0.45 (FP rate ~28%)
   Benchmark: uncalibrated
   Evidence: pencil_grain_score=64.2, watercolor_smoothness_score=36.6, microtexture_density_score=65.8
   Why: pencil_grain=64.2 is above the detection threshold. Crystalline
@@ -177,9 +187,9 @@ image_023.png
 Every finding includes:
 - **Severity** (LOW / MEDIUM / HIGH / CRITICAL)
 - **Confidence** and **estimated false-positive rate**
-- **Benchmark version** — `uncalibrated` means thresholds have not been
+- **Benchmark version**  --  `uncalibrated` means thresholds have not been
   validated against published ground truth for your dataset type
-- **Raw evidence** — the measurements that produced the finding
+- **Raw evidence**  --  the measurements that produced the finding
 - **A plain-language explanation** of why the finding was made
 - **A recommended action**, which may be "leave alone"
 
@@ -239,11 +249,11 @@ MIT. See [LICENSE](LICENSE).
 
 | Document | Contents |
 |---|---|
-| [PROJECT_BIBLE.md](PROJECT_BIBLE.md) | Project constitution — read before changing anything |
+| [PROJECT_BIBLE.md](PROJECT_BIBLE.md) | Project constitution  --  read before changing anything |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | v1 pipeline structure, Finding schema, artifact family model |
 | [WHY.md](WHY.md) | Reasoning behind major design decisions |
 | [DIRECTION.md](DIRECTION.md) | Current milestone and scope |
-| [ROADMAP.md](ROADMAP.md) | v1 → v2 → v3 milestone plan |
+| [ROADMAP.md](ROADMAP.md) | v1 -> v2 -> v3 milestone plan |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Implementation status; resume from here |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Acceptance criteria for terminal and report output |
 | [benchmarks/README.md](benchmarks/README.md) | Benchmark manifests and fixture inventory |

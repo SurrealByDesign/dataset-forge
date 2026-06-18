@@ -1,4 +1,4 @@
-# Dataset Forge – Architecture
+# Dataset Forge -- Architecture
 
 > The architecture should anticipate growth.
 > The implementation should not.
@@ -78,12 +78,12 @@ Each analyzer is an independent module:
 
 ```
 src/dataset_forge/analyzers/
-    base.py          — abstract Analyzer with analyze() contract
+    base.py           --  abstract Analyzer with analyze() contract
     glitter.py
-    frequency.py     — periodic noise / crystalline microtexture
-    sharpness.py     — oversharpening / edge halos
-    texture.py       — microtexture density
-    duplicates.py    — exact and near-duplicate detection
+    frequency.py      --  periodic noise / crystalline microtexture
+    sharpness.py      --  oversharpening / edge halos
+    texture.py        --  microtexture density
+    duplicates.py     --  exact and near-duplicate detection
 ```
 
 **Analyzer contract:**
@@ -118,9 +118,9 @@ Analyzers must not:
 The report layer consumes Findings and produces human-readable output.
 
 v1 outputs:
-- `inspection_report.json` — machine-readable, complete findings
-- `inspection_report.txt` — human-readable summary
-- `inspection_report.html` — browsable per-image breakdown (optional in v1)
+- `inspection_report.json`  --  machine-readable, complete findings
+- `inspection_report.txt`  --  human-readable summary
+- `inspection_report.html`  --  browsable per-image breakdown (optional in v1)
 
 Reports must not re-run analysis or make decisions. They present findings.
 
@@ -138,7 +138,7 @@ benchmarks/
         oversharpening/
         speckling/
         halo/
-    real/            (future — Flux, SDXL, Ideogram, Midjourney samples)
+    real/            (future  --  Flux, SDXL, Ideogram, Midjourney samples)
     results/         (versioned benchmark run outputs)
 ```
 
@@ -172,7 +172,7 @@ v1 vertical slice.
 | Bible concept | Legacy equivalent | Notes |
 |---|---|---|
 | DatasetContext | (none yet) | Must be created |
-| Finding | `ImageEvidence` / `evidence.py` | Different schema — needs clean Finding type |
+| Finding | `ImageEvidence` / `evidence.py` | Different schema  --  needs clean Finding type |
 | Analyzer | `analysis/texture.py`, `analysis/metrics.py` | Wrap or port to Analyzer contract |
 | Report | `analysis/health.py`, `reporting.py` | Too broad; v1 report is simpler |
 
@@ -186,8 +186,8 @@ v1 vertical slice.
 
 This was established empirically during calibration review of the anthropomorph
 dataset. Eleven missed detections were investigated; diagnostic analysis showed
-that `highlight_speck` (isolated near-white pixel detection) had Cohen's d = −0.01
-against the clean population for crystalline faceting images — no discriminating
+that `highlight_speck` (isolated near-white pixel detection) had Cohen's d = -0.01
+against the clean population for crystalline faceting images  --  no discriminating
 power at all. Different artifact families require different metrics.
 
 ---
@@ -200,7 +200,7 @@ evidence schema, benchmark, and (eventually) cleanup strategy.
 | Family | Description | Primary Signal | Status |
 |---|---|---|---|
 | **Microtexture** | Elevated high-frequency noise across image surfaces; GPT rendering fingerprint | `microtexture_density`, z-score vs dataset | Implemented (`analyzers/texture.py`) |
-| **Speck / Glitter** | Isolated near-white specular points; appears as scattered bright dots | `highlight_speck` (pixels ≥242, locally isolated) | Partially captured; no independent threshold yet |
+| **Speck / Glitter** | Isolated near-white specular points; appears as scattered bright dots | `highlight_speck` (pixels >=242, locally isolated) | Partially captured; no independent threshold yet |
 | **Crystalline Faceting** | Angular micro-polygon shading; surfaces appear carved from facets; distributed mid-frequency texture | `pencil_grain`, `watercolor_smoothness`, `microtexture_density` | First-pass implemented (`analyzers/crystalline.py`); uncalibrated; benchmark pending |
 | **Recursive Detail Overload** | Compulsive synthetic detail in every region; no restful areas; entire surface treated as foreground | Frequency distribution, detail density | Not yet implemented |
 | **Oversharpening / Halos** | Edge ringing, halo artifacts around transitions, over-accentuated outlines | Edge sharpness, frequency analysis | Planned (`analyzers/sharpness.py`) |
@@ -222,7 +222,7 @@ Artifact Family
                     └─► recommendation  family-specific action
 ```
 
-**Category naming convention:** `artifact.<family>` — e.g.:
+**Category naming convention:** `artifact.<family>`  --  e.g.:
 
 - `artifact.microtexture`
 - `artifact.speck`
@@ -259,7 +259,7 @@ Finding independently; the human reviewer decides what action to take for each.
 
 Confidence is distinct from severity. Severity describes how bad the artifact is;
 confidence describes how certain the analyzer is. An uncalibrated analyzer should
-cap confidence conservatively (≤ 0.70) regardless of the severity it emits.
+cap confidence conservatively (<= 0.70) regardless of the severity it emits.
 
 ---
 
@@ -339,14 +339,14 @@ what was measured so the decision can be audited or replayed.
 
 When an analyzer is uncalibrated:
 - `calibrated: False` must be in evidence
-- `confidence` must be capped conservatively (≤ 0.70 in practice, lower for
+- `confidence` must be capped conservatively (<= 0.70 in practice, lower for
   first-pass detectors)
 - `false_positive_rate` must be set to the observed rate from labeled review
   data, or a conservative estimate if no labeled data exists yet
 
 ---
 
-### Cleanup Routing (future — v2+)
+### Cleanup Routing (future  --  v2+)
 
 Cleanup must be artifact-specific. A single generic smoothing filter applied
 to all findings would:
@@ -406,7 +406,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 
 ---
 
-## Batch Exclusion and Export Workflow (future — v2+)
+## Batch Exclusion and Export Workflow (future  --  v2+)
 
 > This section describes the planned non-destructive export mechanism.
 > It is not yet implemented. Nothing in v1 should be designed around it.
@@ -418,9 +418,9 @@ Silent or automatic modification would corrupt it with no recovery path.
 After a full inspect run and human review, the user may want to produce a
 curated final dataset. Two complementary outputs serve this purpose:
 
-1. **Exclusion list** — a text file naming images that should be excluded from
+1. **Exclusion list**  --  a text file naming images that should be excluded from
    training. The source images are never touched.
-2. **Final dataset copy** — an optional folder of included images assembled
+2. **Final dataset copy**  --  an optional folder of included images assembled
    by copying (never moving) from the source dataset.
 
 Both outputs are derived from Findings and reviewer decisions. Neither modifies,
@@ -463,7 +463,7 @@ composable with AND logic by default:
 | Analyzer | `texture_analyzer/v1` | Filter by which analyzer emitted the finding |
 | Review decision | `AGREE`, `DISAGREE`, `UNSURE` | From `decision_review.json` if available |
 
-**Excluded images** are those matching the filter criteria — i.e., images the
+**Excluded images** are those matching the filter criteria  --  i.e., images the
 filter says are problematic. **Included images** are the complement.
 
 Both sides of the split must be inspectable before the export is committed.
@@ -472,7 +472,7 @@ Both sides of the split must be inspectable before the export is committed.
 
 ### File Contracts
 
-#### Exclusion list — `exclusion_list.txt`
+#### Exclusion list  --  `exclusion_list.txt`
 
 Plain text, one absolute or relative path per line. UTF-8.
 
@@ -495,7 +495,7 @@ Alternative format: `exclusion_list.json` for machine consumers, containing
 the filter parameters, timestamp, source path, and a structured list of
 excluded files with the findings that caused their exclusion.
 
-#### Final dataset — `final_dataset/`
+#### Final dataset  --  `final_dataset/`
 
 A flat folder (or optionally mirroring the source subdirectory structure) of
 copied images. The copy operation preserves the original filename. If two
@@ -531,11 +531,11 @@ explainable.
 ```
 1. Run inspect
       dataset-forge inspect <path>
-      → inspection_report.json
+      -> inspection_report.json
 
 2. (Optional) Human review
       scripts/review_decisions.py
-      → decision_review.json
+      -> decision_review.json
 
 3. Configure export filter
       Severity gate, category filter, confidence threshold, etc.
@@ -559,8 +559,8 @@ explainable.
       Verify no source files were modified (hash check optional).
 ```
 
-Steps 1–4 are the recommended path. Steps 5–6 are the commit step. The
-workflow must never allow skipping step 4 silently — the preview is the gate.
+Steps 1--4 are the recommended path. Steps 5--6 are the commit step. The
+workflow must never allow skipping step 4 silently  --  the preview is the gate.
 
 ---
 
@@ -602,7 +602,7 @@ positive rate than the calibrated estimate.
 - Auto-approve any exclusion without surfacing a preview.
 - Delete, rename, or move any file in the source dataset.
 - Create symlinks in place of copies (symlinks break when the source moves).
-- Silently skip images with I/O errors — they must be listed in the manifest
+- Silently skip images with I/O errors  --  they must be listed in the manifest
   under an `errors` key.
 - Apply cleanup to images before export. Export is post-inspection,
   post-review. Cleanup is a separate pipeline (cleanup routing, v2+).

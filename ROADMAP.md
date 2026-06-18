@@ -23,12 +23,12 @@ calibration driven by reviewer ground truth.
 | Inspect gallery output | done |
 | Labeling tool for `ground_truth.json` | done |
 | Decision review tool for `decision_review.json` | done |
-| Crystalline faceting analyzer (`artifact.crystalline_faceting`) — pencil_grain + texture_consistency signal | done — first-pass uncalibrated; 9/11 known missed cases caught |
-| Speck / glitter analyzer (`artifact.speck`) — independent speck threshold | pending |
+| Crystalline faceting analyzer (`artifact.crystalline_faceting`)  --  pencil_grain + texture_consistency signal | done  --  first-pass uncalibrated; 9/11 known missed cases caught |
+| Speck / glitter analyzer (`artifact.speck`)  --  independent speck threshold | pending |
 | Frequency / periodic noise analyzer (`artifact.recursive_detail`) | pending |
 | Sharpness / halo analyzer (`artifact.oversharpening`) | pending |
 | Calibration metrics from ground truth | done |
-| Calibration benchmark pass | in progress — crystalline detector live, FP review needed |
+| Calibration benchmark pass | in progress  --  crystalline detector live, FP review needed |
 
 **v1 does not include:** cleanup, AI, UI, captions, plugins, exporters.
 
@@ -38,7 +38,7 @@ calibration driven by reviewer ground truth.
 
 **Goal:** Apply deterministic, artifact-specific cleanup to images where Findings justify it.
 
-Cleanup is per artifact family — not a single generic filter:
+Cleanup is per artifact family  --  not a single generic filter:
 
 | Finding category | Cleanup strategy |
 |---|---|

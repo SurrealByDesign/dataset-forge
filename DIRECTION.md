@@ -1,4 +1,4 @@
-# Dataset Forge – Current Direction
+# Dataset Forge -- Current Direction
 
 > This document defines what the project is doing right now.
 > Unlike PROJECT_BIBLE.md, it is expected to evolve as milestones are reached.
@@ -7,14 +7,14 @@
 
 ## Current Objective
 
-Ship **Dataset Forge Inspect** — a complete, working vertical slice:
+**v0.1 alpha** -- ship **Dataset Forge Inspect**, a complete working vertical slice:
 
 ```
-Dataset → DatasetContext → Analyzer → Finding → Report
+Dataset -> DatasetContext -> Analyzer -> Finding -> Report
 ```
 
-The goal is not architectural perfection. The goal is a trustworthy analysis
-report that justifies future cleanup.
+v0.1 alpha implements this slice. The goal is not architectural perfection.
+The goal is a trustworthy analysis report that justifies future cleanup.
 
 ---
 
@@ -38,9 +38,9 @@ Analysis is the foundation. Cleanup is the product.
 
 ---
 
-## What Is Out of Scope for v1
+## What Is Out of Scope for v0.1 alpha
 
-- AI cleanup
+- Cleanup (any kind)
 - UI
 - Caption generation or auditing
 - Plugin systems
@@ -48,7 +48,9 @@ Analysis is the foundation. Cleanup is the product.
 - Large architectural rewrites
 - Any feature without an immediate consumer in the v1 pipeline
 
-Preserve existing out-of-scope code. Do not delete it. Do not expand it.
+Code for future phases exists in the repository (`cleanup/`, `plugins/`,
+`execution/`, `transforms/`, `exporters/`, `review/`) and is preserved but
+not active. Do not expand it. Do not delete it.
 
 ---
 
@@ -67,7 +69,7 @@ working tool.
 ## Primary Reference Dataset
 
 The anthropomorphic character dataset (hotdogs, bananas, pickle wizard, armored
-characters — watercolor and colored-pencil style) is the benchmark every
+characters  --  watercolor and colored-pencil style) is the benchmark every
 implementation decision is measured against.
 
 Before implementing any feature, ask:

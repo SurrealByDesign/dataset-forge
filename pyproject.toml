@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataset-forge"
-version = "0.4.0"
-description = "Dataset Forge is a modular, deterministic dataset engineering platform for preparing, analyzing, cleaning, validating, benchmarking, and exporting datasets for generative AI."
+version = "0.1.0a1"
+description = "Dataset Forge v0.1 alpha -- inspect image datasets for GPT-style artifacts and produce explainable, evidence-backed findings."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

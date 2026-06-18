@@ -7,7 +7,7 @@ and (locally only) private real-sample images.
 
 ## Quick start (fresh clone)
 
-The public benchmark runs immediately after cloning — no generation step required.
+The public benchmark runs immediately after cloning  --  no generation step required.
 Committed fixture images are already present in `benchmarks/synthetic_defects/`.
 
 ```
@@ -22,8 +22,8 @@ Expected output: all expectations PASS, exit 0.
 
 | File | Tracked in git | Purpose |
 |---|---|---|
-| `benchmark_manifest.json` | Yes | Public suite — synthetic-committed cases only |
-| `local_benchmark_manifest.json` | **No** | Private suite — real dataset samples |
+| `benchmark_manifest.json` | Yes | Public suite  --  synthetic-committed cases only |
+| `local_benchmark_manifest.json` | **No** | Private suite  --  real dataset samples |
 
 ### Public manifest (`benchmark_manifest.json`)
 
@@ -72,7 +72,7 @@ uv run python scripts/generate_crystalline_fixtures.py
 uv run python scripts/generate_texture_fixtures.py
 ```
 
-The `synthetic-generated` cases in the public manifest (cases 00–05) reference images
+The `synthetic-generated` cases in the public manifest (cases 00--05) reference images
 that are **not** committed. They are marked `private: true` and are skipped automatically.
 To generate them, a local reference image is required (see `generate_benchmark_defects.py`).
 

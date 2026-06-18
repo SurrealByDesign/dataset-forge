@@ -1,4 +1,4 @@
-# Dataset Forge – CLI Output Specification
+# Dataset Forge -- CLI Output Specification
 
 This file defines what success looks like.
 The implementation should move toward producing this output.
@@ -24,7 +24,7 @@ Analyzed:   100
 Errors:     0
 
 Building dataset context...
-  Resolution:      512x512 – 1024x1536  (mean 768x1024)
+  Resolution:      512x512 -- 1024x1536  (mean 768x1024)
   Aspect ratios:   portrait 72%  square 18%  landscape 10%
   Microtexture:    mean=39.9  stddev=11.6  p10=24.1  p90=55.2
   Frequency:       baseline established (100 images)
@@ -114,7 +114,7 @@ FINDINGS BY IMAGE
 -----------------
 
 image_023.png
-  [HIGH] artifact.glitter — confidence 0.91 (FP rate ~4%)
+  [HIGH] artifact.glitter  --  confidence 0.91 (FP rate ~4%)
   Benchmark: synthetic_glitter_v1
   Evidence: glitter_pixel_ratio=0.034, peak_brightness_delta=87
   Why: 3.4% of pixels show isolated high-brightness speckle consistent
@@ -122,7 +122,7 @@ image_023.png
   Action: Candidate for speck removal. Estimated cost: low.
 
 image_041.png
-  [MEDIUM] artifact.periodic_noise — confidence 0.77 (FP rate ~8%)
+  [MEDIUM] artifact.periodic_noise  --  confidence 0.77 (FP rate ~8%)
   ...
 
 CLEAN IMAGES (no findings)
@@ -144,7 +144,7 @@ Recommendation: Run `dataset-forge clean --from-report inspection_report.json`
 
 ## Design Notes
 
-- The "clean" images section is not a fallback — it is a primary result.
+- The "clean" images section is not a fallback  --  it is a primary result.
 - Every finding includes the benchmark that calibrated its threshold.
 - Confidence and false-positive rate are always shown together.
 - The report never says "fix everything." It explains each finding.

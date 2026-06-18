@@ -1,4 +1,4 @@
-# Dataset Forge – Why
+# Dataset Forge -- Why
 
 This document explains why Dataset Forge exists and why major architectural
 decisions were made the way they were. Future developers should understand
@@ -11,11 +11,11 @@ the reasoning, not just the implementation.
 LoRA training quality is directly limited by dataset quality.
 
 Most LoRA practitioners focus on prompt engineering and training parameters.
-The dataset itself — what images are included, what artifacts they carry,
-whether they are internally consistent — receives far less attention.
+The dataset itself  --  what images are included, what artifacts they carry,
+whether they are internally consistent  --  receives far less attention.
 
 The existing anthropomorphic character dataset (hotdogs, bananas, pickle wizard,
-armored characters — watercolor and colored-pencil style) was generated primarily
+armored characters  --  watercolor and colored-pencil style) was generated primarily
 by GPT-based image tools. These images carry GPT fingerprints: crystalline
 microtexture, glitter-like speckle, periodic frequency contamination,
 oversharpening, and edge halos. The LoRA learns these fingerprints alongside
@@ -73,10 +73,10 @@ and extended only additively.
 ## Why Deterministic Before AI
 
 Deterministic methods are:
-- auditable — you can inspect every decision
-- reproducible — same input, same output
-- fast — no inference cost
-- explainable — you can say exactly why a finding was made
+- auditable  --  you can inspect every decision
+- reproducible  --  same input, same output
+- fast  --  no inference cost
+- explainable  --  you can say exactly why a finding was made
 
 AI methods may eventually solve problems deterministic methods cannot
 (recursively embedded microfacet structure, semantic simplification of
@@ -136,26 +136,26 @@ report. That slice must work before anything else is added.
 
 During calibration review of the anthropomorph dataset, eleven images the
 analyzer marked CLEAN were flagged by the human reviewer. Investigation showed
-that these images shared a specific artifact — crystalline surface faceting,
-angular micro-polygon shading — that is distinct from the elevated high-frequency
+that these images shared a specific artifact  --  crystalline surface faceting,
+angular micro-polygon shading  --  that is distinct from the elevated high-frequency
 noise the microtexture analyzer was measuring.
 
 Diagnostic analysis across all seven available texture metrics confirmed the
 distinction with statistical evidence:
 
-- `highlight_speck`: Cohen's d = −0.01 against the clean population. No signal.
+- `highlight_speck`: Cohen's d = -0.01 against the clean population. No signal.
   The speck metric counts near-white isolated pixels. Crystalline faceting
   produces mid-frequency angular texture, not bright isolated points.
 - `pencil_grain`: Cohen's d = +0.80. Strong signal. Pencil grain measures
-  medium-frequency texture uniformly distributed across the image — which is
+  medium-frequency texture uniformly distributed across the image  --  which is
   exactly what faceted surfaces produce.
 - `microtexture_density`: Cohen's d = +0.99. The primary signal, but the
   current threshold is too conservative to catch the faceting population.
 
 The lesson: using a single score as a proxy for all GPT contamination produces
 a system that is well-calibrated for one artifact family and blind to others.
-Treating them separately — each with its own analyzer, evidence schema, and
-threshold — is not premature abstraction. It is the correct response to
+Treating them separately  --  each with its own analyzer, evidence schema, and
+threshold  --  is not premature abstraction. It is the correct response to
 empirical evidence that they are different phenomena.
 
 ---
