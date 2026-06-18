@@ -412,6 +412,16 @@ a fresh clone.
 
 ---
 
+## Release Preparation (2026-06-18)
+
+- **LICENSE** added: MIT, `Copyright (c) 2026 DigitalBlasphemy`
+- **README** rewritten: user-facing intro, first-run walkthrough, safety guarantees,
+  current limitations near the top, accurate install/benchmark/test commands,
+  architecture docs linked in a table rather than summarized inline
+- **pyproject.toml**: `license = {text = "MIT"}` added
+
+---
+
 ## In Progress
 
 Nothing currently in flight.
