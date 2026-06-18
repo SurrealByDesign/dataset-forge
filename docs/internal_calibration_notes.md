@@ -178,6 +178,6 @@ with a proper measurements cache.
 ## Local Benchmark Private Cases
 
 `benchmarks/local_benchmark_manifest.json` (gitignored) -- 3 private real-sample cases:
-- Positive MEDIUM: snakemountain.jpg (grain=62.4, smooth=36.6)
-- Positive LOW: picklewizard.jpg (grain=50.9, smooth=46.9)
-- Negative: vtp4jc1040s51.jpg (grain=35.7)
+- Positive MEDIUM: private_sample_03.jpg (grain=62.4, smooth=36.6)
+- Positive LOW: private_sample_02.jpg (grain=50.9, smooth=46.9)
+- Negative: private_sample_01.jpg (grain=35.7)

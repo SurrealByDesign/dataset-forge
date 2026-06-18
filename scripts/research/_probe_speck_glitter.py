@@ -477,7 +477,7 @@ def _write_report(
 
     # --------------------------------- speck score vs vtp clean ref
     h("CLEAN REFERENCE CHECK")
-    for name in ["vtp4jc1040s51.jpg", "monalisa.jpg", "candycornjason.jpg"]:
+    for name in ["monalisa.jpg", "candycornjason.jpg"]:  # add local private fixtures by filename if present
         r = next((x for x in records if x["name"] == name), None)
         if r:
             c = "cryst" if r["name"] in cryst else ""

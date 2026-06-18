@@ -173,7 +173,7 @@ agree on MANUAL_REVIEW for the eight heaviest cases.
 | teaparty.jpg | 66.1 | Most over-textured image in dataset |
 | azathothdanzig.jpg | 62.7 | |
 | hotdogcity.jpg | 61.5 | |
-| snakemountain.jpg | 60.1 | |
+| private_sample_03.jpg | 60.1 | |
 | Gwendolyn Heroes painting 2019.jpg | 60.0 | Known reference image — high natural microtexture |
 | milkmanmilkcarton.jpg | 58.3 | |
 | sopranosfoods.jpg | 54.4 | |

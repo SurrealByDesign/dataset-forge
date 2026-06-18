@@ -505,7 +505,7 @@ the conflict must be surfaced to the user before any copy proceeds.
 ```
 final_dataset/
   lemonknight.jpg          # copy of source
-  vtp4jc1040s51.jpg
+  private_sample_01.jpg
   candycornjason.jpg
   ...
   export_manifest.json     # records what was copied and why
