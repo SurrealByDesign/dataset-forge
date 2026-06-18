@@ -367,6 +367,51 @@ Full suite: **623/623 passing** (was 591; +32 new tests)
 
 ---
 
+## TextureAnalyzer Public Benchmark (2026-06-18)
+
+**Committed synthetic fixtures for TextureAnalyzer positive detection.**
+
+**Approach:** Two-image committed context group (`texture_committed`).
+- Clean anchor (`09_texture_clean.png`): flat grey 128. micro=0.0. No finding (micro < absolute floor 15).
+- Noise positive (`10_texture_positive.png`): seeded uniform noise [68,189) seed=42. micro=88.7. Fires MEDIUM.
+- Z-score math: for group [0, X], mean=X/2, pstdev=X/2, z=1.0 exactly (structurally pinned).
+- z=1.0 maps to Severity.MEDIUM (_Z_MEDIUM = 1.0). Stable regardless of noise amplitude.
+
+**Files:**
+- `benchmarks/synthetic_defects/09_texture_clean.png` — committed fixture (git-tracked)
+- `benchmarks/synthetic_defects/10_texture_positive.png` — committed fixture (git-tracked)
+- `scripts/generate_texture_fixtures.py` — deterministic generator (seeded RNG)
+- `tests/test_texture_fixtures.py` — 21 regression tests
+
+**Benchmark manifest additions (2 new cases, 2 new expectations):**
+- `synth_texture_clean_negative`: texture=no-find [committed]
+- `synth_texture_medium_positive`: texture=find MEDIUM [committed]
+
+**Live benchmark run (2026-06-18): 10/10 PASS, 0 skipped, 0 failed.**
+**Tests: 21/21 (`tests/test_texture_fixtures.py`)**
+**Full suite: 644/644 passing** (was 623; +21 new tests)
+
+---
+
+## Public Benchmark Release Fix (2026-06-18)
+
+Release audit found that `09_texture_clean.png`, `10_texture_positive.png`,
+`scripts/generate_texture_fixtures.py`, and `tests/test_texture_fixtures.py`
+were created but never staged — making the public manifest unreproducible from
+a fresh clone.
+
+**Fix:** Staged and committed all four files. Updated `benchmarks/README.md` to:
+- Document which fixture files are committed vs generated
+- Correct the quick-start command (`uv run python scripts/run_benchmarks.py`)
+- Remove the stale claim that all synthetic_defects must be generated
+
+**Post-fix state:**
+- Public benchmark runnable immediately after `git clone` — no generation step required
+- 10/10 expectations PASS, 0 skipped
+- Full suite: 644/644 passing
+
+---
+
 ## In Progress
 
 Nothing currently in flight.
@@ -375,13 +420,7 @@ Nothing currently in flight.
 
 ## Known Blockers
 
-- **TextureAnalyzer positive benchmark** — no committed synthetic image reliably triggers
-  TextureAnalyzer (z-score based; depends on dataset context). Positive case still relies
-  on `snakemountain.jpg` in local_benchmark_manifest.json (private real sample). A
-  committed TextureAnalyzer positive fixture would require either: (a) a very-high-micro
-  synthetic image paired with low-micro context images in a committed group, or (b) a
-  fixed-context approach where the context is specified in the manifest rather than
-  computed from co-present images.
+*(none)*
 
 ---
 

@@ -105,6 +105,8 @@ benchmarks/synthetic_defects/*
 !benchmarks/synthetic_defects/06_crystalline_low.png
 !benchmarks/synthetic_defects/07_crystalline_medium.png
 !benchmarks/synthetic_defects/08_crystalline_negative_smooth.png
+!benchmarks/synthetic_defects/09_texture_clean.png
+!benchmarks/synthetic_defects/10_texture_positive.png
 benchmarks/local_benchmark_manifest.json
 
 # Local/private datasets and image folders

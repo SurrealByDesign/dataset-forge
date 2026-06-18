@@ -1,7 +1,20 @@
 # Dataset Forge Benchmarks
 
-This directory holds benchmark manifests, generated synthetic defect images,
-and (locally only) private real-sample images. Most files here are gitignored.
+This directory holds benchmark manifests, committed synthetic fixture images,
+and (locally only) private real-sample images.
+
+---
+
+## Quick start (fresh clone)
+
+The public benchmark runs immediately after cloning — no generation step required.
+Committed fixture images are already present in `benchmarks/synthetic_defects/`.
+
+```
+uv run python scripts/run_benchmarks.py
+```
+
+Expected output: all expectations PASS, exit 0.
 
 ---
 
@@ -9,69 +22,71 @@ and (locally only) private real-sample images. Most files here are gitignored.
 
 | File | Tracked in git | Purpose |
 |---|---|---|
-| `benchmark_manifest.json` | Yes | Public suite — synthetic cases only |
+| `benchmark_manifest.json` | Yes | Public suite — synthetic-committed cases only |
 | `local_benchmark_manifest.json` | **No** | Private suite — real dataset samples |
 
 ### Public manifest (`benchmark_manifest.json`)
 
-Contains only cases whose images can be generated from code. All images are
-still gitignored (they must be generated before running), but no private
-filenames or dataset details appear in the manifest itself.
+All cases in the public manifest reference images that are committed to git
+(`provenance: "synthetic-committed"`) or are marked `private: true` (skipped
+automatically if missing). No generation step is needed to run the public suite.
 
-Run it after generating the synthetic defects:
+Run it:
 
 ```
-python scripts/generate_benchmark_defects.py
-python scripts/run_benchmarks.py
+uv run python scripts/run_benchmarks.py
 ```
 
 ### Local manifest (`local_benchmark_manifest.json`)
 
-Contains cases that reference private real images from a local training
-dataset. This file is gitignored and must never be committed. It exists
-alongside the public manifest for full local calibration.
+Contains cases that reference private real images from a local training dataset.
+This file is gitignored and must never be committed.
 
-To run the local suite:
+To run it:
 
 ```
-python scripts/run_benchmarks.py --manifest benchmarks/local_benchmark_manifest.json
+uv run python scripts/run_benchmarks.py --manifest benchmarks/local_benchmark_manifest.json
 ```
 
-If any referenced image is missing the runner skips that case (exit 0 still
-returned if no non-skipped case fails). This means partial runs are safe.
+Missing images are skipped (not failed), so partial runs are safe.
 
 ---
 
-## Synthetic defects
+## Synthetic defects (`benchmarks/synthetic_defects/`)
 
-All files in `benchmarks/synthetic_defects/` are gitignored except
-`.gitkeep`. Generate them with:
+Most files here are gitignored. The following fixtures are **committed to git**
+and are present immediately after cloning:
+
+| File | Generator | Analyzer | Result |
+|---|---|---|---|
+| `06_crystalline_low.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | Fires LOW |
+| `07_crystalline_medium.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | Fires MEDIUM |
+| `08_crystalline_negative_smooth.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | No finding (smooth guard) |
+| `09_texture_clean.png` | `generate_texture_fixtures.py` | TextureAnalyzer | No finding (below floor) |
+| `10_texture_positive.png` | `generate_texture_fixtures.py` | TextureAnalyzer | Fires MEDIUM |
+
+All generators are deterministic. Re-running them reproduces identical pixel values.
 
 ```
-python scripts/generate_benchmark_defects.py
+uv run python scripts/generate_crystalline_fixtures.py
+uv run python scripts/generate_texture_fixtures.py
 ```
 
-The generator requires a clean reference image placed in
-`benchmarks/reference/`. It writes deterministic PNG variants into
-`benchmarks/synthetic_defects/`. Probe scores for each generated image are
-recorded in the public manifest's `source_description` fields.
+The `synthetic-generated` cases in the public manifest (cases 00–05) reference images
+that are **not** committed. They are marked `private: true` and are skipped automatically.
+To generate them, a local reference image is required (see `generate_benchmark_defects.py`).
 
 ---
 
 ## Real samples (`benchmarks/real_samples/`)
 
-All image files in this directory are gitignored. Place private calibration
-images here manually. Filenames and expected scores are documented in
-`local_benchmark_manifest.json` (also gitignored).
-
-Real samples serve purposes that synthetics cannot:
-- Confirming recall against actual GPT-generated image artifacts
-- Validating severity tier assignments against human-reviewed labels
-- Documenting known false-positive patterns
+All image files here are gitignored. Place private calibration images here manually.
+Filenames and expected scores are documented in `local_benchmark_manifest.json`
+(also gitignored).
 
 ---
 
 ## Results
 
-`benchmarks/results/` is gitignored. Each run of `run_benchmarks.py` writes
+`benchmarks/results/` is gitignored. Each `run_benchmarks.py` run writes
 `benchmark_results.json` and `benchmark_results.txt` there.
