@@ -308,6 +308,65 @@ New test class: `TestCrystallineFacetingSeverityTiers` (12 tests):
 
 ---
 
+## Benchmark Framework (v1)
+
+**`src/dataset_forge/benchmark.py`** — core benchmark module.
+- `BenchmarkExpectation`, `BenchmarkCase`, `ExpectationResult`, `BenchmarkRun` dataclasses
+- `load_manifest(path)` — parses `benchmark_manifest.json`; validates schema version
+- `run_benchmark(manifest_path, project_root, registry)` — resolves image paths,
+  builds per-group `DatasetContext`, runs each analyzer expectation
+- `write_json_results(run, path)` / `write_txt_results(run, path)` — structured outputs
+- Private images / missing images: skipped (not failed) regardless of `private` flag
+- Groups: cases sharing a `context_group` share a `DatasetContext` so TextureAnalyzer
+  z-scores are meaningful within the group
+- Registry: `texture_analyzer/v1` and `crystalline_faceting_analyzer/v1` pre-registered
+
+**`benchmarks/benchmark_manifest.json`** — 6 cases, 8 expectations (public, no private images required):
+- `synth_reference_negative`: texture=no-find, crystalline=no-find (grain=35.7) [synthetic-generated]
+- `synth_color_noise_negative`: texture=no-find, crystalline=no-find (grain=36.3) [synthetic-generated]
+- `synth_mixed_artifacts_crystalline_negative`: crystalline=no-find (grain=38.5) [synthetic-generated]
+- `synth_crystalline_low`: crystalline=find LOW (grain=45.1, smooth=47.3) [**committed**]
+- `synth_crystalline_medium`: crystalline=find MEDIUM (grain=64.2, smooth=36.6) [**committed**]
+- `synth_crystalline_negative_smooth_guard`: crystalline=no-find (grain=62.0, smooth=53.2) [**committed**]
+
+**`benchmarks/local_benchmark_manifest.json`** (gitignored) — 3 private real-sample cases:
+- Positive MEDIUM: snakemountain.jpg (grain=62.4, smooth=36.6)
+- Positive LOW: picklewizard.jpg (grain=50.9, smooth=46.9)
+- Negative: vtp4jc1040s51.jpg (grain=35.7)
+
+**`scripts/run_benchmarks.py`** — CLI runner.
+- `uv run python scripts/run_benchmarks.py` — runs all 8 public expectations, 0 skipped
+- `uv run python scripts/run_benchmarks.py --manifest benchmarks/local_benchmark_manifest.json`
+- Exit 0 = all non-skipped passed; exit 1 = any failure; exit 2 = manifest error
+
+**`benchmarks/synthetic_defects/06_crystalline_low.png`** — committed fixture (git-tracked)
+- Crosshatch spacing=4 amplitude=15. grain=45.1, smooth=47.3, micro=53.0. Fires LOW.
+
+**`benchmarks/synthetic_defects/07_crystalline_medium.png`** — committed fixture (git-tracked)
+- Crosshatch spacing=6 amplitude=30. grain=64.2, smooth=36.6, micro=65.8. Fires MEDIUM.
+- Grain matches real calibration anchor (snakemountain grain=62.4, smooth=36.6).
+
+**`benchmarks/synthetic_defects/08_crystalline_negative_smooth.png`** — committed fixture (git-tracked)
+- Crosshatch spacing=12 amplitude=30. grain=62.0, smooth=53.2, micro=43.3. Does NOT fire.
+- Validates watercolor_smoothness < 52 guard: high grain, high micro, but smooth=53.2 > ceiling.
+
+**`scripts/generate_crystalline_fixtures.py`** — regenerates the 3 committed fixtures deterministically.
+- Fully documented crosshatch parameters in source.
+
+**Live benchmark run (2026-06-18): 8/8 PASS, 0 skipped, 0 failed.**
+
+**`tests/test_crystalline_fixtures.py`** — 32 regression tests for committed fixtures.
+- Score stability tests (exact values ± 0.5 tolerance)
+- Detection tests (fires/doesn't fire)
+- Severity tier tests (LOW, MEDIUM)
+- Guard validation (smooth_above_ceiling confirmed for negative)
+- Monotonicity tests (medium > low grain, negative smooth highest)
+
+**Tests: 29/29 (`tests/test_benchmark.py`) + 32/32 (`tests/test_crystalline_fixtures.py`)**
+Full suite: **623/623 passing** (was 591; +32 new tests)
+
+---
+
 ## In Progress
 
 Nothing currently in flight.
@@ -316,11 +375,13 @@ Nothing currently in flight.
 
 ## Known Blockers
 
-- **Calibration benchmarks** — synthetic images with known artifact levels required
-  before analyzer thresholds can be trusted. Local generated assets now cover
-  glitter, recursive microtexture/periodic texture, oversharpening, color noise,
-  and mixed artifacts, but duplicate detection, halo-only samples, multi-strength
-  calibration sets, and real-sample provenance are still missing.
+- **TextureAnalyzer positive benchmark** — no committed synthetic image reliably triggers
+  TextureAnalyzer (z-score based; depends on dataset context). Positive case still relies
+  on `snakemountain.jpg` in local_benchmark_manifest.json (private real sample). A
+  committed TextureAnalyzer positive fixture would require either: (a) a very-high-micro
+  synthetic image paired with low-micro context images in a committed group, or (b) a
+  fixed-context approach where the context is specified in the manifest rather than
+  computed from co-present images.
 
 ---
 
@@ -344,23 +405,18 @@ Nothing currently in flight.
 
 ## Next Recommended Task
 
-**CrystallineFacetingAnalyzer is live.** First-pass precision: 40.9%, recall: 81.8%.
-13 false positives against agreed-clean group; 14 UNSURE images also flagged.
+**Benchmark framework is live (591/591 tests).** All 10 expectations pass against local images.
 
 Suggested next steps (pick one):
 
-1. **Re-review the 13 false positives** — run `scripts/review_decisions.py`
-   with `--focus` on the 13 Group C images that crystalline now flags. Some may
-   be genuine faceting that was reviewed as AGREE-clean but actually have faceting
-   artifacts. This would adjust the effective precision upward.
+1. **Synthetic crystalline benchmark image** — create a programmatically-generated
+   image that reliably triggers CrystallineFacetingAnalyzer (grain >= 45, smooth < 52,
+   micro >= 20) so the crystalline positive benchmark case does not depend on a private
+   real sample. Add it to `benchmarks/synthetic_defects/` and track it in git.
 
-2. **Review the 14 UNSURE catches** — the 14 Group U images that crystalline flags
-   were marked UNSURE in the original decision review. Re-reviewing them with the
-   crystalline finding visible may break the UNSURE tie.
+2. **Fourth discriminating signal** — the 24 Cluster C FPs (grain 45-55) can only be
+   reduced by a signal that separates their spatial pattern from confirmed TPs.
+   Candidates: spatial coherence, directional frequency energy, micro-edge profile.
 
-3. **Synthetic benchmark** — create benchmark images with known crystalline faceting
-   to calibrate the pencil_grain / smoothness thresholds properly. This is required
-   before the uncalibrated flags are removed.
-
-4. **Threshold tightening experiment** — try `pencil_grain >= 50` to reduce FP to
-   ~5 while keeping recall at ~72%. Run pencil_grain_diagnostic.py to evaluate.
+3. **TextureAnalyzer calibration** — separate pass for the 11 remaining UNSURE images
+   (all TextureAnalyzer-only findings). Current z-score thresholds are uncalibrated.

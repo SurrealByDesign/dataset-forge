@@ -1,31 +1,77 @@
-# Private Benchmark Images
+# Dataset Forge Benchmarks
 
-This folder is for local, private benchmark material. Benchmark images are
-private and local by default, ignored by Git, and should not be committed.
+This directory holds benchmark manifests, generated synthetic defect images,
+and (locally only) private real-sample images. Most files here are gitignored.
 
-Users provide their own clean reference image in:
+---
 
-```text
-benchmarks/reference/
+## Manifests
+
+| File | Tracked in git | Purpose |
+|---|---|---|
+| `benchmark_manifest.json` | Yes | Public suite — synthetic cases only |
+| `local_benchmark_manifest.json` | **No** | Private suite — real dataset samples |
+
+### Public manifest (`benchmark_manifest.json`)
+
+Contains only cases whose images can be generated from code. All images are
+still gitignored (they must be generated before running), but no private
+filenames or dataset details appear in the manifest itself.
+
+Run it after generating the synthetic defects:
+
+```
+python scripts/generate_benchmark_defects.py
+python scripts/run_benchmarks.py
 ```
 
-Generate deterministic synthetic defect variants with:
+### Local manifest (`local_benchmark_manifest.json`)
 
-```powershell
-python scripts/generate_benchmark_defects.py `
-  --input benchmarks/reference/my_clean_reference.png `
-  --output benchmarks/synthetic_defects `
-  --seed 1234 `
-  --strength medium
+Contains cases that reference private real images from a local training
+dataset. This file is gitignored and must never be committed. It exists
+alongside the public manifest for full local calibration.
+
+To run the local suite:
+
+```
+python scripts/run_benchmarks.py --manifest benchmarks/local_benchmark_manifest.json
 ```
 
-The generator writes a normalized reference copy, five synthetic defect
-images, and `benchmark_manifest.json` into
-`benchmarks/synthetic_defects/`. It never modifies the input image.
+If any referenced image is missing the runner skips that case (exit 0 still
+returned if no non-skipped case fails). This means partial runs are safe.
 
-This benchmark system tests cleanup quality across Dataset Forge workflows. It
-is not limited to LoRA dataset preparation.
+---
 
-Available strengths are `light`, `medium`, and `strong`. Reusing the same
-input pixels, seed, and strength produces the same generated image pixels.
-The manifest timestamp records when the benchmark set was created.
+## Synthetic defects
+
+All files in `benchmarks/synthetic_defects/` are gitignored except
+`.gitkeep`. Generate them with:
+
+```
+python scripts/generate_benchmark_defects.py
+```
+
+The generator requires a clean reference image placed in
+`benchmarks/reference/`. It writes deterministic PNG variants into
+`benchmarks/synthetic_defects/`. Probe scores for each generated image are
+recorded in the public manifest's `source_description` fields.
+
+---
+
+## Real samples (`benchmarks/real_samples/`)
+
+All image files in this directory are gitignored. Place private calibration
+images here manually. Filenames and expected scores are documented in
+`local_benchmark_manifest.json` (also gitignored).
+
+Real samples serve purposes that synthetics cannot:
+- Confirming recall against actual GPT-generated image artifacts
+- Validating severity tier assignments against human-reviewed labels
+- Documenting known false-positive patterns
+
+---
+
+## Results
+
+`benchmarks/results/` is gitignored. Each run of `run_benchmarks.py` writes
+`benchmark_results.json` and `benchmark_results.txt` there.

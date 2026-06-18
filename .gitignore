@@ -86,6 +86,7 @@ execution_report.csv
 user_overrides.json
 decision_audit_log.jsonl
 inspection_gallery.png
+inspect_output/
 
 # Benchmark/generated outputs
 benchmarks/results/
@@ -101,6 +102,10 @@ benchmarks/synthetic_defects/*
 !benchmarks/reference/.gitkeep
 !benchmarks/synthetic_defects/.gitkeep
 !benchmarks/README.md
+!benchmarks/synthetic_defects/06_crystalline_low.png
+!benchmarks/synthetic_defects/07_crystalline_medium.png
+!benchmarks/synthetic_defects/08_crystalline_negative_smooth.png
+benchmarks/local_benchmark_manifest.json
 
 # Local/private datasets and image folders
 data/

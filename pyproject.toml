@@ -21,3 +21,8 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 dataset_forge = ["config/*.json"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.0",
+]
