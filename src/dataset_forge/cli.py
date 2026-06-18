@@ -284,7 +284,7 @@ def _inspect_main(argv: list[str]) -> int:
         prog="dataset-forge inspect",
         description=(
             "Analyze a dataset folder and produce a calibrated inspection report.\n"
-            "Pipeline: Dataset → DatasetContext → Analyzer → Finding → Report"
+            "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )
     parser.add_argument("dataset", type=Path, help="Dataset folder to inspect.")
@@ -334,7 +334,7 @@ def _inspect_main(argv: list[str]) -> int:
         print(f"Error: {exc}")
         return 2
 
-    # Summary — matches CLI_OUTPUT.md format
+    # Summary - matches CLI_OUTPUT.md format
     print(f"Images:   {result.image_count}")
     print(f"Analyzed: {result.analyzed_count}")
     print(f"Errors:   {result.error_count}")
