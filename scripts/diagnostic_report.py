@@ -35,21 +35,11 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
-from dataset_forge.analysis.texture import evaluate_texture
+from _calibration_metrics import METRICS, collect_texture_scores
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-METRICS = [
-    ("microtexture_density_score",  "Microtexture density"),
-    ("local_contrast_score",        "Local contrast"),
-    ("edge_sharpness_score",        "Edge sharpness"),
-    ("highlight_speck_score",       "Highlight speck"),
-    ("texture_consistency_score",   "Texture consistency"),
-    ("watercolor_smoothness_score", "Watercolor smoothness"),
-    ("pencil_grain_score",          "Pencil grain"),
-]
 
 _BAR  = "-" * 68
 _BAR2 = "=" * 68
@@ -149,17 +139,8 @@ def cohens_d(group_b: list[float], group_c: list[float]) -> float | None:
 # ---------------------------------------------------------------------------
 
 def collect_scores(paths: list[Path]) -> list[dict]:
-    """Run evaluate_texture on every path and return a list of score dicts."""
-    results = []
-    for path in paths:
-        tex = evaluate_texture(path)
-        if tex.status != "analyzed":
-            continue
-        results.append({
-            "filename": path.name,
-            **{key: getattr(tex, key) for key, _ in METRICS},
-        })
-    return results
+    """Measure every path and return a list of score dicts."""
+    return collect_texture_scores(paths)
 
 
 # ---------------------------------------------------------------------------

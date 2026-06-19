@@ -91,9 +91,9 @@ def enrich_with_live_scores(
     the dataset mean/stddev already stored in the report context.
     """
     try:
-        from dataset_forge.analysis.texture import evaluate_texture
+        from _calibration_metrics import measure_texture
     except ImportError as e:
-        print(f"  Warning: could not import evaluate_texture: {e}", file=sys.stderr)
+        print(f"  Warning: could not import shared measurement helper: {e}", file=sys.stderr)
         return
 
     for entry in entries:
@@ -102,7 +102,7 @@ def enrich_with_live_scores(
         candidates = list(dataset_path.rglob(entry["filename"]))
         if not candidates:
             continue
-        tex = evaluate_texture(candidates[0])
+        tex = measure_texture(candidates[0])
         if tex.status == "analyzed":
             micro = tex.microtexture_density_score
             entry["micro"]  = round(micro, 2)
@@ -372,7 +372,7 @@ def _parse_args() -> argparse.Namespace:
                    help="Optional: write metrics_report.json to this path.")
     p.add_argument("--dataset", type=Path, default=None,
                    help="Optional: dataset folder. When provided, re-runs "
-                        "evaluate_texture on missed detections to fill in "
+                        "shared measurement helper on missed detections to fill in "
                         "metrics not stored in the report.")
     return p.parse_args()
 
