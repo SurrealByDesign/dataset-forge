@@ -228,6 +228,14 @@ Current public coverage: 10 expectations across TextureAnalyzer and
 CrystallineFacetingAnalyzer. All 10 pass. See [benchmarks/README.md](benchmarks/README.md)
 for the full manifest description.
 
+### Internal measurement cache
+
+The disk-backed measurement cache is internal and opt-in. It is disabled by
+default, stores measurements only, and has no CLI flags.
+
+- `DATASET_FORGE_MEASUREMENT_CACHE_DIR=/path/to/cache` enables the cache.
+- `DATASET_FORGE_DISABLE_MEASUREMENT_CACHE=1` bypasses cache reads and writes.
+
 ---
 
 ## Tests

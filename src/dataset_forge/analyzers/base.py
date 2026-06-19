@@ -11,9 +11,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from dataset_forge.context import DatasetContext
 from dataset_forge.finding import Finding
+
+if TYPE_CHECKING:
+    from dataset_forge.measurements import ImageMeasurements
 
 
 class Analyzer(ABC):
@@ -70,7 +74,12 @@ class Analyzer(ABC):
         return None
 
     @abstractmethod
-    def analyze(self, image_path: Path, context: DatasetContext) -> list[Finding]:
+    def analyze(
+        self,
+        image_path: Path,
+        context: DatasetContext,
+        measurements: ImageMeasurements | None = None,
+    ) -> list[Finding]:
         """Analyze one image and return zero or more calibrated Findings.
 
         Args:

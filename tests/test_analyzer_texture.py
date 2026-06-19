@@ -10,6 +10,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
@@ -24,6 +25,7 @@ from dataset_forge.context import (
     TextureDistributions,
 )
 from dataset_forge.finding import Finding, Severity
+from dataset_forge.measurements import measure_image
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +148,15 @@ class TestTextureAnalyzerSmoothImage(unittest.TestCase):
         self.assertIsInstance(findings, list)
 
 
+    def test_provided_measurements_preserve_behavior(self):
+        ctx = _ctx(mean=30.0, stddev=8.0)
+        measurements = measure_image(self.path)
+        self.assertEqual(
+            self.analyzer.analyze(self.path, ctx),
+            self.analyzer.analyze(self.path, ctx, measurements=measurements),
+        )
+
+
 class TestTextureAnalyzerNoisyImage(unittest.TestCase):
     def setUp(self):
         self.analyzer = TextureAnalyzer()
@@ -206,6 +217,15 @@ class TestTextureAnalyzerNoisyImage(unittest.TestCase):
         self.assertEqual(findings[0].image_path, self.path)
 
 
+    def test_provided_measurements_preserve_finding(self):
+        ctx = _ctx(mean=30.0, stddev=5.0)
+        measurements = measure_image(self.path)
+        self.assertEqual(
+            self.analyzer.analyze(self.path, ctx),
+            self.analyzer.analyze(self.path, ctx, measurements=measurements),
+        )
+
+
 class TestTextureAnalyzerEdgeCases(unittest.TestCase):
     def setUp(self):
         self.analyzer = TextureAnalyzer()
@@ -236,6 +256,22 @@ class TestTextureAnalyzerEdgeCases(unittest.TestCase):
         ctx = _ctx(mean=80.0, stddev=20.0)
         findings = self.analyzer.analyze(p, ctx)
         self.assertEqual(findings, [])
+
+
+    def test_provided_measurements_skip_direct_texture_evaluation(self):
+        p = Path(self.tmp.name) / "noisy.png"
+        _write_noisy_image(p)
+        measurements = measure_image(p)
+        with patch(
+            "dataset_forge.analyzers.texture.evaluate_texture",
+            side_effect=AssertionError("analyzer remeasured image"),
+        ):
+            findings = self.analyzer.analyze(
+                p,
+                _ctx(mean=30.0, stddev=5.0),
+                measurements=measurements,
+            )
+        self.assertGreater(len(findings), 0)
 
 
 class TestZToSeverity(unittest.TestCase):

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import functools
 import hashlib
 import html
 import json
@@ -93,7 +92,6 @@ class TextureReportSummary:
         return asdict(self)
 
 
-@functools.lru_cache(maxsize=None)
 def evaluate_texture(path: Path) -> TextureImageResult:
     """Calculate texture-normalization signals without modifying the image."""
     resolved = path.expanduser().resolve()

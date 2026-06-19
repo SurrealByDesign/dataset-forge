@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from dataset_forge.analysis.metrics import extract_image_metrics
-from dataset_forge.analysis.texture import evaluate_texture
 from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
 from dataset_forge.analyzers.texture import TextureAnalyzer
 from dataset_forge.context import (
@@ -31,6 +30,7 @@ from dataset_forge.context import (
 from dataset_forge.discovery import discover_images
 from dataset_forge.finding import Finding
 from dataset_forge.inspect_gallery import write_inspection_gallery
+from dataset_forge.measurements import ImageMeasurements, measure_image
 from dataset_forge.report import write_inspection_report
 
 
@@ -60,10 +60,10 @@ class InspectResult:
 
 def _build_context(
     image_paths: list[Path],
-) -> tuple[DatasetContext, dict[str, dict]]:
+) -> tuple[DatasetContext, dict[str, dict], dict[Path, ImageMeasurements]]:
     """Measure all images and assemble a DatasetContext.
 
-    Uses evaluate_texture() for microtexture measurements and
+    Uses measure_image() for shared analyzer measurements and
     extract_image_metrics() for resolution/aspect-ratio/hash data.
     Falls back gracefully when individual images cannot be opened.
 
@@ -77,9 +77,13 @@ def _build_context(
     microtextures: list[float] = []
     file_hashes: dict[str, list[Path]] = {}  # hash → paths
     image_scores: dict[str, dict] = {}
+    measurements_by_path: dict[Path, ImageMeasurements] = {}
     error_count = 0
 
     for path in image_paths:
+        measurements = measure_image(path)
+        measurements_by_path[path] = measurements
+
         # Resolution + hash (metrics module handles its own errors)
         try:
             m = extract_image_metrics(path)
@@ -93,7 +97,7 @@ def _build_context(
             continue
 
         # Texture measurement (texture module handles its own errors)
-        tex = evaluate_texture(path)
+        tex = measurements.texture
         if tex.status == "analyzed":
             microtextures.append(tex.microtexture_density_score)
             image_scores[str(path)] = {
@@ -173,7 +177,7 @@ def _build_context(
         duplicate_hashes=all_hashes,
         duplicate_groups=dup_groups,
     )
-    return context, image_scores
+    return context, image_scores, measurements_by_path
 
 
 # ---------------------------------------------------------------------------
@@ -212,14 +216,15 @@ def run_inspect(
     image_paths = discovery.images
 
     # 2. Build context — also returns per-image raw scores at no extra I/O cost
-    context, image_scores = _build_context(image_paths)
+    context, image_scores, measurements_by_path = _build_context(image_paths)
 
     # 3. Analyze — run all registered analyzers
     analyzers = [TextureAnalyzer(), CrystallineFacetingAnalyzer()]
     findings: list[Finding] = []
     for path in image_paths:
+        measurements = measurements_by_path.get(path)
         for analyzer in analyzers:
-            findings.extend(analyzer.analyze(path, context))
+            findings.extend(analyzer.analyze(path, context, measurements=measurements))
 
     # 4. Write reports
     json_path, txt_path = write_inspection_report(

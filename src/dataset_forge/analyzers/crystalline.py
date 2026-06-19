@@ -41,11 +41,15 @@ Findings emitted:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from dataset_forge.analysis.texture import evaluate_texture
 from dataset_forge.analyzers.base import Analyzer
 from dataset_forge.context import DatasetContext
 from dataset_forge.finding import Finding, Severity
+
+if TYPE_CHECKING:
+    from dataset_forge.measurements import ImageMeasurements
 
 # ---------------------------------------------------------------------------
 # Calibration constants
@@ -111,8 +115,17 @@ class CrystallineFacetingAnalyzer(Analyzer):
     def benchmark_version(self) -> str | None:
         return None  # will be set once synthetic benchmark exists
 
-    def analyze(self, image_path: Path, context: DatasetContext) -> list[Finding]:
-        result = evaluate_texture(image_path)
+    def analyze(
+        self,
+        image_path: Path,
+        context: DatasetContext,
+        measurements: ImageMeasurements | None = None,
+    ) -> list[Finding]:
+        result = (
+            measurements.texture
+            if measurements is not None
+            else evaluate_texture(image_path)
+        )
 
         if result.status == "error":
             return [

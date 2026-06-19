@@ -20,7 +20,6 @@ from pathlib import Path
 from typing import Any
 
 from dataset_forge.analysis.metrics import extract_image_metrics
-from dataset_forge.analysis.texture import evaluate_texture
 from dataset_forge.analyzers.base import Analyzer
 from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
 from dataset_forge.analyzers.texture import TextureAnalyzer
@@ -32,6 +31,7 @@ from dataset_forge.context import (
     ResolutionStats,
     TextureDistributions,
 )
+from dataset_forge.measurements import ImageMeasurements, measure_image
 
 BENCHMARK_SCHEMA_VERSION = 1
 
@@ -147,16 +147,22 @@ def load_manifest(path: Path) -> tuple[str, list[BenchmarkCase]]:
 # Context builder
 # ---------------------------------------------------------------------------
 
-def _build_context_for_group(image_paths: list[Path]) -> DatasetContext:
+def _build_context_for_group(
+    image_paths: list[Path],
+) -> tuple[DatasetContext, dict[Path, ImageMeasurements]]:
     """Build a DatasetContext from a list of images (benchmark group)."""
     widths: list[int] = []
     heights: list[int] = []
     aspects: list[float] = []
     microtextures: list[float] = []
     file_hashes: dict[str, list[Path]] = {}
+    measurements_by_path: dict[Path, ImageMeasurements] = {}
     error_count = 0
 
     for path in image_paths:
+        measurements = measure_image(path)
+        measurements_by_path[path] = measurements
+
         try:
             m = extract_image_metrics(path)
             widths.append(m.width)
@@ -166,7 +172,7 @@ def _build_context_for_group(image_paths: list[Path]) -> DatasetContext:
         except Exception:
             error_count += 1
             continue
-        tex = evaluate_texture(path)
+        tex = measurements.texture
         if tex.status == "analyzed":
             microtextures.append(tex.microtexture_density_score)
 
@@ -210,7 +216,7 @@ def _build_context_for_group(image_paths: list[Path]) -> DatasetContext:
         tuple(ps) for ps in file_hashes.values() if len(ps) > 1
     )
 
-    return DatasetContext(
+    context = DatasetContext(
         schema_version=CONTEXT_SCHEMA_VERSION,
         analyzer_versions={
             "texture_analyzer": "v1",
@@ -226,6 +232,7 @@ def _build_context_for_group(image_paths: list[Path]) -> DatasetContext:
         duplicate_hashes=frozenset(file_hashes.keys()),
         duplicate_groups=dup_groups,
     )
+    return context, measurements_by_path
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +257,7 @@ def _run_expectation(
     img_path: Path,
     exp: BenchmarkExpectation,
     context: DatasetContext,
+    measurements: ImageMeasurements | None = None,
     registry: dict[str, Analyzer] | None = None,
 ) -> ExpectationResult:
     if registry is None:
@@ -268,7 +276,7 @@ def _run_expectation(
             actual_confidence=None,
         )
 
-    findings = analyzer.analyze(img_path, context)
+    findings = analyzer.analyze(img_path, context, measurements=measurements)
     matching = [f for f in findings if f.category == exp.category]
     actual_found = len(matching) > 0
     actual_severity = matching[0].severity.name if matching else None
@@ -323,7 +331,7 @@ def run_benchmark(
             group_images.setdefault(case.context_group, []).append(p)
 
     # Build one DatasetContext per group (so z-scores are group-relative)
-    contexts: dict[str, DatasetContext] = {
+    group_data: dict[str, tuple[DatasetContext, dict[Path, ImageMeasurements]]] = {
         g: _build_context_for_group(paths)
         for g, paths in group_images.items()
     }
@@ -349,13 +357,17 @@ def run_benchmark(
                 ))
             continue
 
-        context = contexts.get(case.context_group)
-        if context is None:
-            context = _build_context_for_group([img_path])
+        context_data = group_data.get(case.context_group)
+        if context_data is None:
+            context_data = _build_context_for_group([img_path])
+        context, measurements_by_path = context_data
+        measurements = measurements_by_path.get(img_path)
 
         for exp in case.expectations:
             all_results.append(
-                _run_expectation(case, img_path, exp, context, registry)
+                _run_expectation(
+                    case, img_path, exp, context, measurements, registry
+                )
             )
 
     total = len(all_results)

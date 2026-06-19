@@ -39,6 +39,7 @@ from dataset_forge.context import (
     TextureDistributions,
 )
 from dataset_forge.finding import Finding, Severity
+from dataset_forge.measurements import ImageMeasurements
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +219,28 @@ class TestCrystallineFacetingDetectionRule(unittest.TestCase):
         self.assertEqual(self._run(grain=50.0, smoothness=52.0, micro=38.0), [])
         # Only micro fails (too low)
         self.assertEqual(self._run(grain=50.0, smoothness=45.0, micro=19.9), [])
+
+    def test_provided_measurements_preserve_rule_behavior(self):
+        tex = _mock_texture(grain=50.0, smoothness=45.0, micro=38.0)
+        with patch(self.MODULE, return_value=tex):
+            expected = self.analyzer.analyze(self.path, _ctx())
+        measurements = ImageMeasurements(
+            image_path=self.path.expanduser().resolve(),
+            texture=tex,
+        )
+        with patch(
+            self.MODULE,
+            side_effect=AssertionError("analyzer remeasured image"),
+        ):
+            findings = self.analyzer.analyze(
+                self.path,
+                _ctx(),
+                measurements=measurements,
+            )
+
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings, expected)
+        self.assertEqual(findings[0].category, "artifact.crystalline_faceting")
 
 
 # ---------------------------------------------------------------------------

@@ -23,7 +23,12 @@ class _AlwaysCleanAnalyzer(Analyzer):
     def version(self) -> str:
         return "v1"
 
-    def analyze(self, image_path: Path, context: DatasetContext) -> list[Finding]:
+    def analyze(
+        self,
+        image_path: Path,
+        context: DatasetContext,
+        measurements=None,
+    ) -> list[Finding]:
         return []
 
 
@@ -46,7 +51,12 @@ class _OneFindingAnalyzer(Analyzer):
     def benchmark_version(self) -> str | None:
         return "synthetic_test_v1"
 
-    def analyze(self, image_path: Path, context: DatasetContext) -> list[Finding]:
+    def analyze(
+        self,
+        image_path: Path,
+        context: DatasetContext,
+        measurements=None,
+    ) -> list[Finding]:
         return [
             Finding(
                 image_path=image_path,

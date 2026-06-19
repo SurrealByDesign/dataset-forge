@@ -11,11 +11,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
 
 from dataset_forge.inspect import InspectResult, run_inspect
+from dataset_forge.measurements import measure_image as real_measure_image
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +103,28 @@ class TestRunInspectBasic(unittest.TestCase):
         result = run_inspect(self.dataset, self.output)
         self.assertEqual(result.image_count, 0)
         self.assertEqual(result.total_findings, 0)
+
+
+    def test_texture_measurements_are_computed_once_per_image(self):
+        paths = _write_smooth(self.dataset, n=4)
+        with (
+            patch(
+                "dataset_forge.inspect.measure_image",
+                wraps=real_measure_image,
+            ) as measure_mock,
+            patch(
+                "dataset_forge.analyzers.texture.evaluate_texture",
+                side_effect=AssertionError("TextureAnalyzer remeasured image"),
+            ),
+            patch(
+                "dataset_forge.analyzers.crystalline.evaluate_texture",
+                side_effect=AssertionError("CrystallineAnalyzer remeasured image"),
+            ),
+        ):
+            result = run_inspect(self.dataset, self.output)
+
+        self.assertEqual(result.image_count, len(paths))
+        self.assertEqual(measure_mock.call_count, len(paths))
 
 
 class TestRunInspectCleanDataset(unittest.TestCase):
