@@ -175,6 +175,75 @@ with a proper measurements cache.
 
 ---
 
+## TextureAnalyzer Threshold Calibration -- First-Pass Evidence (Decision-Review Fallback)
+
+Tool: `scripts/texture_threshold_calibration.py`. Dataset: anthropomorph dataset
+(`C:\Users\someo\Desktop\ANTHROPOMORPHS`).
+
+**Label source: `decision_review_fallback`.**
+
+`ground_truth.json` for this dataset exists with a valid schema
+(`dataset-forge/ground-truth/v1`) but `"labels": {}` -- empty. `created_at` and
+`updated_at` are two minutes apart with nothing recorded, consistent with a
+`label_ground_truth.py` session that was started and quit before any image was
+labeled. No independent ground truth exists yet for this dataset.
+
+The calibration run instead used `decision_review.json` via the script's
+documented fallback path. That file is fully populated: 100 reviews (76 AGREE,
+13 DISAGREE, 11 UNSURE; 55 CLEAN, 45 FINDING by current analyzer decision).
+The fallback excludes crystalline-only findings from the texture-specific
+groups, per the script's built-in category filter -- 74 of the 100 reviewed
+images yielded a usable texture-specific sample (ARTIFACT or CLEAN); the
+remainder were excluded as UNCERTAIN/UNSURE or crystalline-only.
+
+**Caveat (carried from the tool's own output):** decision-review-derived labels
+are not independent ground truth -- AGREE/DISAGREE was recorded against the
+analyzer's current threshold (z >= 1.0), so this evidence is weaker than a true
+blind ARTIFACT/CLEAN/UNCERTAIN labeling pass would produce. Treat as first-pass
+signal, not a final calibration.
+
+**Samples measured: 74.**
+
+**Threshold sweep (z-score vs. dataset mean/stddev, absolute floor unchanged):**
+
+| z threshold | TP | FP | FN | TN | precision | recall | F1 | FP rate |
+|---|---|---|---|---|---|---|---|---|
+| 0.5 | 21 | 0 | 9 | 33 | 1.000 | 0.700 | 0.824 | 0.000 |
+| 1.0 (current) | 19 | 0 | 11 | 33 | 1.000 | 0.633 | 0.775 | 0.000 |
+| 1.5 | 8 | 0 | 22 | 33 | 1.000 | 0.267 | 0.421 | 0.000 |
+| 2.0 | 2 | 0 | 28 | 33 | 1.000 | 0.067 | 0.125 | 0.000 |
+| 2.5 | 0 | 0 | 30 | 33 | n/a | 0.000 | n/a | 0.000 |
+| 3.0 | 0 | 0 | 30 | 33 | n/a | 0.000 | n/a | 0.000 |
+
+**Current threshold (z >= 1.0) summary:**
+- TP/FP/FN/TN = 19/0/11/33
+- Measured FP rate: 0.000
+- Configured FP rate: 0.150 -- **appears conservative** (measured rate is well
+  below the hardcoded estimate in `analyzers/texture.py`)
+- Confidence cap: 0.700 -- **appears conservative** (measured precision at this
+  threshold is 1.000, comfortably above the cap)
+
+**Key observation:** precision is 1.000 at every threshold tested in this
+sample -- zero false positives were observed across the full 0.5-3.0 sweep.
+Recall falls off sharply as the threshold rises (0.700 at z=0.5 down to 0.000
+at z>=2.5), meaning the current z >= 1.0 setting trades recall for a wide
+conservative margin against false positives that this sample does not show
+any evidence of needing. This is consistent with -- not contradicting -- the
+existing hardcoded conservative defaults; it does not yet justify changing
+them.
+
+**Status:** First-pass evidence only. No threshold or analyzer changes were
+made or are recommended from this evidence alone. Zero observed false
+positives on a 74-sample, single-dataset, non-independent-label run is not
+sufficient to recalibrate `_Z_MEDIUM`, `_UNCALIBRATED_FP_RATE`, or
+`_UNCALIBRATED_MAX_CONFIDENCE` -- it is a data point indicating the current
+defaults are not obviously wrong in the conservative direction. A genuine
+`label_ground_truth.py` session against this dataset (or a second dataset)
+would be required before treating this as calibration evidence strong enough
+to act on.
+
+---
+
 ## Local Benchmark Private Cases
 
 `benchmarks/local_benchmark_manifest.json` (gitignored) -- 3 private real-sample cases:
