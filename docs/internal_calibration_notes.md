@@ -156,6 +156,93 @@ Key findings:
 
 ---
 
+## Crystalline Fourth-Signal Research -- Patch-Size/Coherence Family (DEFER)
+
+Goal: find a fourth discriminating signal to resolve the Cluster C grain
+45-55 TP/FP interleave (see "Crystalline FP Characterization" above), since
+threshold adjustment alone cannot solve it. Two candidates were probed,
+both targeting the hypothesis that real crystalline faceting forms large,
+spatially coherent polygon-shaped regions, while Cluster C's false positives
+are amplitude-only elevation without that spatial structure.
+
+Population for both probes: 11 TP (reviewer DISAGREE, crystalline-only)
+vs. 15 Cluster-C FP (reviewer AGREE, crystalline-only, threshold-fringe),
+from the anthropomorph decision-review dataset.
+
+**Candidate 1 -- full-resolution patch coherence**
+(`scripts/research/_probe_crystalline_patch_coherence.py`): elevated-amplitude
+mask on the high-frequency map (threshold = per-image relative cutoff: max of
+90th percentile, mean + 1.5 stddev, or a floor), connected-components at full
+pixel resolution, patch-area statistics.
+
+**Candidate 4 -- block-level coherence**
+(`scripts/research/_probe_crystalline_block_coherence.py`): identical
+high-frequency map and identical per-image relative threshold rule, but
+block-pooled to a coarse grid before connected-components, isolating
+resolution as the only changed variable relative to Candidate 1.
+
+**Comparison:**
+
+| Metric | Candidate 1 (full-res) | Candidate 4 (block-res) |
+|---|---|---|
+| Cohen's d (TP - Cluster-C FP) | -0.720 | -0.374 |
+| r vs grain | -0.7076 | -0.5802 |
+| r vs smoothness | -0.1627 | -0.1985 |
+| r vs microtexture | -0.5043 | -0.2703 |
+| Verdict | INCONCLUSIVE | INCONCLUSIVE |
+
+**Mechanism-level diagnosis:** Both candidates score Cluster-C FPs *higher*
+than confirmed TPs (d negative both times) -- the opposite of the hypothesis.
+The two TP images with the strongest grain signal in the sample had the
+*lowest* patch-coherence scores in the entire population at full resolution,
+which explains the strong negative grain correlation: a per-image relative
+amplitude threshold fragments busy/high-grain images into many small
+disconnected components, while moderately-textured images (the Cluster-C FPs,
+which sit at the low end of the already-narrow 45-55 grain band) are more
+likely to have a small number of large smooth background or flat-color
+regions cross the same relative cutoff, inflating their "coherence" score for
+reasons unrelated to faceting.
+
+Coarsening to block resolution (Candidate 4) attenuated but did not eliminate
+this: effect size shrank from -0.720 to -0.374 and grain correlation from
+-0.7076 to -0.5802, but the sign never flipped and grain correlation never
+dropped below the 0.5 redundancy bar. This rules out "full-resolution
+connected-components specifically" as the sole cause -- if it were, coarsening
+should have flipped the sign or driven correlations near zero. Instead the
+result implicates the shared mechanism in both candidates: defining "patch
+coherence" via a per-image relative amplitude threshold inherently entangles
+the measurement with overall texture amplitude (grain, microtexture),
+regardless of the resolution it's computed at.
+
+**Verdict: DEFER the patch-size/connected-component-coherence family as a
+whole**, not just Candidate 1. Two independently-implemented measurements
+sharing the same threshold-then-region-size mechanism both failed in the same
+direction against the same population. Further tuning of threshold
+percentiles or block sizes within this family is not expected to produce a
+qualitatively different result -- the problem is in how the threshold is set
+(relative to each image's own amplitude distribution), not in the grid
+resolution it's applied to.
+
+**Caveat:** n=11 TP / n=15 Cluster-C FP, single dataset, single review pass.
+This is first-pass evidence only, consistent with the caveat convention used
+throughout this document -- not a final calibration result, and not strong
+enough on its own to permanently rule out a properly-designed spatial-shape
+signal, only this specific amplitude-threshold-based mechanism.
+
+**Recommendation: Candidate 2, structure-tensor orientation coherence, is the
+next research target.** Structure-tensor coherence is a ratio of eigenvalues
+normalized against local gradient energy, making it invariant to overall
+texture amplitude by construction -- it directly avoids the mechanism that
+caused both Candidate 1 and Candidate 4 to fail. The known risk to test
+explicitly before trusting that result: hand-drawn directional
+hatching/brushwork (a genuine stylistic technique present in this dataset) is
+itself locally coherent and could false-positive against intentional artistic
+technique, the same class of confound already flagged when Candidate 2 was
+first proposed. No analyzer code, thresholds, or calibration status were
+changed by this research.
+
+---
+
 ## Performance: Phase 1 -- evaluate_texture() caching
 
 `@functools.lru_cache(maxsize=None)` added to `evaluate_texture()`.
