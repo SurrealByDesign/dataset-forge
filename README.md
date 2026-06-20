@@ -100,7 +100,7 @@ edge halos.
 ## Install
 
 ```
-git clone https://github.com/DigitalBlasphemy/dataset-forge.git
+git clone https://github.com/surrealbydesign/dataset-forge.git
 cd dataset-forge
 uv sync
 ```
