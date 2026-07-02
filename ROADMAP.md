@@ -30,14 +30,16 @@ authoritative implementation state.
 
 **v0.1 alpha does not include:** cleanup, AI, UI, captions, plugins, exporters.
 
-### v0.1 alpha -- Deferred analyzer research
+### v0.1 alpha -- Analyzer Research Status
 
-Two artifact families were investigated and deferred after research probes
-found no reliable pixel-neighborhood signal for the primary use case:
+The current alpha includes four first-pass analyzers. Some shipped analyzers
+still need real-world calibration; that calibration work is post-alpha.
 
 | Artifact family | Status | Reason |
 |---|---|---|
+| Texture (`artifact.texture` family; runtime category `texture.high_microtexture`) | first-pass implemented | dataset-relative microtexture z-score; real-world calibration still pending |
 | Speck / glitter (`artifact.high_frequency_isolated`) | first-pass implemented | residual connected-component signal validated on synthetic bright/dark speck fixtures; real-world calibration still pending |
+| Crystalline faceting (`artifact.crystalline_faceting`) | first-pass implemented | pencil grain + smoothness + microtexture rule; crystalline 45-55 grain band still needs better discrimination |
 | Oversharpening / halo (`artifact.oversharpening_halo`) | first-pass implemented | USM-residual signal validated on synthetic fixtures; real-world calibration still pending |
 | Periodic frequency / recursive detail (`artifact.recursive_detail`) | not yet investigated | no probe conducted; no partial signal |
 
@@ -58,8 +60,8 @@ Research reports: `benchmarks/results/probe_speck_glitter/` and
 
 ## v0.2+: Dataset Forge -- Post-Alpha Work
 
-The following items were deferred from v0.1 alpha and belong in subsequent releases.
-No timeline is set for any of these.
+The following items belong in subsequent releases. No timeline is set for any of
+these.
 
 ### Analyzer improvement (v1.x)
 
@@ -83,11 +85,11 @@ Cleanup is per artifact family  --  not a single generic filter:
 
 | Finding category | Cleanup strategy |
 |---|---|
-| `artifact.microtexture` | Edge-preserving denoise |
-| `artifact.speck` | Isolated bright-pixel suppression with local inpainting |
+| `artifact.texture` / `texture.high_microtexture` | Edge-preserving denoise |
+| `artifact.high_frequency_isolated` | Isolated bright/dark component suppression with local inpainting |
 | `artifact.crystalline_faceting` | Mid-frequency band suppression |
 | `artifact.recursive_detail` | Frequency-domain attenuation |
-| `artifact.oversharpening` | Unsharp-mask reversal; edge deconvolution |
+| `artifact.oversharpening_halo` | Unsharp-mask reversal; edge deconvolution |
 
 Non-destructive pipeline (absolute):
 - Originals are never modified

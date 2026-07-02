@@ -14,7 +14,8 @@ Committed fixture images are already present in `benchmarks/synthetic_defects/`.
 uv run python scripts/run_benchmarks.py
 ```
 
-Expected output: all expectations PASS, exit 0.
+Expected output: all committed fixture expectations PASS, exit 0. Optional
+generated/private cases may be skipped when their local images are absent.
 
 ---
 
@@ -22,14 +23,18 @@ Expected output: all expectations PASS, exit 0.
 
 | File | Tracked in git | Purpose |
 |---|---|---|
-| `benchmark_manifest.json` | Yes | Public suite  --  synthetic-committed cases only |
+| `benchmark_manifest.json` | Yes | Public suite  --  committed synthetic fixtures plus optional generated/private cases |
 | `local_benchmark_manifest.json` | **No** | Private suite  --  real dataset samples |
 
 ### Public manifest (`benchmark_manifest.json`)
 
-All cases in the public manifest reference images that are committed to git
-(`provenance: "synthetic-committed"`) or are marked `private: true` (skipped
-automatically if missing). No generation step is needed to run the public suite.
+The public manifest contains two kinds of cases:
+
+- `synthetic-committed`: images tracked in git and always available from a fresh clone.
+- `synthetic-generated` / `private: true`: optional local cases that are skipped
+  automatically if the referenced images are absent.
+
+No generation step is needed for the committed public fixture expectations.
 
 Run it:
 
@@ -64,8 +69,18 @@ and are present immediately after cloning:
 | `08_crystalline_negative_smooth.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | No finding (smooth guard) |
 | `09_texture_clean.png` | `generate_texture_fixtures.py` | TextureAnalyzer | No finding (below floor) |
 | `10_texture_positive.png` | `generate_texture_fixtures.py` | TextureAnalyzer | Fires MEDIUM |
+| `11_oversharpen_clean_edge.png` | committed fixture | OversharpeningHaloAnalyzer | No finding (clean hard-edge guard) |
+| `12_oversharpen_halo_positive.png` | committed fixture | OversharpeningHaloAnalyzer | Fires MEDIUM |
+| `13_oversharpen_texture_guard.png` | committed fixture | OversharpeningHaloAnalyzer | No finding (distributed texture guard) |
+| `14_hfi_clean_negative.png` | committed fixture | HighFrequencyIsolatedArtifactAnalyzer | No finding (clean smooth guard) |
+| `15_hfi_bright_speck_positive.png` | committed fixture | HighFrequencyIsolatedArtifactAnalyzer | Fires MEDIUM |
+| `16_hfi_dark_speck_positive.png` | committed fixture | HighFrequencyIsolatedArtifactAnalyzer | Fires MEDIUM |
+| `17_hfi_pencil_grain_guard.png` | committed fixture | HighFrequencyIsolatedArtifactAnalyzer | No finding (paper/pencil grain guard) |
+| `18_hfi_edge_halo_guard.png` | committed fixture | HighFrequencyIsolatedArtifactAnalyzer | No finding (edge-adjacent halo guard) |
 
-All generators are deterministic. Re-running them reproduces identical pixel values.
+The crystalline and texture generators are deterministic. Re-running them
+reproduces identical pixel values for fixtures 06--10. Fixtures 11--18 are
+committed benchmark assets; add a deterministic generator before changing them.
 
 ```
 uv run python scripts/generate_crystalline_fixtures.py

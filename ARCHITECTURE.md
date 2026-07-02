@@ -34,7 +34,8 @@ class DatasetContext:
     schema_version: int
     analyzer_versions: dict[str, str]
     image_paths: list[Path]
-    total_images: int
+    image_count: int
+    error_count: int
     resolution_stats: ResolutionStats       # min/max/mean/stddev w/h
     aspect_ratio_stats: AspectRatioStats    # distribution
     texture_distributions: TextureDists     # microtexture mean/stddev/p10/p90
@@ -56,8 +57,8 @@ Everything downstream consumes Findings.
 @dataclass
 class Finding:
     image_path: Path
-    analyzer: str                   # e.g. "glitter_analyzer/v1"
-    category: str                   # e.g. "artifact.glitter"
+    analyzer: str                   # e.g. "crystalline_faceting_analyzer/v1"
+    category: str                   # e.g. "artifact.crystalline_faceting"
     severity: Severity              # NONE / LOW / MEDIUM / HIGH / CRITICAL
     confidence: float               # 0.0-1.0
     false_positive_rate: float      # estimated from benchmark
@@ -78,12 +79,11 @@ Each analyzer is an independent module:
 
 ```
 src/dataset_forge/analyzers/
-    base.py           --  abstract Analyzer with analyze() contract
-    glitter.py
-    frequency.py      --  periodic noise / crystalline microtexture
-    sharpness.py      --  oversharpening / edge halos
-    texture.py        --  microtexture density
-    duplicates.py     --  exact and near-duplicate detection
+    base.py                    -- abstract Analyzer with analyze() contract
+    texture.py                 -- dataset-relative microtexture
+    crystalline.py             -- crystalline faceting
+    oversharpening.py          -- oversharpening / edge halos
+    high_frequency_isolated.py -- sparse isolated high-frequency artifacts
 ```
 
 **Analyzer contract:**
@@ -95,8 +95,14 @@ class Analyzer(ABC):
         self,
         image_path: Path,
         context: DatasetContext,
+        measurements: ImageMeasurements | None = None,
     ) -> list[Finding]: ...
 ```
+
+`measurements` is optional so analyzers can consume shared per-image measurements
+computed by the inspect runner. Today this is used for texture measurements
+shared by TextureAnalyzer and CrystallineFacetingAnalyzer. Some first-pass
+analyzers still perform their own read-only measurements internally.
 
 Analyzers must:
 - operate independently
@@ -120,7 +126,7 @@ The report layer consumes Findings and produces human-readable output.
 v1 outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
-- `inspection_report.html`  --  browsable per-image breakdown (optional in v1)
+- `inspection_gallery.png`  --  optional visual review contact sheet
 
 Reports must not re-run analysis or make decisions. They present findings.
 
@@ -132,14 +138,10 @@ Location: `benchmarks/`
 
 ```
 benchmarks/
-    synthetic/
-        glitter/
-        periodic_noise/
-        oversharpening/
-        speckling/
-        halo/
-    real/            (future  --  Flux, SDXL, Ideogram, Midjourney samples)
-    results/         (versioned benchmark run outputs)
+    benchmark_manifest.json
+    synthetic_defects/         committed synthetic PNG fixtures
+    real_samples/              local/private calibration images, gitignored
+    results/                   benchmark run outputs, gitignored
 ```
 
 Every analyzer ships with a benchmark that validates its thresholds.
@@ -171,10 +173,10 @@ v1 vertical slice.
 
 | Bible concept | Legacy equivalent | Notes |
 |---|---|---|
-| DatasetContext | (none yet) | Must be created |
-| Finding | `ImageEvidence` / `evidence.py` | Different schema  --  needs clean Finding type |
-| Analyzer | `analysis/texture.py`, `analysis/metrics.py` | Wrap or port to Analyzer contract |
-| Report | `analysis/health.py`, `reporting.py` | Too broad; v1 report is simpler |
+| DatasetContext | implemented in `context.py` | Current inspect statistical reference frame |
+| Finding | implemented in `finding.py` | Stable report/output contract |
+| Analyzer | implemented in `analyzers/` | Texture legacy measurements are wrapped by v1 analyzers |
+| Report | implemented in `report.py` | JSON and TXT inspect report writers |
 
 ---
 
@@ -199,11 +201,11 @@ evidence schema, benchmark, and (eventually) cleanup strategy.
 
 | Family | Description | Primary Signal | Status |
 |---|---|---|---|
-| **Microtexture** | Elevated high-frequency noise across image surfaces; GPT rendering fingerprint | `microtexture_density`, z-score vs dataset | Implemented (`analyzers/texture.py`) |
-| **Speck / Glitter** | Isolated near-white specular points; appears as scattered bright dots | `highlight_speck` (pixels >=242, locally isolated) | Partially captured; no independent threshold yet |
-| **Crystalline Faceting** | Angular micro-polygon shading; surfaces appear carved from facets; distributed mid-frequency texture | `pencil_grain`, `watercolor_smoothness`, `microtexture_density` | First-pass implemented (`analyzers/crystalline.py`); uncalibrated; benchmark pending |
+| **Texture / Microtexture** | Elevated high-frequency noise across image surfaces; GPT rendering fingerprint | `microtexture_density`, z-score vs dataset | First-pass implemented (`analyzers/texture.py`); uncalibrated |
+| **High-Frequency Isolated Artifacts** | Sparse isolated bright/dark high-frequency specks | local residual connected components | First-pass implemented (`analyzers/high_frequency_isolated.py`); uncalibrated |
+| **Crystalline Faceting** | Angular micro-polygon shading; surfaces appear carved from facets; distributed mid-frequency texture | `pencil_grain`, `watercolor_smoothness`, `microtexture_density` | First-pass implemented (`analyzers/crystalline.py`); uncalibrated |
 | **Recursive Detail Overload** | Compulsive synthetic detail in every region; no restful areas; entire surface treated as foreground | Frequency distribution, detail density | Not yet implemented |
-| **Oversharpening / Halos** | Edge ringing, halo artifacts around transitions, over-accentuated outlines | Edge sharpness, frequency analysis | Planned (`analyzers/sharpness.py`) |
+| **Oversharpening / Halos** | Edge ringing, halo artifacts around transitions, over-accentuated outlines | edge-localized USM residuals | First-pass implemented (`analyzers/oversharpening.py`); uncalibrated |
 
 ---
 
@@ -222,13 +224,14 @@ Artifact Family
                     └─► recommendation  family-specific action
 ```
 
-**Category naming convention:** `artifact.<family>`  --  e.g.:
+**Current finding categories:**
 
-- `artifact.microtexture`
-- `artifact.speck`
+- `texture.high_microtexture` for the texture artifact family (`artifact.texture`
+  in planning language; runtime name preserved for compatibility)
 - `artifact.crystalline_faceting`
-- `artifact.recursive_detail`
-- `artifact.oversharpening`
+- `artifact.oversharpening_halo`
+- `artifact.high_frequency_isolated`
+- `artifact.recursive_detail` (future)
 
 Analyzers for different families may run in the same pipeline pass and emit
 Findings independently. No analyzer should attempt to detect more than one
@@ -245,15 +248,16 @@ synthetic benchmarks. They are never shared between families.
 
 | Severity | Meaning | Action implied |
 |---|---|---|
-| `LOW` | Weak signal; likely within normal variation | Note only; no cleanup recommended |
-| `MEDIUM` | Measurable artifact; above dataset baseline | Candidate for cleanup; human review required |
-| `HIGH` | Strong artifact; clear outlier in dataset context | Prioritise for cleanup; high confidence |
-| `CRITICAL` | Severe contamination; dominant visual artifact | Near-certain cleanup candidate; review before including in dataset at all |
+| `LOW` | Weak signal; likely within normal variation | Note only; human review if useful |
+| `MEDIUM` | Measurable artifact; above dataset baseline | Candidate for human review |
+| `HIGH` | Strong artifact; clear outlier in dataset context | Prioritize for review |
+| `CRITICAL` | Severe contamination; dominant visual artifact | Review before including in dataset |
 
 `NONE` is not emitted as a finding. An image with no issues produces no Findings.
 
 **Severity is per-family, not per-image.** An image can simultaneously hold a
-`HIGH artifact.crystalline_faceting` finding and a `LOW artifact.speck` finding.
+`HIGH artifact.crystalline_faceting` finding and a
+`LOW artifact.high_frequency_isolated` finding.
 Neither severity rolls up to a combined image score. The report presents each
 Finding independently; the human reviewer decides what action to take for each.
 
@@ -269,9 +273,9 @@ A single image may carry zero, one, or many Findings from different analyzers:
 
 ```
 image: onionwizard.jpg
-  Finding 1:  MEDIUM  artifact.microtexture        confidence=0.65  (calibrated)
+  Finding 1:  MEDIUM  texture.high_microtexture    confidence=0.65  (uncalibrated)
   Finding 2:  HIGH    artifact.crystalline_faceting confidence=0.45  (uncalibrated)
-  Finding 3:  LOW     artifact.speck               confidence=0.30  (uncalibrated)
+  Finding 3:  LOW     artifact.high_frequency_isolated confidence=0.30  (uncalibrated)
 ```
 
 Rules that must hold:
@@ -280,9 +284,10 @@ Rules that must hold:
 - No analyzer emits more than one Finding per image per category.
 - Findings are independent. One Finding does not suppress or modify another.
 - The report layer presents all Findings for an image without merging them.
-- Cleanup routing uses each Finding independently: a `HIGH crystalline_faceting`
-  finding triggers mid-frequency suppression; a co-occurring `MEDIUM microtexture`
-  finding triggers edge-preserving denoise. These are separate passes, not combined.
+- Future cleanup routing must use each Finding independently. A
+  `HIGH artifact.crystalline_faceting` finding and a co-occurring
+  `MEDIUM texture.high_microtexture` finding would remain separate artifact
+  families, not a merged generic texture decision.
 
 The report JSON preserves all Findings in a flat list. Consumers that need
 per-image grouping build the index themselves (`findings_index` in the review
@@ -308,7 +313,7 @@ must always include the following keys:
 Family-specific evidence examples:
 
 ```python
-# artifact.microtexture
+# texture.high_microtexture
 evidence = {
     "microtexture_density": 58.2,
     "dataset_mean": 38.6,
@@ -360,14 +365,15 @@ characteristics. The correspondence is:
 
 | Artifact Family | Candidate Cleanup Strategy |
 |---|---|
-| Microtexture | Edge-preserving denoise (detail-aware, not Gaussian) |
-| Speck / Glitter | Isolated bright-pixel suppression with local inpainting |
+| Texture / Microtexture | Edge-preserving denoise (detail-aware, not Gaussian) |
+| High-Frequency Isolated Artifacts | Isolated bright/dark component suppression with local inpainting |
 | Crystalline Faceting | Mid-frequency band suppression; texture field smoothing |
 | Recursive Detail Overload | Frequency-domain attenuation; semantic detail reduction (AI phase) |
 | Oversharpening / Halos | Unsharp-mask reversal; edge deconvolution |
 
 Cleanup families inherit their scope from the corresponding Finding. An image
-with a `artifact.speck` Finding receives speck cleanup, not microtexture cleanup.
+with a future `artifact.high_frequency_isolated` cleanup candidate would receive
+isolated-component cleanup, not microtexture cleanup.
 
 **Cleanup routing flow (v2 target):**
 
@@ -457,7 +463,7 @@ composable with AND logic by default:
 | Dimension | Filter examples | Notes |
 |---|---|---|
 | Severity | `>= MEDIUM`, `== HIGH`, `!= LOW` | Compared against the highest severity across all findings for the image |
-| Category | `artifact.crystalline_faceting`, `texture.*` | Glob-style or exact match; multiple categories are OR'd within this dimension |
+| Category | `artifact.crystalline_faceting`, `artifact.high_frequency_isolated`, `texture.*` | Glob-style or exact match; multiple categories are OR'd within this dimension |
 | Confidence | `>= 0.50` | Compared against the highest confidence finding matching the category filter |
 | Finding count | `>= 2`, `== 0` | Number of distinct findings on an image (0 = clean images only) |
 | Analyzer | `texture_analyzer/v1` | Filter by which analyzer emitted the finding |

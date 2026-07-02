@@ -31,10 +31,10 @@ Building dataset context...
   Duplicates:      0 exact  2 near-duplicate pairs flagged
 
 Running analyzers...
-  [glitter]      100/100  12 findings
-  [frequency]    100/100   7 findings
-  [sharpness]    100/100   4 findings
-  [texture]      100/100   0 findings  (all within dataset baseline)
+  [texture]                    100/100   8 findings
+  [crystalline_faceting]        100/100   6 findings
+  [oversharpening_halo]         100/100   3 findings
+  [high_frequency_isolated]     100/100   6 findings
 
 Summary
 -------
@@ -75,19 +75,21 @@ Report written:
   "findings": [
     {
       "image_path": "image_023.png",
-      "analyzer": "glitter_analyzer/v1",
-      "category": "artifact.glitter",
-      "severity": "HIGH",
-      "confidence": 0.91,
-      "false_positive_rate": 0.04,
-      "benchmark_version": "synthetic_glitter_v1",
+      "analyzer": "high_frequency_isolated_artifact_analyzer/v1",
+      "category": "artifact.high_frequency_isolated",
+      "severity": "MEDIUM",
+      "confidence": 0.42,
+      "false_positive_rate": 0.40,
+      "benchmark_version": "uncalibrated",
       "evidence": {
-        "glitter_pixel_ratio": 0.034,
-        "peak_brightness_delta": 87,
-        "spatial_frequency_score": 0.71
+        "isolated_component_count": 22,
+        "component_density_per_megapixel": 335.69,
+        "median_component_residual": 81.1,
+        "edge_adjacent_component_ratio": 0.14,
+        "calibrated": false
       },
-      "explanation": "3.4% of pixels show isolated high-brightness speckle consistent with GPT glitter artifacts. Spatial frequency analysis confirms non-organic distribution.",
-      "recommendation": "Candidate for speck removal. Estimated intervention cost: low."
+      "explanation": "Small isolated high-frequency residual components were detected above the local background.",
+      "recommendation": "Candidate for human review. Leave the image alone if these marks are intentional highlights or decorative details."
     }
   ],
   "summary": {
@@ -114,15 +116,16 @@ FINDINGS BY IMAGE
 -----------------
 
 image_023.png
-  [HIGH] artifact.glitter  --  confidence 0.91 (FP rate ~4%)
-  Benchmark: synthetic_glitter_v1
-  Evidence: glitter_pixel_ratio=0.034, peak_brightness_delta=87
-  Why: 3.4% of pixels show isolated high-brightness speckle consistent
-       with GPT glitter artifacts.
-  Action: Candidate for speck removal. Estimated cost: low.
+  [MEDIUM] artifact.high_frequency_isolated  --  confidence 0.42 (FP rate ~40%)
+  Benchmark: uncalibrated
+  Evidence: isolated_component_count=22, component_density_per_megapixel=335.69
+  Why: Small isolated high-frequency residual components were detected above
+       the local background.
+  Action: Candidate for human review. Leave the image alone if these marks are
+          intentional highlights or decorative details.
 
 image_041.png
-  [MEDIUM] artifact.periodic_noise  --  confidence 0.77 (FP rate ~8%)
+  [MEDIUM] artifact.oversharpening_halo  --  confidence 0.45 (FP rate ~35%)
   ...
 
 CLEAN IMAGES (no findings)
@@ -145,7 +148,8 @@ Recommendation: Review findings before making any dataset changes.
 ## Design Notes
 
 - The "clean" images section is not a fallback  --  it is a primary result.
-- Every finding includes the benchmark that calibrated its threshold.
+- Every finding includes its benchmark status. `uncalibrated` means synthetic
+  fixtures may validate the rule shape, but real-world calibration is pending.
 - Confidence and false-positive rate are always shown together.
 - The report never says "fix everything." It explains each finding.
 - A report with 100 clean images and 0 findings is a successful run.

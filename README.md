@@ -10,7 +10,8 @@ understand what is wrong with their data -- and what should be left alone --
 before doing anything to it.
 
 **v0.1 alpha is analysis only.** It reads your dataset. It does not touch your images.
-Cleanup, UI, plugins, and additional analyzers are not part of this release.
+Cleanup, UI, plugins, and analyzer families beyond the listed first-pass set are
+not part of this release.
 
 ---
 
@@ -251,7 +252,7 @@ default, stores measurements only, and has no CLI flags.
 uv run pytest tests/
 ```
 
-771 tests passing, 1 skipped. Tests cover the full v1 pipeline: Finding, DatasetContext,
+776 tests passing, 1 skipped. Tests cover the full v1 pipeline: Finding, DatasetContext,
 Analyzer contracts, report writers, CLI, inspect runner, gallery, benchmark
 framework, committed fixtures, and public CLI surface.
 

@@ -29,7 +29,7 @@ Not supported in v0.1 alpha (planned for later releases):
 
 ## Test suite
 
-**771 tests passing, 1 skipped.**
+**776 tests passing, 1 skipped.**
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
 inspect runner, gallery, benchmark framework, committed fixtures, and public
@@ -58,6 +58,13 @@ uv run pytest tests/
 | `HighFrequencyIsolatedArtifactAnalyzer` | `src/dataset_forge/analyzers/high_frequency_isolated.py` | First-pass; uncalibrated |
 | Benchmark framework | `src/dataset_forge/benchmark.py` | Done |
 | Benchmark manifest | `benchmarks/benchmark_manifest.json` | 18 expectations; all pass |
+
+Current finding categories:
+
+- `texture.high_microtexture` for the texture artifact family (`artifact.texture` in planning language)
+- `artifact.crystalline_faceting`
+- `artifact.oversharpening_halo`
+- `artifact.high_frequency_isolated`
 
 ---
 
