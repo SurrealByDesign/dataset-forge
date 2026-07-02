@@ -17,12 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from dataset_forge.analysis.metrics import extract_image_metrics
-from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
-from dataset_forge.analyzers.high_frequency_isolated import (
-    HighFrequencyIsolatedArtifactAnalyzer,
-)
-from dataset_forge.analyzers.oversharpening import OversharpeningHaloAnalyzer
-from dataset_forge.analyzers.texture import TextureAnalyzer
+from dataset_forge.analyzers.registry import analyzer_versions, create_analyzers
 from dataset_forge.context import (
     CONTEXT_SCHEMA_VERSION,
     AspectRatioStats,
@@ -167,12 +162,7 @@ def _build_context(
 
     context = DatasetContext(
         schema_version=CONTEXT_SCHEMA_VERSION,
-        analyzer_versions={
-            "texture_analyzer": "v1",
-            "crystalline_faceting_analyzer": "v1",
-            "oversharpening_halo_analyzer": "v1",
-            "high_frequency_isolated_artifact_analyzer": "v1",
-        },
+        analyzer_versions=analyzer_versions(),
         image_paths=tuple(image_paths),
         image_count=len(image_paths),
         error_count=error_count,
@@ -225,12 +215,7 @@ def run_inspect(
     context, image_scores, measurements_by_path = _build_context(image_paths)
 
     # 3. Analyze — run all registered analyzers
-    analyzers = [
-        TextureAnalyzer(),
-        CrystallineFacetingAnalyzer(),
-        OversharpeningHaloAnalyzer(),
-        HighFrequencyIsolatedArtifactAnalyzer(),
-    ]
+    analyzers = create_analyzers()
     findings: list[Finding] = []
     for path in image_paths:
         measurements = measurements_by_path.get(path)

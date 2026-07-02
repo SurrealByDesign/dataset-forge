@@ -111,6 +111,25 @@ class TestRunInspectBasic(unittest.TestCase):
             "v1",
         )
 
+    def test_inspect_uses_analyzer_registry(self):
+        class RecordingAnalyzer:
+            name = "recording_analyzer"
+            version = "v1"
+
+            def analyze(self, image_path, context, measurements=None):
+                del image_path, context, measurements
+                return []
+
+        _write_smooth(self.dataset, n=1)
+        with patch(
+            "dataset_forge.inspect.create_analyzers",
+            return_value=[RecordingAnalyzer()],
+        ) as create_mock:
+            result = run_inspect(self.dataset, self.output)
+
+        self.assertEqual(result.total_findings, 0)
+        create_mock.assert_called_once_with()
+
     def test_invalid_path_raises(self):
         with self.assertRaises(ValueError):
             run_inspect(Path("/nonexistent/path"), self.output)

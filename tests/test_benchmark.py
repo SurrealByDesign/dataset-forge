@@ -29,6 +29,7 @@ from dataset_forge.benchmark import (
     write_json_results,
     write_txt_results,
 )
+from dataset_forge.analyzers.registry import create_analyzer_registry
 from dataset_forge.context import (
     CONTEXT_SCHEMA_VERSION,
     AspectRatioStats,
@@ -608,10 +609,10 @@ class TestRunBenchmark(unittest.TestCase):
 
 
 class TestBenchmarkAnalyzerRegistry(unittest.TestCase):
-    def test_high_frequency_isolated_analyzer_registered(self):
-        self.assertIn(
-            "high_frequency_isolated_artifact_analyzer/v1",
-            _ANALYZER_REGISTRY,
+    def test_benchmark_registry_comes_from_analyzer_registry(self):
+        self.assertEqual(
+            tuple(_ANALYZER_REGISTRY),
+            tuple(create_analyzer_registry()),
         )
 
 

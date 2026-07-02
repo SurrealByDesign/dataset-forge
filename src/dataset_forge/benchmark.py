@@ -21,12 +21,10 @@ from typing import Any
 
 from dataset_forge.analysis.metrics import extract_image_metrics
 from dataset_forge.analyzers.base import Analyzer
-from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
-from dataset_forge.analyzers.high_frequency_isolated import (
-    HighFrequencyIsolatedArtifactAnalyzer,
+from dataset_forge.analyzers.registry import (
+    analyzer_versions,
+    create_analyzer_registry,
 )
-from dataset_forge.analyzers.oversharpening import OversharpeningHaloAnalyzer
-from dataset_forge.analyzers.texture import TextureAnalyzer
 from dataset_forge.context import (
     CONTEXT_SCHEMA_VERSION,
     AspectRatioStats,
@@ -40,14 +38,7 @@ from dataset_forge.measurements import ImageMeasurements, measure_image
 BENCHMARK_SCHEMA_VERSION = 1
 
 # Registry: manifest analyzer_id -> Analyzer instance
-_ANALYZER_REGISTRY: dict[str, Analyzer] = {
-    "texture_analyzer/v1": TextureAnalyzer(),
-    "crystalline_faceting_analyzer/v1": CrystallineFacetingAnalyzer(),
-    "oversharpening_halo_analyzer/v1": OversharpeningHaloAnalyzer(),
-    "high_frequency_isolated_artifact_analyzer/v1": (
-        HighFrequencyIsolatedArtifactAnalyzer()
-    ),
-}
+_ANALYZER_REGISTRY: dict[str, Analyzer] = create_analyzer_registry()
 
 
 # ---------------------------------------------------------------------------
@@ -226,12 +217,7 @@ def _build_context_for_group(
 
     context = DatasetContext(
         schema_version=CONTEXT_SCHEMA_VERSION,
-        analyzer_versions={
-            "texture_analyzer": "v1",
-            "crystalline_faceting_analyzer": "v1",
-            "oversharpening_halo_analyzer": "v1",
-            "high_frequency_isolated_artifact_analyzer": "v1",
-        },
+        analyzer_versions=analyzer_versions(),
         image_paths=tuple(image_paths),
         image_count=len(image_paths),
         error_count=error_count,
