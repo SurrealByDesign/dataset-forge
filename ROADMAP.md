@@ -41,7 +41,8 @@ still need real-world calibration; that calibration work is post-alpha.
 | Speck / glitter (`artifact.high_frequency_isolated`) | first-pass implemented | residual connected-component signal validated on synthetic bright/dark speck fixtures; real-world calibration still pending |
 | Crystalline faceting (`artifact.crystalline_faceting`) | first-pass implemented | pencil grain + smoothness + microtexture rule; crystalline 45-55 grain band still needs better discrimination |
 | Oversharpening / halo (`artifact.oversharpening_halo`) | first-pass implemented | USM-residual signal validated on synthetic fixtures; real-world calibration still pending |
-| Periodic frequency / recursive detail (`artifact.recursive_detail`) | not yet investigated | no probe conducted; no partial signal |
+| Periodic frequency noise | researched; not approved for implementation | FFT symmetric peaks plus autocorrelation failed to separate positives from intentional repeated patterns and crystalline guard fixtures; postponed until a better discriminator exists |
+| Recursive detail (`artifact.recursive_detail`) | not yet investigated | no probe conducted; no partial signal |
 
 Research reports: `benchmarks/results/probe_speck_glitter/` and
 `benchmarks/results/probe_oversharpening/`.
@@ -69,6 +70,8 @@ these.
   grain 45-55 TP/FP interleaving (spatial coherence, directional frequency
   energy, or micro-edge profile).
 - TextureAnalyzer calibration against labeled ground truth.
+- Periodic frequency noise: postponed until a better discriminator separates
+  synthetic periodic contamination from intentional repeated patterns.
 - Research probe for `artifact.recursive_detail` (no signal investigation yet).
 - Oversharpening/halo calibration against labeled real-world examples; current
   USM-residual analyzer is synthetic-fixture-backed only.
