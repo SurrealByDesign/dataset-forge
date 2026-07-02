@@ -12,28 +12,16 @@ Runner:  scripts/run_benchmarks.py
 from __future__ import annotations
 
 import json
-import math
-import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from dataset_forge.analysis.metrics import extract_image_metrics
 from dataset_forge.analyzers.base import Analyzer
-from dataset_forge.analyzers.registry import (
-    analyzer_versions,
-    create_analyzer_registry,
-)
-from dataset_forge.context import (
-    CONTEXT_SCHEMA_VERSION,
-    AspectRatioStats,
-    DatasetContext,
-    FrequencyDistributions,
-    ResolutionStats,
-    TextureDistributions,
-)
-from dataset_forge.measurements import ImageMeasurements, measure_image
+from dataset_forge.analyzers.registry import create_analyzer_registry
+from dataset_forge.context import DatasetContext
+from dataset_forge.context_builder import build_dataset_context
+from dataset_forge.measurements import ImageMeasurements
 
 BENCHMARK_SCHEMA_VERSION = 1
 
@@ -150,85 +138,8 @@ def _build_context_for_group(
     image_paths: list[Path],
 ) -> tuple[DatasetContext, dict[Path, ImageMeasurements]]:
     """Build a DatasetContext from a list of images (benchmark group)."""
-    widths: list[int] = []
-    heights: list[int] = []
-    aspects: list[float] = []
-    microtextures: list[float] = []
-    file_hashes: dict[str, list[Path]] = {}
-    measurements_by_path: dict[Path, ImageMeasurements] = {}
-    error_count = 0
-
-    for path in image_paths:
-        measurements = measure_image(path)
-        measurements_by_path[path] = measurements
-
-        try:
-            m = extract_image_metrics(path)
-            widths.append(m.width)
-            heights.append(m.height)
-            aspects.append(m.aspect_ratio)
-            file_hashes.setdefault(m.file_hash, []).append(path)
-        except Exception:
-            error_count += 1
-            continue
-        tex = measurements.texture
-        if tex.status == "analyzed":
-            microtextures.append(tex.microtexture_density_score)
-
-    if widths:
-        res = ResolutionStats(
-            mean_w=statistics.mean(widths),
-            mean_h=statistics.mean(heights),
-            stddev_w=statistics.pstdev(widths),
-            stddev_h=statistics.pstdev(heights),
-            min_w=min(widths),
-            min_h=min(heights),
-            max_w=max(widths),
-            max_h=max(heights),
-            sample_count=len(widths),
-        )
-        ar = AspectRatioStats(
-            mean=statistics.mean(aspects),
-            stddev=statistics.pstdev(aspects),
-            min=min(aspects),
-            max=max(aspects),
-            sample_count=len(aspects),
-        )
-    else:
-        res = ResolutionStats.empty()
-        ar = AspectRatioStats.empty()
-
-    if microtextures:
-        n = len(microtextures)
-        sorted_mt = sorted(microtextures)
-        tex_dist = TextureDistributions(
-            mean=statistics.mean(microtextures),
-            stddev=statistics.pstdev(microtextures),
-            p10=sorted_mt[max(0, int(math.floor(n * 0.10)))],
-            p90=sorted_mt[min(n - 1, int(math.floor(n * 0.90)))],
-            sample_count=n,
-        )
-    else:
-        tex_dist = TextureDistributions.empty()
-
-    dup_groups = tuple(
-        tuple(ps) for ps in file_hashes.values() if len(ps) > 1
-    )
-
-    context = DatasetContext(
-        schema_version=CONTEXT_SCHEMA_VERSION,
-        analyzer_versions=analyzer_versions(),
-        image_paths=tuple(image_paths),
-        image_count=len(image_paths),
-        error_count=error_count,
-        resolution_stats=res,
-        aspect_ratio_stats=ar,
-        texture_distributions=tex_dist,
-        frequency_distributions=FrequencyDistributions.empty(),
-        duplicate_hashes=frozenset(file_hashes.keys()),
-        duplicate_groups=dup_groups,
-    )
-    return context, measurements_by_path
+    result = build_dataset_context(image_paths)
+    return result.context, result.measurements_by_path
 
 
 # ---------------------------------------------------------------------------

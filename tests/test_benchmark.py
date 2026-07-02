@@ -23,13 +23,14 @@ from dataset_forge.benchmark import (
     BenchmarkRun,
     ExpectationResult,
     _ANALYZER_REGISTRY,
+    _build_context_for_group,
     _evaluate_expectation,
     load_manifest,
     run_benchmark,
     write_json_results,
     write_txt_results,
 )
-from dataset_forge.analyzers.registry import create_analyzer_registry
+from dataset_forge.analyzers.registry import analyzer_versions, create_analyzer_registry
 from dataset_forge.context import (
     CONTEXT_SCHEMA_VERSION,
     AspectRatioStats,
@@ -614,6 +615,14 @@ class TestBenchmarkAnalyzerRegistry(unittest.TestCase):
             tuple(_ANALYZER_REGISTRY),
             tuple(create_analyzer_registry()),
         )
+
+    def test_benchmark_context_uses_complete_analyzer_versions(self):
+        with tempfile.TemporaryDirectory() as td:
+            image_path = Path(td) / "img.png"
+            _write_solid_image(image_path)
+            context, _ = _build_context_for_group([image_path])
+
+        self.assertEqual(context.analyzer_versions, analyzer_versions())
 
 
 if __name__ == "__main__":

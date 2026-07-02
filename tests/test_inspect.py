@@ -16,6 +16,7 @@ from unittest.mock import patch
 import numpy as np
 from PIL import Image
 
+from dataset_forge.analyzers.registry import analyzer_versions
 from dataset_forge.inspect import InspectResult, run_inspect
 from dataset_forge.measurements import measure_image as real_measure_image
 
@@ -111,6 +112,16 @@ class TestRunInspectBasic(unittest.TestCase):
             "v1",
         )
 
+    def test_json_report_includes_complete_analyzer_versions(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+        data = json.loads(result.json_report.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            data["context"]["analyzer_versions"],
+            analyzer_versions(),
+        )
+
     def test_inspect_uses_analyzer_registry(self):
         class RecordingAnalyzer:
             name = "recording_analyzer"
@@ -145,7 +156,7 @@ class TestRunInspectBasic(unittest.TestCase):
         paths = _write_smooth(self.dataset, n=4)
         with (
             patch(
-                "dataset_forge.inspect.measure_image",
+                "dataset_forge.context_builder.measure_image",
                 wraps=real_measure_image,
             ) as measure_mock,
             patch(

@@ -11,25 +11,16 @@ the v1 vertical slice. All measurement logic lives in the modules it calls.
 
 from __future__ import annotations
 
-import math
-import statistics
 from dataclasses import dataclass
 from pathlib import Path
 
-from dataset_forge.analysis.metrics import extract_image_metrics
-from dataset_forge.analyzers.registry import analyzer_versions, create_analyzers
-from dataset_forge.context import (
-    CONTEXT_SCHEMA_VERSION,
-    AspectRatioStats,
-    DatasetContext,
-    FrequencyDistributions,
-    ResolutionStats,
-    TextureDistributions,
-)
+from dataset_forge.analyzers.registry import create_analyzers
+from dataset_forge.context import DatasetContext
+from dataset_forge.context_builder import build_dataset_context
 from dataset_forge.discovery import discover_images
 from dataset_forge.finding import Finding
 from dataset_forge.inspect_gallery import write_inspection_gallery
-from dataset_forge.measurements import ImageMeasurements, measure_image
+from dataset_forge.measurements import ImageMeasurements
 from dataset_forge.report import write_inspection_report
 
 
@@ -70,110 +61,8 @@ def _build_context(
     raw metric dict for every successfully measured image. These scores
     are captured here for free — no extra image reads needed downstream.
     """
-    widths: list[int] = []
-    heights: list[int] = []
-    aspects: list[float] = []
-    microtextures: list[float] = []
-    file_hashes: dict[str, list[Path]] = {}  # hash → paths
-    image_scores: dict[str, dict] = {}
-    measurements_by_path: dict[Path, ImageMeasurements] = {}
-    error_count = 0
-
-    for path in image_paths:
-        measurements = measure_image(path)
-        measurements_by_path[path] = measurements
-
-        # Resolution + hash (metrics module handles its own errors)
-        try:
-            m = extract_image_metrics(path)
-            widths.append(m.width)
-            heights.append(m.height)
-            aspects.append(m.aspect_ratio)
-            fh = m.file_hash
-            file_hashes.setdefault(fh, []).append(path)
-        except Exception:
-            error_count += 1
-            continue
-
-        # Texture measurement (texture module handles its own errors)
-        tex = measurements.texture
-        if tex.status == "analyzed":
-            microtextures.append(tex.microtexture_density_score)
-            image_scores[str(path)] = {
-                "microtexture_density": tex.microtexture_density_score,
-                "watercolor_smoothness": tex.watercolor_smoothness_score,
-                "highlight_speck": tex.highlight_speck_score,
-            }
-        else:
-            image_scores[str(path)] = {"error": tex.error}
-
-    # Resolution stats
-    if widths:
-        res = ResolutionStats(
-            mean_w=statistics.mean(widths),
-            mean_h=statistics.mean(heights),
-            stddev_w=statistics.pstdev(widths),
-            stddev_h=statistics.pstdev(heights),
-            min_w=min(widths),
-            min_h=min(heights),
-            max_w=max(widths),
-            max_h=max(heights),
-            sample_count=len(widths),
-        )
-        ar = AspectRatioStats(
-            mean=statistics.mean(aspects),
-            stddev=statistics.pstdev(aspects),
-            min=min(aspects),
-            max=max(aspects),
-            sample_count=len(aspects),
-        )
-    else:
-        res = ResolutionStats.empty()
-        ar = AspectRatioStats.empty()
-
-    # Texture distributions
-    if microtextures:
-        n = len(microtextures)
-        sorted_mt = sorted(microtextures)
-        tex_dist = TextureDistributions(
-            mean=statistics.mean(microtextures),
-            stddev=statistics.pstdev(microtextures),
-            p10=sorted_mt[max(0, int(math.floor(n * 0.10)))],
-            p90=sorted_mt[min(n - 1, int(math.floor(n * 0.90)))],
-            sample_count=n,
-        )
-    else:
-        tex_dist = TextureDistributions.empty()
-
-    # Frequency distributions — not yet implemented; placeholder baseline
-    freq_dist = FrequencyDistributions(
-        dominant_freq_mean=0.0,
-        dominant_freq_stddev=0.0,
-        sample_count=0,
-    )
-
-    # Duplicate groups
-    dup_groups = tuple(
-        tuple(paths)
-        for paths in file_hashes.values()
-        if len(paths) > 1
-    )
-    all_hashes = frozenset(file_hashes.keys())
-
-    context = DatasetContext(
-        schema_version=CONTEXT_SCHEMA_VERSION,
-        analyzer_versions=analyzer_versions(),
-        image_paths=tuple(image_paths),
-        image_count=len(image_paths),
-        error_count=error_count,
-        resolution_stats=res,
-        aspect_ratio_stats=ar,
-        texture_distributions=tex_dist,
-        frequency_distributions=freq_dist,
-        duplicate_hashes=all_hashes,
-        duplicate_groups=dup_groups,
-    )
-    return context, image_scores, measurements_by_path
+    result = build_dataset_context(image_paths)
+    return result.context, result.image_scores, result.measurements_by_path
 
 
 # ---------------------------------------------------------------------------
