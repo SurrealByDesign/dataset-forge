@@ -69,7 +69,7 @@ def _finding(
         benchmark_version="uncalibrated",
         evidence={"z_score": 2.5, "microtexture_density": 58.0, "calibrated": False},
         explanation="High microtexture detected.",
-        recommendation="Review before applying cleanup.",
+        recommendation="Review before making any dataset changes.",
     )
 
 
@@ -248,7 +248,12 @@ class TestTXTReportContent(unittest.TestCase):
 
     def test_finding_recommendation_shown(self):
         txt = self._write([_finding()])
-        self.assertIn("Review before applying cleanup", txt)
+        self.assertIn("Review before making any dataset changes", txt)
+
+    def test_summary_does_not_advertise_cleanup_command(self):
+        txt = self._write([_finding()])
+        self.assertNotIn("dataset-forge clean", txt)
+        self.assertIn("inspect is read-only", txt)
 
     def test_clean_images_section_present(self):
         txt = self._write([_finding()])

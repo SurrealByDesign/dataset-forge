@@ -20,10 +20,11 @@ authoritative implementation state.
 | `Analyzer` base class | shipped |
 | `TextureAnalyzer` -- microtexture, watercolor smoothness signal | shipped; first-pass uncalibrated |
 | `CrystallineFacetingAnalyzer` -- pencil_grain + texture_consistency | shipped; first-pass uncalibrated |
+| `OversharpeningHaloAnalyzer` -- edge-localized USM residuals | shipped; first-pass uncalibrated |
 | JSON + TXT report writers | shipped |
 | CLI: `dataset-forge inspect <path>` | shipped |
 | Optional gallery PNG output | shipped |
-| Public benchmark suite (10 expectations, synthetic fixtures committed) | shipped |
+| Public benchmark suite (13 expectations, synthetic fixtures committed) | shipped |
 | Public CLI surface locked to inspect-only | shipped |
 
 **v0.1 alpha does not include:** cleanup, AI, UI, captions, plugins, exporters.
@@ -36,7 +37,7 @@ found no reliable pixel-neighborhood signal for the primary use case:
 | Artifact family | Status | Reason |
 |---|---|---|
 | Speck / glitter (`artifact.speck`) | deferred | highlight_speck signal inverts vs clean images; clean watercolor scores higher than artifact images |
-| Oversharpening / halo (`artifact.oversharpening`) | deferred | halo_score inverts; ringing_score has near-zero variance across dataset |
+| Oversharpening / halo (`artifact.oversharpening_halo`) | first-pass implemented | USM-residual signal validated on synthetic fixtures; real-world calibration still pending |
 | Periodic frequency / recursive detail (`artifact.recursive_detail`) | not yet investigated | no probe conducted; no partial signal |
 
 Research reports: `benchmarks/results/probe_speck_glitter/` and
@@ -45,8 +46,8 @@ Research reports: `benchmarks/results/probe_speck_glitter/` and
 ### v0.1 alpha -- Known limitations
 
 - Analyzer thresholds are uncalibrated against published ground truth.
-  Confidence is capped (TextureAnalyzer: 0.70, CrystallineFacetingAnalyzer: 0.45).
-  Both emit `"calibrated": false` in evidence dicts.
+  Confidence is capped (TextureAnalyzer: 0.70, CrystallineFacetingAnalyzer: 0.45,
+  OversharpeningHaloAnalyzer: 0.45). All emit `"calibrated": false` in evidence dicts.
 - Crystalline grain 45-55 range has significant TP/FP interleaving;
   a fourth discriminating signal is needed before precision improves.
 - TextureAnalyzer z-score thresholds are derived from one private dataset.
@@ -65,8 +66,10 @@ No timeline is set for any of these.
   energy, or micro-edge profile).
 - TextureAnalyzer calibration against labeled ground truth.
 - Research probe for `artifact.recursive_detail` (no signal investigation yet).
-- Reconsider speck/oversharpening once a better signal approach is available
-  (USM residual, directional signed undershoot, or semantic approach).
+- Oversharpening/halo calibration against labeled real-world examples; current
+  USM-residual analyzer is synthetic-fixture-backed only.
+- Reconsider speck once a better signal approach or labeled glitter-only
+  population is available.
 
 ---
 

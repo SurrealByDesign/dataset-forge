@@ -146,13 +146,13 @@ class TextureAnalyzer(Analyzer):
 
         if severity >= Severity.HIGH:
             recommendation = (
-                "Strong candidate for deterministic cleanup (edge-preserving smoothing). "
-                "Review before applying. Do not modify if the texture is stylistically intentional."
+                "Strong candidate for human review. Do not modify the image "
+                "if the texture is stylistically intentional."
             )
         else:
             recommendation = (
                 "Mild microtexture elevation. Monitor in context of full dataset. "
-                "Cleanup is optional — leave alone if the image otherwise looks correct."
+                "Leave alone if the image otherwise looks correct."
             )
 
         return [

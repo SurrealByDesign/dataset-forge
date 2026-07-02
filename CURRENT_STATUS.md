@@ -16,20 +16,20 @@ Supported in v0.1 alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Optional gallery PNG (`--gallery`)
-- Public benchmark suite (10 expectations, all passing from fresh clone)
+- Public benchmark suite (13 expectations, all passing from fresh clone)
 
 Not supported in v0.1 alpha (planned for later releases):
 - Cleanup (v2+)
 - UI (v2+)
 - Plugin system (v2+)
-- Additional analyzers beyond the two shipped (v1.x)
+- Additional analyzers beyond the current first-pass set (v1.x)
 - Calibrated thresholds (pending labeled benchmark ground truth)
 
 ---
 
 ## Test suite
 
-**648 tests passing.**
+**724 tests passing, 1 skipped.**
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
 inspect runner, gallery, benchmark framework, committed fixtures, and public
@@ -54,8 +54,9 @@ uv run pytest tests/
 | `Analyzer` base class | `src/dataset_forge/analyzers/base.py` | Done |
 | `TextureAnalyzer` | `src/dataset_forge/analyzers/texture.py` | First-pass; uncalibrated |
 | `CrystallineFacetingAnalyzer` | `src/dataset_forge/analyzers/crystalline.py` | First-pass; uncalibrated |
+| `OversharpeningHaloAnalyzer` | `src/dataset_forge/analyzers/oversharpening.py` | First-pass; uncalibrated |
 | Benchmark framework | `src/dataset_forge/benchmark.py` | Done |
-| Benchmark manifest | `benchmarks/benchmark_manifest.json` | 10 expectations; all pass |
+| Benchmark manifest | `benchmarks/benchmark_manifest.json` | 13 expectations; all pass |
 
 ---
 
@@ -64,7 +65,7 @@ uv run pytest tests/
 | Component | Notes |
 |---|---|
 | Speck/glitter analyzer | Research probe: DEFER -- signal inverts vs clean images |
-| Oversharpening/halo analyzer | Research probe: DEFER -- no reliable pixel-neighborhood signal |
+| Oversharpening/halo analyzer calibration | First-pass USM-residual analyzer implemented; synthetic fixtures pass; real-world calibration still pending |
 | Periodic frequency / recursive detail analyzer | Not yet investigated |
 | Calibrated thresholds | Pending labeled benchmark ground truth for all analyzers |
 | Phase 2 measurement cache | `ImageMeasurements` dataclass; replaces `lru_cache` on `evaluate_texture` |
@@ -82,6 +83,9 @@ Five PNG fixtures are committed to `benchmarks/synthetic_defects/`:
 | `08_crystalline_negative_smooth.png` | CrystallineFacetingAnalyzer | No finding (smooth guard) |
 | `09_texture_clean.png` | TextureAnalyzer | No finding (below floor) |
 | `10_texture_positive.png` | TextureAnalyzer | Fires MEDIUM |
+| `11_oversharpen_clean_edge.png` | OversharpeningHaloAnalyzer | No finding (clean hard-edge guard) |
+| `12_oversharpen_halo_positive.png` | OversharpeningHaloAnalyzer | Fires MEDIUM |
+| `13_oversharpen_texture_guard.png` | OversharpeningHaloAnalyzer | No finding (distributed texture guard) |
 
 The public benchmark runs immediately from a fresh clone. No generation step required.
 
@@ -124,7 +128,10 @@ speck/glitter) are DEFERRED per their research reports in
 - `crystalline_faceting_analyzer/v1`: threshold derived from calibration review.
   Confidence capped at 0.45. FP rate ~28% (estimated). Grain 45-55 range has
   significant TP/FP interleaving that requires a fourth discriminating signal.
-- Both analyzers emit `"calibrated": false` in their evidence dicts.
+- `oversharpening_halo_analyzer/v1`: USM-residual rule validated against
+  synthetic fixtures only. Confidence capped at 0.45. Real-world precision and
+  recall are not yet known.
+- All first-pass analyzers emit `"calibrated": false` in their evidence dicts.
 
 ---
 

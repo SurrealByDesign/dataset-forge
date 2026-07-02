@@ -152,6 +152,57 @@
           "notes": "grain=62.0 (above threshold 45), micro=43.3 (above floor 20), BUT smooth=53.2 >= ceiling 52.0. Smoothness guard blocks detection. Validates that high grain alone is insufficient."
         }
       ]
+    },
+    {
+      "id": "synth_oversharpen_clean_edge_negative",
+      "image_path": "benchmarks/synthetic_defects/11_oversharpen_clean_edge.png",
+      "provenance": "synthetic-committed",
+      "private": false,
+      "source_description": "Anti-aliased clean hard-edge fixture. Validates that ordinary clean edges do not trigger the USM-residual oversharpening/halo analyzer.",
+      "context_group": "oversharpening_committed",
+      "expectations": [
+        {
+          "analyzer_id": "oversharpening_halo_analyzer/v1",
+          "category": "artifact.oversharpening_halo",
+          "should_detect": false,
+          "expected_severity": null,
+          "notes": "Clean edge has edge-localized residual below the detection percentile threshold. No oversharpening finding expected."
+        }
+      ]
+    },
+    {
+      "id": "synth_oversharpen_halo_positive",
+      "image_path": "benchmarks/synthetic_defects/12_oversharpen_halo_positive.png",
+      "provenance": "synthetic-committed",
+      "private": false,
+      "source_description": "Clean hard-edge fixture with deterministic UnsharpMask applied. Validates the USM-residual signal shape for oversharpening/halo detection.",
+      "context_group": "oversharpening_committed",
+      "expectations": [
+        {
+          "analyzer_id": "oversharpening_halo_analyzer/v1",
+          "category": "artifact.oversharpening_halo",
+          "should_detect": true,
+          "expected_severity": "MEDIUM",
+          "notes": "USM residual is concentrated near edges with elevated edge residual p95 and edge/non-edge ratio. Synthetic proof only; analyzer remains uncalibrated."
+        }
+      ]
+    },
+    {
+      "id": "synth_oversharpen_texture_guard_negative",
+      "image_path": "benchmarks/synthetic_defects/13_oversharpen_texture_guard.png",
+      "provenance": "synthetic-committed",
+      "private": false,
+      "source_description": "Seeded uniform low-amplitude texture/noise fixture. Validates that distributed texture without coherent edge halos does not trigger the oversharpening/halo analyzer.",
+      "context_group": "oversharpening_committed",
+      "expectations": [
+        {
+          "analyzer_id": "oversharpening_halo_analyzer/v1",
+          "category": "artifact.oversharpening_halo",
+          "should_detect": false,
+          "expected_severity": null,
+          "notes": "Distributed residual lacks detected edge-localized USM bands. No oversharpening finding expected."
+        }
+      ]
     }
   ]
 }

@@ -279,10 +279,10 @@ def _build_txt(
     lines.append(f"Images clean:     {clean_count} / {total}")
     lines.append("")
     lines.append(
-        "Recommendation: Run `dataset-forge clean --from-report inspection_report.json`"
+        "Recommendation: Review findings before making any dataset changes."
     )
     lines.append(
-        "                to apply deterministic fixes to flagged images (future feature)."
+        "                Dataset Forge inspect is read-only and does not modify images."
     )
 
     return "\n".join(lines) + "\n"

@@ -107,6 +107,9 @@ benchmarks/synthetic_defects/*
 !benchmarks/synthetic_defects/08_crystalline_negative_smooth.png
 !benchmarks/synthetic_defects/09_texture_clean.png
 !benchmarks/synthetic_defects/10_texture_positive.png
+!benchmarks/synthetic_defects/11_oversharpen_clean_edge.png
+!benchmarks/synthetic_defects/12_oversharpen_halo_positive.png
+!benchmarks/synthetic_defects/13_oversharpen_texture_guard.png
 benchmarks/local_benchmark_manifest.json
 
 # Local/private datasets and image folders

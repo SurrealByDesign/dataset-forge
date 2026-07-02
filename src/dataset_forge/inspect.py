@@ -18,6 +18,7 @@ from pathlib import Path
 
 from dataset_forge.analysis.metrics import extract_image_metrics
 from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
+from dataset_forge.analyzers.oversharpening import OversharpeningHaloAnalyzer
 from dataset_forge.analyzers.texture import TextureAnalyzer
 from dataset_forge.context import (
     CONTEXT_SCHEMA_VERSION,
@@ -166,6 +167,7 @@ def _build_context(
         analyzer_versions={
             "texture_analyzer": "v1",
             "crystalline_faceting_analyzer": "v1",
+            "oversharpening_halo_analyzer": "v1",
         },
         image_paths=tuple(image_paths),
         image_count=len(image_paths),
@@ -219,7 +221,11 @@ def run_inspect(
     context, image_scores, measurements_by_path = _build_context(image_paths)
 
     # 3. Analyze — run all registered analyzers
-    analyzers = [TextureAnalyzer(), CrystallineFacetingAnalyzer()]
+    analyzers = [
+        TextureAnalyzer(),
+        CrystallineFacetingAnalyzer(),
+        OversharpeningHaloAnalyzer(),
+    ]
     findings: list[Finding] = []
     for path in image_paths:
         measurements = measurements_by_path.get(path)

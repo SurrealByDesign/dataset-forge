@@ -176,9 +176,8 @@ class CrystallineFacetingAnalyzer(Analyzer):
         )
 
         recommendation = (
-            "Candidate for mid-frequency band suppression (v2 cleanup). "
-            "Review the image manually before any action. "
-            "Do not apply microtexture smoothing — the artifact family is different."
+            "Candidate for human review. Review manually before any dataset decision. "
+            "Do not treat this as generic microtexture; the artifact family is different."
         )
 
         return [

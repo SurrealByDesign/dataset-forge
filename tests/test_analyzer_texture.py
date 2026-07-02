@@ -7,6 +7,7 @@ temporary directory.
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -210,6 +211,28 @@ class TestTextureAnalyzerNoisyImage(unittest.TestCase):
         ctx = _ctx(mean=30.0, stddev=5.0)
         findings = self.analyzer.analyze(self.path, ctx)
         self.assertFalse(findings[0].evidence["calibrated"])
+
+    def test_finding_evidence_contains_stable_keys(self):
+        ctx = _ctx(mean=30.0, stddev=5.0)
+        findings = self.analyzer.analyze(self.path, ctx)
+        ev = findings[0].evidence
+        for key in (
+            "microtexture_density",
+            "dataset_mean",
+            "dataset_stddev",
+            "z_score",
+            "dataset_p10",
+            "dataset_p90",
+            "watercolor_smoothness",
+            "highlight_speck",
+            "calibrated",
+        ):
+            self.assertIn(key, ev, f"Missing evidence key: {key}")
+
+    def test_finding_evidence_is_json_serializable(self):
+        ctx = _ctx(mean=30.0, stddev=5.0)
+        findings = self.analyzer.analyze(self.path, ctx)
+        json.dumps(findings[0].evidence)
 
     def test_finding_image_path_matches(self):
         ctx = _ctx(mean=30.0, stddev=5.0)

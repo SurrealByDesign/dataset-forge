@@ -30,10 +30,13 @@ and correct result, not a failure.
 |---|---|---|
 | `texture_analyzer/v1` | Elevated microtexture density relative to dataset baseline | First-pass; uncalibrated |
 | `crystalline_faceting_analyzer/v1` | Angular micro-polygon shading on surfaces | First-pass; uncalibrated |
+| `oversharpening_halo_analyzer/v1` | Edge-localized USM residuals consistent with oversharpening / halo bands | First-pass; uncalibrated |
 
-Both analyzers are conservative. Confidence values are capped at 0.70 and 0.45
-respectively until calibration against labeled ground truth is complete. Treat
-findings as candidates for human review, not automated decisions.
+All analyzers are conservative. Confidence values are capped until calibration
+against labeled ground truth is complete. The oversharpening/halo analyzer is
+read-only, uses synthetic benchmark fixtures to validate its USM-residual signal
+shape, and remains uncalibrated for real-world precision/recall. Treat findings
+as candidates for human review, not automated decisions.
 
 ---
 
@@ -61,9 +64,10 @@ edge halos.
   recall are known for that dataset but are not general. Treat findings as
   informed candidates for human review, not certified detections.
 
-- **Two analyzers ship in v0.1 alpha.** Three planned families (speck/glitter,
-  periodic frequency noise, oversharpening/halo) are not yet implemented.
-  Research probes for two of these have been completed and deferred.
+- **Three analyzers are currently implemented.** Speck/glitter and periodic
+  frequency / recursive detail remain unimplemented. The oversharpening/halo
+  analyzer is a conservative first-pass detector backed by synthetic fixtures,
+  not published real-world calibration.
 
 - **No cleanup.** v0.1 alpha is read-only. Cleanup is planned for v2 and will
   require human approval at every step. See [ROADMAP.md](ROADMAP.md).
@@ -183,8 +187,8 @@ image_023.png
   Evidence: pencil_grain_score=64.2, watercolor_smoothness_score=36.6, microtexture_density_score=65.8
   Why: pencil_grain=64.2 is above the detection threshold. Crystalline
        surface faceting detected based on mid-frequency texture pattern.
-  Action: Candidate for review. Do not apply cleanup without inspecting
-          the image.
+  Action: Candidate for review. Do not change the image without inspecting
+          it first.
 ```
 
 Every finding includes:
@@ -224,9 +228,10 @@ public benchmark suite runs without any setup from a fresh clone:
 uv run python scripts/run_benchmarks.py
 ```
 
-Current public coverage: 10 expectations across TextureAnalyzer and
-CrystallineFacetingAnalyzer. All 10 pass. See [benchmarks/README.md](benchmarks/README.md)
-for the full manifest description.
+Current public coverage: 13 expectations across TextureAnalyzer,
+CrystallineFacetingAnalyzer, and OversharpeningHaloAnalyzer. All 13 pass.
+See [benchmarks/README.md](benchmarks/README.md) for the full manifest
+description.
 
 ### Internal measurement cache
 
@@ -244,7 +249,7 @@ default, stores measurements only, and has no CLI flags.
 uv run pytest tests/
 ```
 
-648 tests passing. Tests cover the full v1 pipeline: Finding, DatasetContext,
+724 tests passing, 1 skipped. Tests cover the full v1 pipeline: Finding, DatasetContext,
 Analyzer contracts, report writers, CLI, inspect runner, gallery, benchmark
 framework, committed fixtures, and public CLI surface.
 

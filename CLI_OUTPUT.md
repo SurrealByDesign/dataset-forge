@@ -136,8 +136,8 @@ Findings:         23 total (3 HIGH, 14 MEDIUM, 6 LOW)
 Images affected:  19 / 100
 Images clean:     81 / 100
 
-Recommendation: Run `dataset-forge clean --from-report inspection_report.json`
-                to apply deterministic fixes to flagged images (future feature).
+Recommendation: Review findings before making any dataset changes.
+                Dataset Forge inspect is read-only and does not modify images.
 ```
 
 ---

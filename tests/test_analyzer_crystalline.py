@@ -11,6 +11,7 @@ to produce scores that reliably land above or below each threshold.
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -307,6 +308,9 @@ class TestCrystallineFacetingFindingFields(unittest.TestCase):
             "calibrated",
         ):
             self.assertIn(key, ev, f"Missing evidence key: {key}")
+
+    def test_evidence_is_json_serializable(self):
+        json.dumps(self._finding().evidence)
 
     def test_evidence_calibrated_flag_is_false(self):
         self.assertFalse(self._finding().evidence["calibrated"])
