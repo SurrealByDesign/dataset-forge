@@ -101,6 +101,16 @@ class TestRunInspectBasic(unittest.TestCase):
         versions = data["context"]["analyzer_versions"]
         self.assertEqual(versions["oversharpening_halo_analyzer"], "v1")
 
+    def test_json_report_includes_high_frequency_isolated_analyzer_version(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+        data = json.loads(result.json_report.read_text(encoding="utf-8"))
+        versions = data["context"]["analyzer_versions"]
+        self.assertEqual(
+            versions["high_frequency_isolated_artifact_analyzer"],
+            "v1",
+        )
+
     def test_invalid_path_raises(self):
         with self.assertRaises(ValueError):
             run_inspect(Path("/nonexistent/path"), self.output)

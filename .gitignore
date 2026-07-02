@@ -110,6 +110,11 @@ benchmarks/synthetic_defects/*
 !benchmarks/synthetic_defects/11_oversharpen_clean_edge.png
 !benchmarks/synthetic_defects/12_oversharpen_halo_positive.png
 !benchmarks/synthetic_defects/13_oversharpen_texture_guard.png
+!benchmarks/synthetic_defects/14_hfi_clean_negative.png
+!benchmarks/synthetic_defects/15_hfi_bright_speck_positive.png
+!benchmarks/synthetic_defects/16_hfi_dark_speck_positive.png
+!benchmarks/synthetic_defects/17_hfi_pencil_grain_guard.png
+!benchmarks/synthetic_defects/18_hfi_edge_halo_guard.png
 benchmarks/local_benchmark_manifest.json
 
 # Local/private datasets and image folders

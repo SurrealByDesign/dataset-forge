@@ -16,7 +16,7 @@ Supported in v0.1 alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Optional gallery PNG (`--gallery`)
-- Public benchmark suite (13 expectations, all passing from fresh clone)
+- Public benchmark suite (18 expectations, all passing from fresh clone)
 
 Not supported in v0.1 alpha (planned for later releases):
 - Cleanup (v2+)
@@ -29,7 +29,7 @@ Not supported in v0.1 alpha (planned for later releases):
 
 ## Test suite
 
-**724 tests passing, 1 skipped.**
+**771 tests passing, 1 skipped.**
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
 inspect runner, gallery, benchmark framework, committed fixtures, and public
@@ -55,8 +55,9 @@ uv run pytest tests/
 | `TextureAnalyzer` | `src/dataset_forge/analyzers/texture.py` | First-pass; uncalibrated |
 | `CrystallineFacetingAnalyzer` | `src/dataset_forge/analyzers/crystalline.py` | First-pass; uncalibrated |
 | `OversharpeningHaloAnalyzer` | `src/dataset_forge/analyzers/oversharpening.py` | First-pass; uncalibrated |
+| `HighFrequencyIsolatedArtifactAnalyzer` | `src/dataset_forge/analyzers/high_frequency_isolated.py` | First-pass; uncalibrated |
 | Benchmark framework | `src/dataset_forge/benchmark.py` | Done |
-| Benchmark manifest | `benchmarks/benchmark_manifest.json` | 13 expectations; all pass |
+| Benchmark manifest | `benchmarks/benchmark_manifest.json` | 18 expectations; all pass |
 
 ---
 
@@ -64,7 +65,7 @@ uv run pytest tests/
 
 | Component | Notes |
 |---|---|
-| Speck/glitter analyzer | Research probe: DEFER -- signal inverts vs clean images |
+| Speck/glitter analyzer calibration | First-pass isolated high-frequency analyzer implemented; synthetic fixtures pass; real-world calibration still pending |
 | Oversharpening/halo analyzer calibration | First-pass USM-residual analyzer implemented; synthetic fixtures pass; real-world calibration still pending |
 | Periodic frequency / recursive detail analyzer | Not yet investigated |
 | Calibrated thresholds | Pending labeled benchmark ground truth for all analyzers |
@@ -74,7 +75,7 @@ uv run pytest tests/
 
 ## Benchmark fixtures (committed, public)
 
-Five PNG fixtures are committed to `benchmarks/synthetic_defects/`:
+Thirteen PNG fixtures are committed to `benchmarks/synthetic_defects/`:
 
 | File | Analyzer | Expected result |
 |---|---|---|
@@ -86,6 +87,11 @@ Five PNG fixtures are committed to `benchmarks/synthetic_defects/`:
 | `11_oversharpen_clean_edge.png` | OversharpeningHaloAnalyzer | No finding (clean hard-edge guard) |
 | `12_oversharpen_halo_positive.png` | OversharpeningHaloAnalyzer | Fires MEDIUM |
 | `13_oversharpen_texture_guard.png` | OversharpeningHaloAnalyzer | No finding (distributed texture guard) |
+| `14_hfi_clean_negative.png` | HighFrequencyIsolatedArtifactAnalyzer | No finding (clean smooth guard) |
+| `15_hfi_bright_speck_positive.png` | HighFrequencyIsolatedArtifactAnalyzer | Fires MEDIUM |
+| `16_hfi_dark_speck_positive.png` | HighFrequencyIsolatedArtifactAnalyzer | Fires MEDIUM |
+| `17_hfi_pencil_grain_guard.png` | HighFrequencyIsolatedArtifactAnalyzer | No finding (paper/pencil grain guard) |
+| `18_hfi_edge_halo_guard.png` | HighFrequencyIsolatedArtifactAnalyzer | No finding (edge-adjacent halo guard) |
 
 The public benchmark runs immediately from a fresh clone. No generation step required.
 
@@ -115,9 +121,8 @@ calibration utilities, not supported public tools:
 
 **Research probes** (`scripts/research/`):
 
-Artifact-family research probes. Both current probes (oversharpening,
-speck/glitter) are DEFERRED per their research reports in
-`benchmarks/results/`.
+Artifact-family research probes live in `scripts/research/`. Historical
+oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ---
 
@@ -131,6 +136,9 @@ speck/glitter) are DEFERRED per their research reports in
 - `oversharpening_halo_analyzer/v1`: USM-residual rule validated against
   synthetic fixtures only. Confidence capped at 0.45. Real-world precision and
   recall are not yet known.
+- `high_frequency_isolated_artifact_analyzer/v1`: residual connected-component
+  rule validated against synthetic fixtures only. Confidence capped at 0.45.
+  Real-world precision and recall are not yet known.
 - All first-pass analyzers emit `"calibrated": false` in their evidence dicts.
 
 ---

@@ -22,6 +22,7 @@ from dataset_forge.benchmark import (
     BenchmarkExpectation,
     BenchmarkRun,
     ExpectationResult,
+    _ANALYZER_REGISTRY,
     _evaluate_expectation,
     load_manifest,
     run_benchmark,
@@ -604,6 +605,14 @@ class TestRunBenchmark(unittest.TestCase):
             self.assertTrue(txt_out.exists())
             data = json.loads(json_out.read_text("utf-8"))
             self.assertEqual(data["summary"]["total"], 1)
+
+
+class TestBenchmarkAnalyzerRegistry(unittest.TestCase):
+    def test_high_frequency_isolated_analyzer_registered(self):
+        self.assertIn(
+            "high_frequency_isolated_artifact_analyzer/v1",
+            _ANALYZER_REGISTRY,
+        )
 
 
 if __name__ == "__main__":

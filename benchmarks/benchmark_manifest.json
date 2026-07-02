@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "Dataset Forge v1 Benchmark Suite (Public)",
-  "description": "Benchmark cases for TextureAnalyzer and CrystallineFacetingAnalyzer. Synthetic-committed cases reference images tracked in git. Synthetic-generated cases require running scripts/generate_benchmark_defects.py first. Private real-sample cases live in benchmarks/local_benchmark_manifest.json (gitignored). See benchmarks/README.md for setup instructions.",
+  "description": "Benchmark cases for TextureAnalyzer, CrystallineFacetingAnalyzer, OversharpeningHaloAnalyzer, and HighFrequencyIsolatedArtifactAnalyzer. Synthetic-committed cases reference images tracked in git. Synthetic-generated cases require running scripts/generate_benchmark_defects.py first. Private real-sample cases live in benchmarks/local_benchmark_manifest.json (gitignored). See benchmarks/README.md for setup instructions.",
   "cases": [
     {
       "id": "synth_reference_negative",
@@ -201,6 +201,91 @@
           "should_detect": false,
           "expected_severity": null,
           "notes": "Distributed residual lacks detected edge-localized USM bands. No oversharpening finding expected."
+        }
+      ]
+    },
+    {
+      "id": "synth_hfi_clean_negative",
+      "image_path": "benchmarks/synthetic_defects/14_hfi_clean_negative.png",
+      "provenance": "synthetic-committed",
+      "private": false,
+      "source_description": "Smooth watercolor-like gradient with no isolated high-frequency debris. Validates the clean negative case for HighFrequencyIsolatedArtifactAnalyzer.",
+      "context_group": "hfi_committed",
+      "expectations": [
+        {
+          "analyzer_id": "high_frequency_isolated_artifact_analyzer/v1",
+          "category": "artifact.high_frequency_isolated",
+          "should_detect": false,
+          "expected_severity": null,
+          "notes": "No residual components above threshold. No isolated artifact finding expected."
+        }
+      ]
+    },
+    {
+      "id": "synth_hfi_bright_speck_positive",
+      "image_path": "benchmarks/synthetic_defects/15_hfi_bright_speck_positive.png",
+      "provenance": "synthetic-committed",
+      "private": false,
+      "source_description": "Smooth field with deterministic sparse bright isolated specks. Validates bright high-frequency isolated artifact detection.",
+      "context_group": "hfi_committed",
+      "expectations": [
+        {
+          "analyzer_id": "high_frequency_isolated_artifact_analyzer/v1",
+          "category": "artifact.high_frequency_isolated",
+          "should_detect": true,
+          "expected_severity": "MEDIUM",
+          "notes": "Sparse high-residual bright components exceed count, density, and isolation thresholds. Synthetic proof only; analyzer remains uncalibrated."
+        }
+      ]
+    },
+    {
+      "id": "synth_hfi_dark_speck_positive",
+      "image_path": "benchmarks/synthetic_defects/16_hfi_dark_speck_positive.png",
+      "provenance": "synthetic-committed",
+      "private": false,
+      "source_description": "Smooth field with deterministic sparse dark isolated specks. Validates dark high-frequency isolated artifact detection.",
+      "context_group": "hfi_committed",
+      "expectations": [
+        {
+          "analyzer_id": "high_frequency_isolated_artifact_analyzer/v1",
+          "category": "artifact.high_frequency_isolated",
+          "should_detect": true,
+          "expected_severity": "MEDIUM",
+          "notes": "Sparse high-residual dark components exceed count, density, and isolation thresholds. Synthetic proof only; analyzer remains uncalibrated."
+        }
+      ]
+    },
+    {
+      "id": "synth_hfi_pencil_grain_guard",
+      "image_path": "benchmarks/synthetic_defects/17_hfi_pencil_grain_guard.png",
+      "provenance": "synthetic-committed",
+      "private": false,
+      "source_description": "Dense low-amplitude paper/pencil grain guard. Validates that the analyzer does not become a general texture detector.",
+      "context_group": "hfi_committed",
+      "expectations": [
+        {
+          "analyzer_id": "high_frequency_isolated_artifact_analyzer/v1",
+          "category": "artifact.high_frequency_isolated",
+          "should_detect": false,
+          "expected_severity": null,
+          "notes": "Many tiny components may be measured, but component residuals remain below the isolated-artifact detection floor."
+        }
+      ]
+    },
+    {
+      "id": "synth_hfi_edge_halo_guard",
+      "image_path": "benchmarks/synthetic_defects/18_hfi_edge_halo_guard.png",
+      "provenance": "synthetic-committed",
+      "private": false,
+      "source_description": "Edge-adjacent halo-band guard. Validates that edge-localized artifacts remain outside the high-frequency isolated analyzer's scope.",
+      "context_group": "hfi_committed",
+      "expectations": [
+        {
+          "analyzer_id": "high_frequency_isolated_artifact_analyzer/v1",
+          "category": "artifact.high_frequency_isolated",
+          "should_detect": false,
+          "expected_severity": null,
+          "notes": "Measured components are edge-adjacent, so the edge guard suppresses this analyzer finding."
         }
       ]
     }
