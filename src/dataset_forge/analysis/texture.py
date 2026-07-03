@@ -15,6 +15,11 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from dataset_forge.analysis.metrics import extract_image_metrics
+from dataset_forge.image_primitives import (
+    gaussian_blur,
+    load_rgb_thumbnail,
+    rgb_to_gray_float32,
+)
 from dataset_forge.decisions import EngineDecision, evaluate_decision
 from dataset_forge.discovery import discover_images
 from dataset_forge.evidence import Evidence, ImageEvidence, write_evidence
@@ -96,13 +101,7 @@ def evaluate_texture(path: Path) -> TextureImageResult:
     """Calculate texture-normalization signals without modifying the image."""
     resolved = path.expanduser().resolve()
     try:
-        with Image.open(resolved) as opened:
-            image = ImageOps.exif_transpose(opened).convert("RGB")
-            image.thumbnail(
-                (ANALYSIS_MAX_SIZE, ANALYSIS_MAX_SIZE),
-                Image.Resampling.LANCZOS,
-            )
-            rgb = np.asarray(image, dtype=np.uint8)
+        rgb = load_rgb_thumbnail(resolved, ANALYSIS_MAX_SIZE)
     except (OSError, ValueError) as exc:
         return TextureImageResult(
             filename=resolved.name,
@@ -111,7 +110,7 @@ def evaluate_texture(path: Path) -> TextureImageResult:
             error=str(exc),
         )
 
-    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    gray = rgb_to_gray_float32(rgb)
     if min(gray.shape) < 3:
         return TextureImageResult(
             filename=resolved.name,
@@ -120,8 +119,8 @@ def evaluate_texture(path: Path) -> TextureImageResult:
             error="Image is too small for texture analysis.",
         )
 
-    blur_small = cv2.GaussianBlur(gray, (0, 0), 1.0)
-    blur_large = cv2.GaussianBlur(gray, (0, 0), 2.4)
+    blur_small = gaussian_blur(gray, 1.0)
+    blur_large = gaussian_blur(gray, 2.4)
     high_frequency = np.abs(gray - blur_small)
     band_pass = np.abs(blur_small - blur_large)
     laplacian = cv2.Laplacian(gray, cv2.CV_32F, ksize=3)

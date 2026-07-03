@@ -20,14 +20,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-import cv2
 import numpy as np
-from PIL import Image, ImageOps
 
 from dataset_forge.analysis.texture import ANALYSIS_MAX_SIZE
 from dataset_forge.analyzers.base import Analyzer
 from dataset_forge.context import DatasetContext
 from dataset_forge.finding import Finding, Severity
+from dataset_forge.image_primitives import (
+    absolute_residual,
+    canny_edge_mask,
+    dilated_mask,
+    load_rgb_thumbnail,
+    rgb_to_gray_float32,
+)
 
 BENCHMARK_VERSION = "uncalibrated"
 
@@ -61,40 +66,27 @@ def measure_usm_residual(path: Path) -> USMResidualResult:
     """Measure edge-localized unsharp-mask residuals without modifying image data."""
     resolved = path.expanduser().resolve()
     try:
-        with Image.open(resolved) as opened:
-            image = ImageOps.exif_transpose(opened).convert("RGB")
-            image.thumbnail(
-                (ANALYSIS_MAX_SIZE, ANALYSIS_MAX_SIZE),
-                Image.Resampling.LANCZOS,
-            )
-            rgb = np.asarray(image, dtype=np.uint8)
+        rgb = load_rgb_thumbnail(resolved, ANALYSIS_MAX_SIZE)
     except (OSError, ValueError) as exc:
         return USMResidualResult(status="error", error=str(exc))
 
-    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    gray = rgb_to_gray_float32(rgb)
     if min(gray.shape) < 8:
         return USMResidualResult(
             status="error",
             error="Image is too small for oversharpening analysis.",
         )
 
-    blurred_for_edges = cv2.GaussianBlur(gray, (0, 0), 1.0)
-    edges = cv2.Canny(
-        np.clip(blurred_for_edges, 0, 255).astype(np.uint8),
-        threshold1=40,
-        threshold2=120,
-    ) > 0
+    edges = canny_edge_mask(gray, blur_sigma=1.0, threshold1=40, threshold2=120)
     edge_density = float(np.mean(edges))
 
     if not np.any(edges):
         return USMResidualResult(status="analyzed", edge_density=0.0)
 
-    residual = np.abs(gray - cv2.GaussianBlur(gray, (0, 0), _SIGMA_BASELINE))
+    residual = absolute_residual(gray, _SIGMA_BASELINE)
 
-    edge_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    exclusion_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
-    edge_zone = cv2.dilate(edges.astype(np.uint8), edge_kernel) > 0
-    non_edge_zone = ~(cv2.dilate(edges.astype(np.uint8), exclusion_kernel) > 0)
+    edge_zone = dilated_mask(edges, 5)
+    non_edge_zone = ~dilated_mask(edges, 15)
 
     edge_values = residual[edge_zone]
     non_edge_values = residual[non_edge_zone]

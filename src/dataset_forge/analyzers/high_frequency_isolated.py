@@ -23,12 +23,19 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image, ImageOps
 
 from dataset_forge.analysis.texture import ANALYSIS_MAX_SIZE
 from dataset_forge.analyzers.base import Analyzer
 from dataset_forge.context import DatasetContext
 from dataset_forge.finding import Finding, Severity
+from dataset_forge.image_primitives import (
+    canny_edge_mask,
+    dilated_mask,
+    gaussian_blur,
+    load_rgb_thumbnail,
+    rgb_to_gray_float32,
+    signed_residual,
+)
 
 BENCHMARK_VERSION = "uncalibrated"
 
@@ -74,13 +81,7 @@ class IsolatedArtifactResult:
 def _load_rgb(path: Path) -> np.ndarray | str:
     resolved = path.expanduser().resolve()
     try:
-        with Image.open(resolved) as opened:
-            image = ImageOps.exif_transpose(opened).convert("RGB")
-            image.thumbnail(
-                (ANALYSIS_MAX_SIZE, ANALYSIS_MAX_SIZE),
-                Image.Resampling.LANCZOS,
-            )
-            return np.asarray(image, dtype=np.uint8)
+        return load_rgb_thumbnail(resolved, ANALYSIS_MAX_SIZE)
     except (OSError, ValueError) as exc:
         return str(exc)
 
@@ -98,10 +99,9 @@ def measure_isolated_artifacts(path: Path) -> IsolatedArtifactResult:
             error="Image is too small for isolated artifact analysis.",
         )
 
-    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
-    baseline = cv2.GaussianBlur(gray, (0, 0), _RESIDUAL_SIGMA)
-    signed_residual = gray - baseline
-    residual = np.abs(signed_residual)
+    gray = rgb_to_gray_float32(rgb)
+    gray_signed_residual = signed_residual(gray, _RESIDUAL_SIGMA)
+    residual = np.abs(gray_signed_residual)
 
     median = float(np.median(residual))
     mad = float(np.median(np.abs(residual - median)))
@@ -110,14 +110,10 @@ def measure_isolated_artifacts(path: Path) -> IsolatedArtifactResult:
     residual_mask = residual >= residual_threshold
     texture_field_density = float(np.mean(residual_mask))
 
-    blurred_for_edges = cv2.GaussianBlur(gray, (0, 0), 1.0)
-    edges = cv2.Canny(
-        np.clip(blurred_for_edges, 0, 255).astype(np.uint8),
-        threshold1=40,
-        threshold2=120,
-    ) > 0
-    edge_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-    edge_zone = cv2.dilate(edges.astype(np.uint8), edge_kernel) > 0
+    edge_zone = dilated_mask(
+        canny_edge_mask(gray, blur_sigma=1.0, threshold1=40, threshold2=120),
+        7,
+    )
 
     labels_count, labels, stats, _ = cv2.connectedComponentsWithStats(
         residual_mask.astype(np.uint8),
@@ -127,8 +123,8 @@ def measure_isolated_artifacts(path: Path) -> IsolatedArtifactResult:
     lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB).astype(np.float32)
     a = lab[:, :, 1]
     b = lab[:, :, 2]
-    a_base = cv2.GaussianBlur(a, (0, 0), _RESIDUAL_SIGMA)
-    b_base = cv2.GaussianBlur(b, (0, 0), _RESIDUAL_SIGMA)
+    a_base = gaussian_blur(a, _RESIDUAL_SIGMA)
+    b_base = gaussian_blur(b, _RESIDUAL_SIGMA)
     chroma_residual = np.sqrt((a - a_base) ** 2 + (b - b_base) ** 2)
 
     areas: list[int] = []
@@ -157,7 +153,7 @@ def measure_isolated_artifacts(path: Path) -> IsolatedArtifactResult:
             continue
 
         values = residual[component]
-        signed_values = signed_residual[component]
+        signed_values = gray_signed_residual[component]
         chroma_values = chroma_residual[component]
         areas.append(area)
         component_residuals.append(float(np.median(values)))
