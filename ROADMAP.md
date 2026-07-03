@@ -26,7 +26,7 @@ authoritative implementation state.
 | CLI: `dataset-forge inspect <path>` | shipped |
 | Optional gallery PNG output | shipped |
 | Dataset Summary + Review Queue -- advisory post-inspection guidance | shipped |
-| Public benchmark suite (18 expectations, synthetic fixtures committed) | shipped |
+| Public benchmark suite (committed fixtures plus optional generated/private cases) | shipped |
 | Public CLI surface locked to inspect-only | shipped |
 
 **v0.2.0-alpha does not include:** cleanup, repair, regeneration, AI editing,
@@ -66,12 +66,31 @@ Research reports: `benchmarks/results/probe_speck_glitter/` and
 The following items belong in subsequent releases. No timeline is set for any of
 these.
 
+### v0.3: Calibration Evidence
+
+**Goal:** Measure how reliable the existing four analyzers are on labeled
+real-world LoRA dataset images.
+
+Calibration Evidence compares an existing `inspection_report.json` against a
+small ground-truth label file and reports:
+
+- per-analyzer TP / FP / FN / TN
+- precision, recall, F1, and false-positive rate
+- category-level summary
+- schema-versioned JSON output
+
+This is an evidence layer only. v0.3 does not change analyzer thresholds, add
+cleanup, repair, export, plugins, UI, or new analyzers, and does not expand the
+public `inspect` CLI.
+
 ### Analyzer improvement (v1.x)
 
+- Use Calibration Evidence on labeled real-world datasets before changing
+  thresholds or adding analyzer families.
+- TextureAnalyzer calibration against labeled ground truth.
 - Fourth discriminating signal for `CrystallineFacetingAnalyzer` -- resolve
   grain 45-55 TP/FP interleaving (spatial coherence, directional frequency
   energy, or micro-edge profile).
-- TextureAnalyzer calibration against labeled ground truth.
 - Periodic frequency noise: postponed until a better discriminator separates
   synthetic periodic contamination from intentional repeated patterns.
 - Research probe for `artifact.recursive_detail` (no signal investigation yet).
@@ -132,8 +151,9 @@ Non-destructive pipeline (absolute):
 
 ## Priority Order (post v0.2.0-alpha)
 
-Calibration against labeled ground truth > fourth crystalline discriminating
-signal > new artifact family research > v2 cleanup work.
+Calibration Evidence against labeled ground truth > threshold review for
+existing analyzers > fourth crystalline discriminating signal > new artifact
+family research > v2 cleanup work.
 
 The inspect vertical slice is shipped. The most valuable next step is
 calibrating existing analyzer thresholds with precision/recall/F1 evidence

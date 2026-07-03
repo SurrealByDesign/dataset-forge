@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-02. Reflects v0.2.0-alpha.*
+*Last updated: 2026-07-03. Reflects v0.3 calibration evidence slice in progress.*
 
 ---
 
@@ -17,7 +17,15 @@ Supported in v0.2.0-alpha:
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Optional gallery PNG (`--gallery`)
 - Additive Dataset Summary and Review Queue report sections
-- Public benchmark suite (18 expectations, all passing from fresh clone)
+- Public benchmark suite (committed fixture expectations pass from fresh clone;
+  optional generated/private cases are skipped when absent)
+
+Internal v0.3 calibration evidence slice:
+- Compare existing `inspection_report.json` with schema-versioned ground-truth labels
+- Emit per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and false-positive rate
+- No analyzer threshold changes
+- No public CLI expansion
+- No cleanup, repair, export, UI, plugins, or new analyzers
 
 Not supported in v0.2.0-alpha (planned for later releases):
 - Cleanup (v2+)
@@ -32,11 +40,11 @@ Not supported in v0.2.0-alpha (planned for later releases):
 
 ## Test suite
 
-**799 tests passing, 1 skipped.**
+**810 tests passing, 1 skipped.**
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
 inspect runner, gallery, benchmark framework, committed fixtures,
-post-inspection review guidance, and public CLI surface.
+post-inspection review guidance, calibration evidence, and public CLI surface.
 
 ```
 uv run pytest tests/
@@ -53,6 +61,7 @@ uv run pytest tests/
 | Gallery writer | `src/dataset_forge/inspect_gallery.py` | Done |
 | JSON + TXT report writers | `src/dataset_forge/report.py` | Done |
 | Dataset Summary + Review Queue | `src/dataset_forge/post_inspection.py` | Advisory post-inspection sections |
+| Calibration Evidence | `src/dataset_forge/calibration_evidence.py` | Internal metrics over reports and labels |
 | `Finding` dataclass | `src/dataset_forge/finding.py` | Done |
 | `DatasetContext` dataclass | `src/dataset_forge/context.py` | Done |
 | `Analyzer` base class | `src/dataset_forge/analyzers/base.py` | Done |
@@ -61,7 +70,7 @@ uv run pytest tests/
 | `OversharpeningHaloAnalyzer` | `src/dataset_forge/analyzers/oversharpening.py` | First-pass; uncalibrated |
 | `HighFrequencyIsolatedArtifactAnalyzer` | `src/dataset_forge/analyzers/high_frequency_isolated.py` | First-pass; uncalibrated |
 | Benchmark framework | `src/dataset_forge/benchmark.py` | Done |
-| Benchmark manifest | `benchmarks/benchmark_manifest.json` | 18 expectations; all pass |
+| Benchmark manifest | `benchmarks/benchmark_manifest.json` | Committed public fixtures pass; optional generated/private cases skip when absent |
 
 Current finding categories:
 
@@ -80,7 +89,7 @@ Current finding categories:
 | Oversharpening/halo analyzer calibration | First-pass USM-residual analyzer implemented; synthetic fixtures pass; real-world calibration still pending |
 | Periodic frequency analyzer | Researched; not approved for implementation until a better discriminator exists |
 | Recursive detail analyzer | Not yet investigated |
-| Calibrated thresholds | Pending labeled benchmark ground truth for all analyzers |
+| Calibrated thresholds | Pending labeled benchmark ground truth and threshold review for all analyzers |
 | Real-world calibration datasets | Pending labeled ground truth beyond synthetic fixtures |
 
 ---
@@ -105,7 +114,9 @@ Thirteen PNG fixtures are committed to `benchmarks/synthetic_defects/`:
 | `17_hfi_pencil_grain_guard.png` | HighFrequencyIsolatedArtifactAnalyzer | No finding (paper/pencil grain guard) |
 | `18_hfi_edge_halo_guard.png` | HighFrequencyIsolatedArtifactAnalyzer | No finding (edge-adjacent halo guard) |
 
-The public benchmark runs immediately from a fresh clone. No generation step required.
+The committed public fixture expectations run immediately from a fresh clone.
+Optional ignored/generated/private fixtures may be present locally and are
+skipped automatically when absent.
 
 ---
 
@@ -160,15 +171,15 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-1. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
-   interleaving cannot be resolved by threshold adjustment alone. Candidates:
-   spatial coherence, directional frequency energy, micro-edge profile.
+1. **Use Calibration Evidence on labeled real-world datasets** -- compute
+   precision/recall/F1 before changing analyzer thresholds or adding analyzers.
 
 2. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
    11 UNSURE images from the anthropomorph review need a dedicated pass.
 
-3. **Recursive detail overload** -- next artifact family in ARCHITECTURE.md.
-   No existing partial signal; requires a fresh probe before implementation.
+3. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
+   interleaving cannot be resolved by threshold adjustment alone. Candidates:
+   spatial coherence, directional frequency energy, micro-edge profile.
 
 ---
 

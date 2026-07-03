@@ -176,6 +176,17 @@ Reports also include additive post-inspection sections:
 These sections are review aids only. Dataset Forge does not delete, modify,
 repair, reject, regenerate, or export images.
 
+### Internal: calibration evidence
+
+v0.3 development focuses on Calibration Evidence: comparing an existing
+`inspection_report.json` with a small ground-truth label file to compute
+per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and
+false-positive rate.
+
+This is internal evidence tooling. It does not change analyzer thresholds,
+modify images, add cleanup/repair/export, or change the public `inspect`
+behavior.
+
 ### Optional: inspection gallery
 
 ```
@@ -234,15 +245,15 @@ Images with no findings are listed separately. They are not an afterthought.
 ## Benchmarks
 
 Analyzer thresholds are validated against committed synthetic fixtures. The
-public benchmark suite runs without any setup from a fresh clone:
+committed public fixtures run without any setup from a fresh clone:
 
 ```
 uv run python scripts/run_benchmarks.py
 ```
 
-Current public coverage: 18 expectations across TextureAnalyzer,
-CrystallineFacetingAnalyzer, OversharpeningHaloAnalyzer, and
-HighFrequencyIsolatedArtifactAnalyzer. All 18 pass. See
+The public manifest includes committed fixture expectations plus optional
+generated/private cases. Optional ignored/generated/private fixtures may be
+present locally and are skipped automatically when absent. See
 [benchmarks/README.md](benchmarks/README.md) for the full manifest description.
 
 ### Internal measurement cache
@@ -261,10 +272,10 @@ default, stores measurements only, and has no CLI flags.
 uv run pytest tests/
 ```
 
-799 tests passing, 1 skipped. Tests cover the full inspect pipeline: Finding,
+810 tests passing, 1 skipped. Tests cover the full inspect pipeline: Finding,
 DatasetContext, Analyzer contracts, report writers, CLI, inspect runner,
 gallery, benchmark framework, committed fixtures, post-inspection review
-guidance, and public CLI surface.
+guidance, calibration evidence, and public CLI surface.
 
 ---
 

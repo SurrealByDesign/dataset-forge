@@ -182,6 +182,49 @@ Every analyzer ships with a benchmark that validates its thresholds.
 
 ---
 
+## Calibration Evidence
+
+Calibration Evidence is the v0.3 bridge between inspect-only findings and any
+future repair/export planning. It measures existing analyzer output against
+ground-truth labels. It does not run analyzers, edit thresholds, modify images,
+or make human-review decisions.
+
+Inputs:
+- `inspection_report.json` with schema `dataset-forge/inspection/v1`
+- Ground-truth labels with schema `dataset-forge/calibration-labels/v1`
+
+Ground-truth labels are intentionally small:
+
+```json
+{
+  "schema": "dataset-forge/calibration-labels/v1",
+  "labels": [
+    {
+      "image_path": "image_001.png",
+      "categories": ["artifact.crystalline_faceting"]
+    },
+    {
+      "image_path": "image_002.png",
+      "categories": []
+    }
+  ]
+}
+```
+
+An empty `categories` list means the image is labeled clean for the current
+calibration categories.
+
+Output schema: `dataset-forge/calibration-evidence/v1`
+
+The output includes per-analyzer and per-category TP/FP/FN/TN, precision,
+recall, F1, and false-positive rate. Error findings are counted as ignored
+error findings; they are not treated as artifact positives.
+
+Calibration Evidence is internal for now. It should inform future threshold
+review, but it must not silently change analyzer behavior.
+
+---
+
 ## Future-Only / Not Implemented in v0.2.0-alpha
 
 The following exist in the codebase but are out of scope for the public
