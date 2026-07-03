@@ -1,18 +1,18 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-03. Reflects v0.3 calibration evidence slice in progress.*
+*Last updated: 2026-07-03. Reflects v0.3.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.2.0-alpha** implements the inspect-only image inspection platform:
+**Dataset Forge v0.3.0-alpha** implements the inspect-only image inspection platform plus internal Calibration Evidence:
 
 ```
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.2.0-alpha:
+Supported in v0.3.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Optional gallery PNG (`--gallery`)
@@ -20,14 +20,14 @@ Supported in v0.2.0-alpha:
 - Public benchmark suite (committed fixture expectations pass from fresh clone;
   optional generated/private cases are skipped when absent)
 
-Internal v0.3 calibration evidence slice:
+- Internal Calibration Evidence over existing `inspection_report.json` files
 - Compare existing `inspection_report.json` with schema-versioned ground-truth labels
 - Emit per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and false-positive rate
 - No analyzer threshold changes
 - No public CLI expansion
 - No cleanup, repair, export, UI, plugins, or new analyzers
 
-Not supported in v0.2.0-alpha (planned for later releases):
+Not supported in v0.3.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair (future)
 - Export (future)
@@ -122,7 +122,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.2.0-alpha):
+**Public tools** (documented, supported in v0.3.0-alpha):
 
 | Script | Purpose |
 |---|---|
