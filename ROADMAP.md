@@ -2,16 +2,16 @@
 
 ---
 
-## v0.1 alpha: Dataset Forge Inspect -- Released
+## v0.2.0-alpha: Dataset Forge Inspect -- Released
 
 **Goal:** Produce explainable, read-only findings for image datasets.
 
-**Pipeline:** `Dataset -> DatasetContext -> Analyzer -> Finding -> Report`
+**Pipeline:** `Dataset -> DatasetContext -> Analyzer -> Finding -> Aggregation -> Dataset Summary -> Review Queue -> Report`
 
 **Status:** Released. See [CURRENT_STATUS.md](CURRENT_STATUS.md) for the
 authoritative implementation state.
 
-### v0.1 alpha -- Shipped
+### v0.2.0-alpha -- Shipped
 
 | Component | Status |
 |---|---|
@@ -29,9 +29,10 @@ authoritative implementation state.
 | Public benchmark suite (18 expectations, synthetic fixtures committed) | shipped |
 | Public CLI surface locked to inspect-only | shipped |
 
-**v0.1 alpha does not include:** cleanup, AI, UI, captions, plugins, exporters.
+**v0.2.0-alpha does not include:** cleanup, repair, regeneration, AI editing,
+UI, captions, plugins, or exporters.
 
-### v0.1 alpha -- Analyzer Research Status
+### v0.2.0-alpha -- Analyzer Research Status
 
 The current alpha includes four first-pass analyzers. Some shipped analyzers
 still need real-world calibration; that calibration work is post-alpha.
@@ -48,7 +49,7 @@ still need real-world calibration; that calibration work is post-alpha.
 Research reports: `benchmarks/results/probe_speck_glitter/` and
 `benchmarks/results/probe_oversharpening/`.
 
-### v0.1 alpha -- Known limitations
+### v0.2.0-alpha -- Known limitations
 
 - Analyzer thresholds are uncalibrated against published ground truth.
   Confidence is capped (TextureAnalyzer: 0.70, CrystallineFacetingAnalyzer: 0.45,
@@ -60,7 +61,7 @@ Research reports: `benchmarks/results/probe_speck_glitter/` and
 
 ---
 
-## v0.2+: Dataset Forge -- Post-Alpha Work
+## Post-v0.2.0-alpha Work
 
 The following items belong in subsequent releases. No timeline is set for any of
 these.
@@ -129,7 +130,7 @@ Non-destructive pipeline (absolute):
 
 ---
 
-## Priority Order (post v0.1 alpha)
+## Priority Order (post v0.2.0-alpha)
 
 Calibration against labeled ground truth > fourth crystalline discriminating
 signal > new artifact family research > v2 cleanup work.

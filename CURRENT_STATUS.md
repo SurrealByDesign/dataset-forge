@@ -1,25 +1,28 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-06-18. Reflects v0.1 alpha.*
+*Last updated: 2026-07-02. Reflects v0.2.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.1 alpha** implements the v1 Inspect slice:
+**Dataset Forge v0.2.0-alpha** implements the inspect-only image inspection platform:
 
 ```
-Dataset -> DatasetContext -> Analyzer -> Finding -> Report
+Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.1 alpha:
+Supported in v0.2.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Optional gallery PNG (`--gallery`)
+- Additive Dataset Summary and Review Queue report sections
 - Public benchmark suite (18 expectations, all passing from fresh clone)
 
-Not supported in v0.1 alpha (planned for later releases):
+Not supported in v0.2.0-alpha (planned for later releases):
 - Cleanup (v2+)
+- Repair (future)
+- Export (future)
 - UI (v2+)
 - Plugin system (v2+)
 - Additional analyzers beyond the current first-pass set (v1.x)
@@ -29,7 +32,7 @@ Not supported in v0.1 alpha (planned for later releases):
 
 ## Test suite
 
-**776 tests passing, 1 skipped.**
+**799 tests passing, 1 skipped.**
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
 inspect runner, gallery, benchmark framework, committed fixtures,
@@ -41,7 +44,7 @@ uv run pytest tests/
 
 ---
 
-## Implemented (v1 pipeline)
+## Implemented (inspect pipeline)
 
 | Component | File | Status |
 |---|---|---|
@@ -69,15 +72,16 @@ Current finding categories:
 
 ---
 
-## Not yet implemented (v1 gaps)
+## Not yet implemented (post-alpha gaps)
 
 | Component | Notes |
 |---|---|
 | Speck/glitter analyzer calibration | First-pass isolated high-frequency analyzer implemented; synthetic fixtures pass; real-world calibration still pending |
 | Oversharpening/halo analyzer calibration | First-pass USM-residual analyzer implemented; synthetic fixtures pass; real-world calibration still pending |
-| Periodic frequency / recursive detail analyzer | Not yet investigated |
+| Periodic frequency analyzer | Researched; not approved for implementation until a better discriminator exists |
+| Recursive detail analyzer | Not yet investigated |
 | Calibrated thresholds | Pending labeled benchmark ground truth for all analyzers |
-| Phase 2 measurement cache | `ImageMeasurements` dataclass; replaces `lru_cache` on `evaluate_texture` |
+| Real-world calibration datasets | Pending labeled ground truth beyond synthetic fixtures |
 
 ---
 
@@ -107,7 +111,7 @@ The public benchmark runs immediately from a fresh clone. No generation step req
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.1 alpha):
+**Public tools** (documented, supported in v0.2.0-alpha):
 
 | Script | Purpose |
 |---|---|

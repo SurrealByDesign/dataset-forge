@@ -47,7 +47,7 @@ Images with findings:   19 / 100
 Images with no issues:  81 / 100
 
 Recommendation: 81 images require no action.
-                19 images have calibrated findings. Review report for details.
+                19 images have findings. Review report for details.
 
 Report written:
   inspection_report.json
@@ -70,7 +70,13 @@ Report written:
     "resolution_stats": { "min_w": 512, "max_w": 1024, "mean_w": 768, "stddev_w": 112 },
     "texture_distributions": { "mean": 39.9, "stddev": 11.6, "p10": 24.1, "p90": 55.2 },
     "duplicate_hashes": [],
-    "near_duplicate_pairs": [["image_014.png", "image_087.png"]]
+    "near_duplicate_pairs": [["image_014.png", "image_087.png"]],
+    "analyzer_versions": {
+      "texture_analyzer": "v1",
+      "crystalline_faceting_analyzer": "v1",
+      "oversharpening_halo_analyzer": "v1",
+      "high_frequency_isolated_artifact_analyzer": "v1"
+    }
   },
   "findings": [
     {
@@ -97,6 +103,35 @@ Report written:
     "images_with_findings": 19,
     "images_clean": 81,
     "severity_counts": { "HIGH": 3, "MEDIUM": 14, "LOW": 6, "NONE": 0 }
+  },
+  "dataset_summary": {
+    "schema": "dataset-forge/dataset-summary/v1",
+    "image_count": 100,
+    "images_with_findings": 19,
+    "images_without_findings": 81,
+    "findings_by_category": {
+      "artifact.high_frequency_isolated": 6
+    },
+    "findings_by_severity": {
+      "HIGH": 3,
+      "MEDIUM": 14,
+      "LOW": 6
+    },
+    "analyzer_error_count": 0,
+    "calibrated_finding_count": 0,
+    "uncalibrated_finding_count": 23,
+    "dominant_artifact_families": [
+      "artifact.high_frequency_isolated"
+    ]
+  },
+  "review_queue": {
+    "schema": "dataset-forge/review-queue/v1",
+    "outcomes": {
+      "no_attention_needed": 81,
+      "review_recommended": 16,
+      "priority_review": 3
+    },
+    "items": []
   }
 }
 ```
@@ -133,6 +168,23 @@ CLEAN IMAGES (no findings)
 81 images produced no findings at any severity level.
 These images are ready for training as-is.
 
+DATASET SUMMARY
+---------------
+Images with findings:       19
+Images without findings:    81
+Analyzer errors:            0
+Calibrated findings:        0
+Uncalibrated findings:      23
+Dominant artifact families: artifact.high_frequency_isolated
+
+REVIEW QUEUE
+------------
+Review Queue is advisory only. Dataset Forge does not delete, modify,
+repair, reject, regenerate, or export images.
+No attention needed: 81
+Review recommended:  16
+Priority review:     3
+
 SUMMARY
 -------
 Findings:         23 total (3 HIGH, 14 MEDIUM, 6 LOW)
@@ -153,3 +205,5 @@ Recommendation: Review findings before making any dataset changes.
 - Confidence and false-positive rate are always shown together.
 - The report never says "fix everything." It explains each finding.
 - A report with 100 clean images and 0 findings is a successful run.
+- Dataset Summary and Review Queue are additive report sections. They organize
+  existing findings for human review and do not hide or replace findings.

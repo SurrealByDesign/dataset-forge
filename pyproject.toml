@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataset-forge"
-version = "0.1.0a1"
-description = "Dataset Forge v0.1 alpha -- inspect image datasets for GPT-style artifacts and produce explainable, evidence-backed findings."
+version = "0.2.0a0"
+description = "Dataset Forge v0.2.0-alpha -- inspect image datasets for GPT-style artifacts and produce explainable, evidence-backed findings."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

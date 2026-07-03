@@ -5,9 +5,9 @@ import csv
 import hashlib
 import json
 import sys
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
+from dataset_forge import __version__
 from dataset_forge.execution.default import build_default_pipeline
 from dataset_forge.execution.pipeline import PipelineExecutionError
 from dataset_forge.execution.state import load_state
@@ -79,7 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.1 alpha: inspect image datasets and write "
+            "Dataset Forge v0.2.0-alpha: inspect image datasets and write "
             "evidence-backed, read-only reports."
         ),
     )
@@ -114,10 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _package_version() -> str:
-    try:
-        return version("dataset-forge")
-    except PackageNotFoundError:
-        return "0.1.0a1"
+    return __version__
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -139,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.1 alpha CLI. "
+            "Error: this command is not part of the public v0.2.0-alpha CLI. "
             "Use 'dataset-forge inspect', '--help', or '--version'.",
             file=sys.stderr,
         )
@@ -382,7 +379,7 @@ def _inspect_main(argv: list[str]) -> int:
         prog="dataset-forge inspect",
         description=(
             "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.1 alpha is analysis only: findings are candidates for review.\n"
+            "v0.2.0-alpha is analysis only: findings are candidates for review.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )

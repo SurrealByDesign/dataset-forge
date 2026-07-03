@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.1 alpha** -- implements the v1 Inspect slice.
+**v0.2.0-alpha** -- implements the inspect-only image inspection platform.
 
 Dataset Forge inspects image datasets for GPT-style artifacts and produces
 explainable, evidence-backed findings.
@@ -9,9 +9,9 @@ It is designed for practitioners preparing LoRA training datasets who want to
 understand what is wrong with their data -- and what should be left alone --
 before doing anything to it.
 
-**v0.1 alpha is analysis only.** It reads your dataset. It does not touch your images.
-Cleanup, UI, plugins, and analyzer families beyond the listed first-pass set are
-not part of this release.
+**v0.2.0-alpha is analysis only.** It reads your dataset. It does not touch your images.
+Cleanup, repair, export, UI, plugins, and analyzer families beyond the listed
+first-pass set are not part of this release.
 
 ---
 
@@ -25,7 +25,7 @@ what action (if any) is warranted.
 A healthy dataset can legitimately produce zero findings. That is a valid
 and correct result, not a failure.
 
-**Analyzers in v1:**
+**Analyzers in v0.2.0-alpha:**
 
 | Analyzer | What it detects | Status |
 |---|---|---|
@@ -60,7 +60,7 @@ edge halos.
 
 ---
 
-## Current limitations (v0.1 alpha)
+## Current limitations (v0.2.0-alpha)
 
 - **Analyzers are not calibrated to published ground truth.** Thresholds were
   derived from an initial labeled review of one private dataset. Precision and
@@ -72,10 +72,10 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No cleanup.** v0.1 alpha is read-only. Cleanup is planned for v2 and will
-  require human approval at every step. See [ROADMAP.md](ROADMAP.md).
-  Code for future cleanup phases exists in the repository but is not active or
-  supported in v0.1 alpha.
+- **No cleanup, repair, or export.** v0.2.0-alpha is read-only. Cleanup,
+  repair, and export are future work and will require human approval at every
+  step. See [ROADMAP.md](ROADMAP.md). Code for future phases exists in the
+  repository but is not active or supported in the public CLI.
 
 - **No UI.** Dataset Forge is a CLI tool. Report output is JSON and plain text.
 
@@ -221,8 +221,9 @@ Images with no findings are listed separately. They are not an afterthought.
   No move, rename, modify, or delete operation is performed on source images.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
-- **Cleanup is not implemented in v1.** There is no flag or command that modifies
-  images in any way. This is by design.
+- **Cleanup, repair, and export are not implemented in v0.2.0-alpha.** There is
+  no public flag or command that modifies, repairs, exports, rejects, or
+  regenerates images. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,
   a human-readable explanation, and a recommendation. No black-box scores.
 - **Healthy images produce no findings.** The tool does not generate recommendations
@@ -260,10 +261,10 @@ default, stores measurements only, and has no CLI flags.
 uv run pytest tests/
 ```
 
-776 tests passing, 1 skipped. Tests cover the full v1 pipeline: Finding, DatasetContext,
-Analyzer contracts, report writers, CLI, inspect runner, gallery, benchmark
-framework, committed fixtures, post-inspection review guidance, and public CLI
-surface.
+799 tests passing, 1 skipped. Tests cover the full inspect pipeline: Finding,
+DatasetContext, Analyzer contracts, report writers, CLI, inspect runner,
+gallery, benchmark framework, committed fixtures, post-inspection review
+guidance, and public CLI surface.
 
 ---
 
@@ -278,10 +279,10 @@ MIT. See [LICENSE](LICENSE).
 | Document | Contents |
 |---|---|
 | [PROJECT_BIBLE.md](PROJECT_BIBLE.md) | Project constitution  --  read before changing anything |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | v1 pipeline structure, Finding schema, artifact family model |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Inspect pipeline structure, Finding schema, artifact family model |
 | [WHY.md](WHY.md) | Reasoning behind major design decisions |
 | [DIRECTION.md](DIRECTION.md) | Current milestone and scope |
-| [ROADMAP.md](ROADMAP.md) | v1 -> v2 -> v3 milestone plan |
+| [ROADMAP.md](ROADMAP.md) | v0.2.0-alpha status and future milestone plan |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Implementation status; resume from here |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Acceptance criteria for terminal and report output |
 | [benchmarks/README.md](benchmarks/README.md) | Benchmark manifests and fixture inventory |

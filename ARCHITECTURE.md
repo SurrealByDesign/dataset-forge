@@ -5,7 +5,7 @@
 
 ---
 
-## Version 1 Pipeline
+## v0.2.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -15,8 +15,10 @@ Dataset
                     └─► Report  human-readable, explainable output
 ```
 
-Every component in v1 maps to one node in this pipeline.
-Nothing in v1 lives outside this pipeline.
+Every component in the public inspect surface maps to this pipeline. The
+current report stage also includes additive post-inspection sections:
+Aggregation, Dataset Summary, and Review Queue. Cleanup, repair, regeneration,
+export, UI, and plugins are future work and are not part of v0.2.0-alpha.
 
 ---
 
@@ -121,14 +123,46 @@ Analyzers must not:
 
 ## Report
 
-The report layer consumes Findings and produces human-readable output.
+The report layer consumes Findings plus additive post-inspection sections and
+produces human-readable output.
 
-v1 outputs:
+v0.2.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `inspection_gallery.png`  --  optional visual review contact sheet
 
-Reports must not re-run analysis or make decisions. They present findings.
+Reports must not re-run analysis, modify images, or make cleanup/repair/export
+decisions. They present findings and advisory review organization.
+
+---
+
+## Post-Inspection Layer
+
+The post-inspection layer is additive. It runs after Findings are produced and
+before reports are written:
+
+```
+Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
+```
+
+Aggregation is internal only. It groups findings by image, counts findings by
+category and severity, counts analyzer errors, tracks images with and without
+findings, tracks images with multiple finding families, and separates
+calibrated from uncalibrated findings.
+
+Dataset Summary answers: "What did we find across the dataset?"
+`dataset_summary` is emitted as an additive top-level JSON section with schema
+`dataset-forge/dataset-summary/v1`. It does not change or replace existing
+report fields.
+
+Review Queue answers: "Which images deserve human attention first?"
+`review_queue` is emitted as an additive top-level JSON section with schema
+`dataset-forge/review-queue/v1`. Its only outcomes are
+`no_attention_needed`, `review_recommended`, and `priority_review`.
+
+Review Queue is advisory only. It never rejects, regenerates, repairs,
+exports, deletes, moves, renames, or modifies images. It must never hide the
+underlying Findings that caused an image to appear in the queue.
 
 ---
 
@@ -148,24 +182,25 @@ Every analyzer ships with a benchmark that validates its thresholds.
 
 ---
 
-## What Is Not in v1
+## Future-Only / Not Implemented in v0.2.0-alpha
 
-The following exist in the codebase but are out of scope for v1.
-They should not be modified, expanded, or depended on by v1 code.
+The following exist in the codebase but are out of scope for the public
+v0.2.0-alpha inspect release. They should not be modified, expanded, or
+depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Out of scope for v1 |
-| `plugins/` | Out of scope for v1 |
-| `execution/` | Out of scope for v1 |
-| `transforms/` | Out of scope for v1 |
-| `exporters/` | Out of scope for v1 |
-| `review/` | Out of scope for v1 |
-| `recommendations/engine.py` | Out of scope for v1 |
+| `cleanup/` | Future only; not public in v0.2.0-alpha |
+| `plugins/` | Future only; not public in v0.2.0-alpha |
+| `execution/` | Future only; not public in v0.2.0-alpha |
+| `transforms/` | Future only; not public in v0.2.0-alpha |
+| `exporters/` | Future only; not public in v0.2.0-alpha |
+| `review/` | Future only; not public in v0.2.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.2.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
-because they may be valuable later. They are simply not part of the
-v1 vertical slice.
+because they may be valuable later. They are not part of the public
+v0.2.0-alpha CLI or report behavior.
 
 ---
 
@@ -351,7 +386,11 @@ When an analyzer is uncalibrated:
 
 ---
 
-### Cleanup Routing (future  --  v2+)
+### Cleanup Routing (future only -- not implemented in v0.2.0-alpha)
+
+> This section is design guidance for a future release. Dataset Forge
+> v0.2.0-alpha does not expose cleanup, repair, regeneration, or export
+> commands.
 
 Cleanup must be artifact-specific. A single generic smoothing filter applied
 to all findings would:
@@ -415,7 +454,8 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Batch Exclusion and Export Workflow (future  --  v2+)
 
 > This section describes the planned non-destructive export mechanism.
-> It is not yet implemented. Nothing in v1 should be designed around it.
+> It is not yet implemented. Nothing in v0.2.0-alpha should be designed around
+> it or expose it through the public CLI.
 
 ---
 
