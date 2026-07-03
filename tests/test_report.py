@@ -147,6 +147,28 @@ class TestJSONReportSchema(unittest.TestCase):
         d = self._write([_finding()])
         self.assertIn("summary", d)
 
+    def test_additive_dataset_summary_section_present(self):
+        d = self._write([_finding()])
+        self.assertIn("dataset_summary", d)
+        self.assertEqual(
+            d["dataset_summary"]["schema"],
+            "dataset-forge/dataset-summary/v1",
+        )
+
+    def test_additive_review_queue_section_present(self):
+        d = self._write([_finding()])
+        self.assertIn("review_queue", d)
+        self.assertEqual(
+            d["review_queue"]["schema"],
+            "dataset-forge/review-queue/v1",
+        )
+
+    def test_existing_report_fields_remain_present_with_additive_sections(self):
+        d = self._write([_finding()])
+        for field in ("schema", "generated_at", "dataset_path", "context",
+                      "findings", "summary"):
+            self.assertIn(field, d)
+
     def test_summary_total_findings(self):
         d = self._write([_finding(), _finding()])
         self.assertEqual(d["summary"]["total_findings"], 2)
@@ -266,6 +288,22 @@ class TestTXTReportContent(unittest.TestCase):
     def test_summary_section_present(self):
         txt = self._write([_finding()])
         self.assertIn("SUMMARY", txt)
+
+    def test_dataset_summary_section_present(self):
+        txt = self._write([_finding()])
+        self.assertIn("DATASET SUMMARY", txt)
+        self.assertIn("Images with findings", txt)
+
+    def test_review_queue_section_present(self):
+        txt = self._write([_finding()])
+        self.assertIn("REVIEW QUEUE", txt)
+        self.assertIn("Review Queue is advisory only", txt)
+
+    def test_review_queue_does_not_advertise_repair_or_export_action(self):
+        txt = self._write([_finding()])
+        self.assertNotIn("repair recommended", txt.lower())
+        self.assertNotIn("regenerate", txt.lower().replace("regenerate, or export", ""))
+        self.assertIn("does not delete, modify", txt)
 
     def test_no_findings_message(self):
         txt = self._write([])

@@ -168,6 +168,14 @@ Reports are written to the output directory (default: a folder named
 `inspect_output/` inside your dataset directory). Source images are not
 touched.
 
+Reports also include additive post-inspection sections:
+
+- **Dataset Summary** -- counts what was found across the dataset.
+- **Review Queue** -- advisory ordering for which images deserve human attention first.
+
+These sections are review aids only. Dataset Forge does not delete, modify,
+repair, reject, regenerate, or export images.
+
 ### Optional: inspection gallery
 
 ```
@@ -254,7 +262,8 @@ uv run pytest tests/
 
 776 tests passing, 1 skipped. Tests cover the full v1 pipeline: Finding, DatasetContext,
 Analyzer contracts, report writers, CLI, inspect runner, gallery, benchmark
-framework, committed fixtures, and public CLI surface.
+framework, committed fixtures, post-inspection review guidance, and public CLI
+surface.
 
 ---
 

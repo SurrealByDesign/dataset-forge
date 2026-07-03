@@ -25,6 +25,7 @@ authoritative implementation state.
 | JSON + TXT report writers | shipped |
 | CLI: `dataset-forge inspect <path>` | shipped |
 | Optional gallery PNG output | shipped |
+| Dataset Summary + Review Queue -- advisory post-inspection guidance | shipped |
 | Public benchmark suite (18 expectations, synthetic fixtures committed) | shipped |
 | Public CLI surface locked to inspect-only | shipped |
 

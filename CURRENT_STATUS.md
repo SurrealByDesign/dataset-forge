@@ -32,8 +32,8 @@ Not supported in v0.1 alpha (planned for later releases):
 **776 tests passing, 1 skipped.**
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
-inspect runner, gallery, benchmark framework, committed fixtures, and public
-CLI surface.
+inspect runner, gallery, benchmark framework, committed fixtures,
+post-inspection review guidance, and public CLI surface.
 
 ```
 uv run pytest tests/
@@ -49,6 +49,7 @@ uv run pytest tests/
 | Inspect spine runner | `src/dataset_forge/inspect.py` | Done |
 | Gallery writer | `src/dataset_forge/inspect_gallery.py` | Done |
 | JSON + TXT report writers | `src/dataset_forge/report.py` | Done |
+| Dataset Summary + Review Queue | `src/dataset_forge/post_inspection.py` | Advisory post-inspection sections |
 | `Finding` dataclass | `src/dataset_forge/finding.py` | Done |
 | `DatasetContext` dataclass | `src/dataset_forge/context.py` | Done |
 | `Analyzer` base class | `src/dataset_forge/analyzers/base.py` | Done |
@@ -147,6 +148,9 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
   rule validated against synthetic fixtures only. Confidence capped at 0.45.
   Real-world precision and recall are not yet known.
 - All first-pass analyzers emit `"calibrated": false` in their evidence dicts.
+- Dataset Summary and Review Queue are advisory only. They organize existing
+  findings for human review; they do not reject, regenerate, repair, export, or
+  modify images.
 
 ---
 

@@ -17,6 +17,7 @@ from typing import Any
 
 from dataset_forge.context import DatasetContext
 from dataset_forge.finding import Finding, Severity
+from dataset_forge.post_inspection import build_post_inspection_sections
 
 REPORT_SCHEMA = "dataset-forge/inspection/v1"
 
@@ -74,6 +75,7 @@ def _build_json(
     affected = _images_with_findings(findings)
     total = context.image_count
     clean_count = total - len(affected)
+    dataset_summary, review_queue = build_post_inspection_sections(findings, context)
 
     return {
         "schema": REPORT_SCHEMA,
@@ -102,6 +104,8 @@ def _build_json(
             "images_clean": clean_count,
             "severity_counts": _severity_counts(findings),
         },
+        "dataset_summary": dataset_summary.to_dict(),
+        "review_queue": review_queue.to_dict(),
     }
 
 
@@ -201,6 +205,7 @@ def _build_txt(
     clean_count = total - len(affected)
     sev_counts = _severity_counts(findings)
     groups = _group_by_image(findings)
+    dataset_summary, review_queue = build_post_inspection_sections(findings, context)
 
     lines: list[str] = []
 
@@ -266,6 +271,55 @@ def _build_txt(
         ]
         lines += _score_table_rows(image_scores, findings, context)
         lines.append("")
+
+    # Additive post-inspection sections
+    lines += [
+        "DATASET SUMMARY",
+        "---------------",
+        f"Images with findings:       {dataset_summary.images_with_findings}",
+        f"Images without findings:    {dataset_summary.images_without_findings}",
+        f"Analyzer errors:            {dataset_summary.analyzer_error_count}",
+        f"Calibrated findings:        {dataset_summary.calibrated_finding_count}",
+        f"Uncalibrated findings:      {dataset_summary.uncalibrated_finding_count}",
+    ]
+    if dataset_summary.dominant_artifact_families:
+        lines.append(
+            "Dominant artifact families: "
+            + ", ".join(dataset_summary.dominant_artifact_families)
+        )
+    else:
+        lines.append("Dominant artifact families: none")
+    lines.append("")
+
+    lines += [
+        "REVIEW QUEUE",
+        "------------",
+        "Review Queue is advisory only. Dataset Forge does not delete, modify,",
+        "repair, reject, regenerate, or export images.",
+        f"No attention needed: {review_queue.outcomes['no_attention_needed']}",
+        f"Review recommended:  {review_queue.outcomes['review_recommended']}",
+        f"Priority review:     {review_queue.outcomes['priority_review']}",
+    ]
+    priority_items = [
+        item for item in review_queue.items
+        if item.outcome == "priority_review"
+    ]
+    review_items = [
+        item for item in review_queue.items
+        if item.outcome == "review_recommended"
+    ]
+    display_items = priority_items + review_items
+    if display_items:
+        lines.append("")
+        lines.append("Images needing attention:")
+        for item in display_items:
+            lines.append(
+                f"  [{item.priority.upper()}] {Path(item.image_path).name} "
+                f"- {item.finding_count} finding"
+                f"{'s' if item.finding_count != 1 else ''}; "
+                f"strongest={item.strongest_severity}"
+            )
+    lines.append("")
 
     # Summary
     lines += ["SUMMARY", "-------"]
