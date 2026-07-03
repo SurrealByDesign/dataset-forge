@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.0-alpha
+
+- Added internal Review Decisions helpers for schema-versioned human decisions
+  over existing inspection report image paths and finding categories.
+- Added deterministic decision summaries and helper queries for locked images,
+  confirmed findings, false positives, and future-action exclusions.
+- Kept analyzer thresholds, calibration logic, inspect behavior, public CLI
+  surface, cleanup, repair, export, plugins, UI, and analyzer set unchanged.
+
 ## v0.3.0-alpha
 
 - Added internal Calibration Evidence helpers for comparing existing

@@ -1,18 +1,18 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-03. Reflects v0.3.0-alpha.*
+*Last updated: 2026-07-03. Reflects v0.4.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.3.0-alpha** implements the inspect-only image inspection platform plus internal Calibration Evidence:
+**Dataset Forge v0.4.0-alpha** implements the inspect-only image inspection platform plus internal Calibration Evidence and Review Decisions:
 
 ```
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.3.0-alpha:
+Supported in v0.4.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Optional gallery PNG (`--gallery`)
@@ -23,11 +23,15 @@ Supported in v0.3.0-alpha:
 - Internal Calibration Evidence over existing `inspection_report.json` files
 - Compare existing `inspection_report.json` with schema-versioned ground-truth labels
 - Emit per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and false-positive rate
+- Internal Review Decisions over existing `inspection_report.json` findings
+- Load schema-versioned human decisions for images and finding categories
+- Summarize confirmed artifacts, false positives, acceptable style, review,
+  ignored, and locked decisions
 - No analyzer threshold changes
 - No public CLI expansion
 - No cleanup, repair, export, UI, plugins, or new analyzers
 
-Not supported in v0.3.0-alpha (planned for later releases):
+Not supported in v0.4.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair (future)
 - Export (future)
@@ -40,11 +44,15 @@ Not supported in v0.3.0-alpha (planned for later releases):
 
 ## Test suite
 
-**810 tests passing, 1 skipped.**
+**822 tests passing, 1 skipped.**
+
+The automated suite covers the full inspect pipeline plus internal evidence and
+review-decision helpers.
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
 inspect runner, gallery, benchmark framework, committed fixtures,
-post-inspection review guidance, calibration evidence, and public CLI surface.
+post-inspection review guidance, calibration evidence, review decisions, and
+public CLI surface.
 
 ```
 uv run pytest tests/
@@ -62,6 +70,7 @@ uv run pytest tests/
 | JSON + TXT report writers | `src/dataset_forge/report.py` | Done |
 | Dataset Summary + Review Queue | `src/dataset_forge/post_inspection.py` | Advisory post-inspection sections |
 | Calibration Evidence | `src/dataset_forge/calibration_evidence.py` | Internal metrics over reports and labels |
+| Review Decisions | `src/dataset_forge/review_decisions.py` | Internal human-intent model over images/findings |
 | `Finding` dataclass | `src/dataset_forge/finding.py` | Done |
 | `DatasetContext` dataclass | `src/dataset_forge/context.py` | Done |
 | `Analyzer` base class | `src/dataset_forge/analyzers/base.py` | Done |
@@ -122,7 +131,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.3.0-alpha):
+**Public tools** (documented, supported in v0.4.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -166,6 +175,8 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 - Dataset Summary and Review Queue are advisory only. They organize existing
   findings for human review; they do not reject, regenerate, repair, export, or
   modify images.
+- Review Decisions record human intent only. They do not implement cleanup,
+  repair, export, rejection, regeneration, or image modification.
 
 ---
 
@@ -174,10 +185,14 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 1. **Use Calibration Evidence on labeled real-world datasets** -- compute
    precision/recall/F1 before changing analyzer thresholds or adding analyzers.
 
-2. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
+2. **Collect Review Decisions from human audit passes** -- use the v0.4
+   schema to record confirmed artifacts, false positives, acceptable style,
+   ignored, locked, and needs-review outcomes before any repair planning.
+
+3. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
    11 UNSURE images from the anthropomorph review need a dedicated pass.
 
-3. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
+4. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
    interleaving cannot be resolved by threshold adjustment alone. Candidates:
    spatial coherence, directional frequency energy, micro-edge profile.
 

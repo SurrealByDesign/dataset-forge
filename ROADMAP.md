@@ -68,6 +68,8 @@ these.
 
 ### v0.3: Calibration Evidence
 
+**Status:** Implemented.
+
 **Goal:** Measure how reliable the existing four analyzers are on labeled
 real-world LoRA dataset images.
 
@@ -82,6 +84,28 @@ small ground-truth label file and reports:
 This is an evidence layer only. v0.3 does not change analyzer thresholds, add
 cleanup, repair, export, plugins, UI, or new analyzers, and does not expand the
 public `inspect` CLI.
+
+### v0.4: Review Decisions
+
+**Status:** Implemented in v0.4.0-alpha.
+
+**Goal:** Record human intent after inspection and calibration without planning
+or applying any dataset changes.
+
+Review Decisions load schema-versioned JSON files over existing
+`inspection_report.json` paths and finding categories. They can record:
+
+- confirmed artifacts
+- false positives
+- acceptable style
+- needs review
+- ignored images/categories
+- locked images/categories
+
+This is a modeling layer only. v0.4 does not change analyzer thresholds,
+cleanup, repair, export, plugins, UI, or analyzer behavior, and does not expand
+the public `inspect` CLI. Review Decisions are the bridge between Calibration
+Evidence and future human-approved Repair Planning.
 
 ### Analyzer improvement (v1.x)
 

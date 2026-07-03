@@ -5,7 +5,7 @@
 
 ---
 
-## v0.2.0-alpha Inspect Pipeline
+## v0.4.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -18,7 +18,7 @@ Dataset
 Every component in the public inspect surface maps to this pipeline. The
 current report stage also includes additive post-inspection sections:
 Aggregation, Dataset Summary, and Review Queue. Cleanup, repair, regeneration,
-export, UI, and plugins are future work and are not part of v0.2.0-alpha.
+export, UI, and plugins are future work and are not part of v0.4.0-alpha.
 
 ---
 
@@ -126,7 +126,7 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.2.0-alpha outputs:
+v0.4.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `inspection_gallery.png`  --  optional visual review contact sheet
@@ -225,25 +225,63 @@ review, but it must not silently change analyzer behavior.
 
 ---
 
-## Future-Only / Not Implemented in v0.2.0-alpha
+## Review Decisions
+
+Review Decisions are the v0.4 bridge between Calibration Evidence and future
+human-approved Repair Planning. They record human intent over existing inspected
+images and finding categories. They do not run analyzers, change thresholds,
+modify images, or plan cleanup/export work.
+
+Input schema: `dataset-forge/review-decisions/v1`
+
+```json
+{
+  "schema": "dataset-forge/review-decisions/v1",
+  "decisions": [
+    {
+      "image_path": "image_001.png",
+      "category": "artifact.crystalline_faceting",
+      "decision": "CONFIRMED_ARTIFACT"
+    },
+    {
+      "image_path": "image_002.png",
+      "decision": "LOCKED",
+      "reason": "Preserve original approved style."
+    }
+  ]
+}
+```
+
+Supported decision values are `CONFIRMED_ARTIFACT`, `FALSE_POSITIVE`,
+`ACCEPTABLE_STYLE`, `NEEDS_REVIEW`, `IGNORE`, and `LOCKED`.
+
+The review-decision layer provides deterministic summaries and helper queries
+for future planning code, such as whether an image is locked, whether a finding
+was confirmed, whether a finding was rejected as a false positive, and whether
+an image/category should be excluded from future action. It is internal and
+additive; it does not alter `inspection_report.json`.
+
+---
+
+## Future-Only / Not Implemented in v0.4.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.2.0-alpha inspect release. They should not be modified, expanded, or
+v0.4.0-alpha inspect release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.2.0-alpha |
-| `plugins/` | Future only; not public in v0.2.0-alpha |
-| `execution/` | Future only; not public in v0.2.0-alpha |
-| `transforms/` | Future only; not public in v0.2.0-alpha |
-| `exporters/` | Future only; not public in v0.2.0-alpha |
-| `review/` | Future only; not public in v0.2.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.2.0-alpha |
+| `cleanup/` | Future only; not public in v0.4.0-alpha |
+| `plugins/` | Future only; not public in v0.4.0-alpha |
+| `execution/` | Future only; not public in v0.4.0-alpha |
+| `transforms/` | Future only; not public in v0.4.0-alpha |
+| `exporters/` | Future only; not public in v0.4.0-alpha |
+| `review/` | Future only; not public in v0.4.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.4.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.2.0-alpha CLI or report behavior.
+v0.4.0-alpha CLI or report behavior.
 
 ---
 
@@ -429,10 +467,10 @@ When an analyzer is uncalibrated:
 
 ---
 
-### Cleanup Routing (future only -- not implemented in v0.2.0-alpha)
+### Cleanup Routing (future only -- not implemented in v0.4.0-alpha)
 
 > This section is design guidance for a future release. Dataset Forge
-> v0.2.0-alpha does not expose cleanup, repair, regeneration, or export
+> v0.4.0-alpha does not expose cleanup, repair, regeneration, or export
 > commands.
 
 Cleanup must be artifact-specific. A single generic smoothing filter applied
@@ -497,7 +535,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Batch Exclusion and Export Workflow (future  --  v2+)
 
 > This section describes the planned non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.2.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.4.0-alpha should be designed around
 > it or expose it through the public CLI.
 
 ---

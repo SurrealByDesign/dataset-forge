@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.3.0-alpha** -- implements the inspect-only image inspection platform plus internal Calibration Evidence.
+**v0.4.0-alpha** -- implements the inspect-only image inspection platform plus internal Calibration Evidence and Review Decisions.
 
 Dataset Forge inspects image datasets for GPT-style artifacts and produces
 explainable, evidence-backed findings.
@@ -9,7 +9,7 @@ It is designed for practitioners preparing LoRA training datasets who want to
 understand what is wrong with their data -- and what should be left alone --
 before doing anything to it.
 
-**v0.3.0-alpha is analysis only.** It reads your dataset. It does not touch your images.
+**v0.4.0-alpha is analysis only.** It reads your dataset. It does not touch your images.
 Cleanup, repair, export, UI, plugins, and analyzer families beyond the listed
 first-pass set are not part of this release.
 
@@ -25,7 +25,7 @@ what action (if any) is warranted.
 A healthy dataset can legitimately produce zero findings. That is a valid
 and correct result, not a failure.
 
-**Analyzers in v0.3.0-alpha:**
+**Analyzers in v0.4.0-alpha:**
 
 | Analyzer | What it detects | Status |
 |---|---|---|
@@ -60,7 +60,7 @@ edge halos.
 
 ---
 
-## Current limitations (v0.3.0-alpha)
+## Current limitations (v0.4.0-alpha)
 
 - **Analyzers are not calibrated to published ground truth.** Thresholds were
   derived from an initial labeled review of one private dataset. Precision and
@@ -72,7 +72,7 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No cleanup, repair, or export.** v0.3.0-alpha is read-only. Cleanup,
+- **No cleanup, repair, or export.** v0.4.0-alpha is read-only. Cleanup,
   repair, and export are future work and will require human approval at every
   step. See [ROADMAP.md](ROADMAP.md). Code for future phases exists in the
   repository but is not active or supported in the public CLI.
@@ -178,7 +178,7 @@ repair, reject, regenerate, or export images.
 
 ### Internal: calibration evidence
 
-v0.3.0-alpha includes internal Calibration Evidence: comparing an existing
+v0.4.0-alpha includes internal Calibration Evidence: comparing an existing
 `inspection_report.json` with a small ground-truth label file to compute
 per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and
 false-positive rate.
@@ -186,6 +186,18 @@ false-positive rate.
 This is internal evidence tooling. It does not change analyzer thresholds,
 modify images, add cleanup/repair/export, or change the public `inspect`
 behavior.
+
+### Internal: review decisions
+
+v0.4.0-alpha adds internal Review Decisions: schema-versioned JSON files that
+record human intent for images or finding categories after inspection and
+calibration review.
+
+Review Decisions can mark findings as confirmed artifacts, false positives,
+acceptable style, needing review, ignored, or locked. They are a modeling layer
+only: they do not modify images, plan repair, export datasets, or change
+analyzer behavior. They are the bridge between Calibration Evidence and future
+human-approved Repair Planning.
 
 ### Optional: inspection gallery
 
@@ -232,7 +244,7 @@ Images with no findings are listed separately. They are not an afterthought.
   No move, rename, modify, or delete operation is performed on source images.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
-- **Cleanup, repair, and export are not implemented in v0.3.0-alpha.** There is
+- **Cleanup, repair, and export are not implemented in v0.4.0-alpha.** There is
   no public flag or command that modifies, repairs, exports, rejects, or
   regenerates images. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,
@@ -272,10 +284,10 @@ default, stores measurements only, and has no CLI flags.
 uv run pytest tests/
 ```
 
-810 tests passing, 1 skipped. Tests cover the full inspect pipeline: Finding,
+822 tests passing, 1 skipped. Tests cover the full inspect pipeline: Finding,
 DatasetContext, Analyzer contracts, report writers, CLI, inspect runner,
 gallery, benchmark framework, committed fixtures, post-inspection review
-guidance, calibration evidence, and public CLI surface.
+guidance, calibration evidence, review decisions, and public CLI surface.
 
 ---
 
@@ -293,7 +305,7 @@ MIT. See [LICENSE](LICENSE).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Inspect pipeline structure, Finding schema, artifact family model |
 | [WHY.md](WHY.md) | Reasoning behind major design decisions |
 | [DIRECTION.md](DIRECTION.md) | Current milestone and scope |
-| [ROADMAP.md](ROADMAP.md) | v0.3.0-alpha status and future milestone plan |
+| [ROADMAP.md](ROADMAP.md) | v0.4.0-alpha status and future milestone plan |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Implementation status; resume from here |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Acceptance criteria for terminal and report output |
 | [benchmarks/README.md](benchmarks/README.md) | Benchmark manifests and fixture inventory |

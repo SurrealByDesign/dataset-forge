@@ -79,7 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.3.0-alpha: inspect image datasets and write "
+            "Dataset Forge v0.4.0-alpha: inspect image datasets and write "
             "evidence-backed, read-only reports."
         ),
     )
@@ -136,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.3.0-alpha CLI. "
+            "Error: this command is not part of the public v0.4.0-alpha CLI. "
             "Use 'dataset-forge inspect', '--help', or '--version'.",
             file=sys.stderr,
         )
@@ -379,7 +379,7 @@ def _inspect_main(argv: list[str]) -> int:
         prog="dataset-forge inspect",
         description=(
             "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.3.0-alpha is analysis only: findings are candidates for review.\n"
+            "v0.4.0-alpha is analysis only: findings are candidates for review.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )
