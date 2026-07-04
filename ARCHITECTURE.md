@@ -5,7 +5,7 @@
 
 ---
 
-## v0.5.0-alpha Inspect Pipeline
+## v0.6.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -18,7 +18,7 @@ Dataset
 Every component in the public inspect surface maps to this pipeline. The
 current report stage also includes additive post-inspection sections:
 Aggregation, Dataset Summary, and Review Queue. Cleanup, repair, regeneration,
-export, UI, and plugins are future work and are not part of v0.5.0-alpha.
+export, UI, and plugins are future work and are not part of v0.6.0-alpha.
 
 ---
 
@@ -126,7 +126,7 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.5.0-alpha outputs:
+v0.6.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `inspection_gallery.png`  --  optional visual review contact sheet
@@ -174,6 +174,7 @@ Location: `benchmarks/`
 benchmarks/
     benchmark_manifest.json
     synthetic_defects/         committed synthetic PNG fixtures
+    real_world/                validation corpus framework and labels
     real_samples/              local/private calibration images, gitignored
     results/                   benchmark run outputs, gitignored
 ```
@@ -296,25 +297,54 @@ plan and does not authorize automated changes.
 
 ---
 
-## Future-Only / Not Implemented in v0.5.0-alpha
+## Real-World Validation Corpus
+
+The Real-World Validation Corpus is the v0.6 methodology layer for labeled
+real-world validation data. It defines how future public and private datasets
+should be organized before Dataset Forge claims analyzer reliability on
+real-world LoRA/image corpora.
+
+Location: `benchmarks/real_world/`
+
+Schema: `dataset-forge/real-world-validation-corpus/v1`
+
+The corpus framework supports:
+- real image fixture groups
+- schema-compatible Calibration Evidence labels
+- optional Review Decisions
+- expected validation outputs
+- public fixture rules for legally safe, reproducible assets
+- optional private/local datasets that are skipped when absent
+
+The committed public group is a synthetic placeholder used only to prove corpus
+wiring, label compatibility, and Validation Dossier compatibility. It is not
+real-world calibration evidence.
+
+The corpus layer does not run analyzers, change thresholds, modify images,
+create reports, plan repair, export datasets, or alter `inspection_report.json`.
+It is internal and additive.
+
+---
+
+## Future-Only / Not Implemented in v0.6.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.5.0-alpha inspect release. They should not be modified, expanded, or
+v0.6.0-alpha inspect release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.5.0-alpha |
-| `plugins/` | Future only; not public in v0.5.0-alpha |
-| `execution/` | Future only; not public in v0.5.0-alpha |
-| `transforms/` | Future only; not public in v0.5.0-alpha |
-| `exporters/` | Future only; not public in v0.5.0-alpha |
-| `review/` | Future only; not public in v0.5.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.5.0-alpha |
+| `cleanup/` | Future only; not public in v0.6.0-alpha |
+| `plugins/` | Future only; not public in v0.6.0-alpha |
+| `execution/` | Future only; not public in v0.6.0-alpha |
+| `transforms/` | Future only; not public in v0.6.0-alpha |
+| `exporters/` | Future only; not public in v0.6.0-alpha |
+| `review/` | Future only; not public in v0.6.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.6.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.5.0-alpha CLI or report behavior.
+v0.6.0-alpha CLI or report behavior.
 
 ---
 
@@ -500,10 +530,10 @@ When an analyzer is uncalibrated:
 
 ---
 
-### Cleanup Routing (future only -- not implemented in v0.5.0-alpha)
+### Cleanup Routing (future only -- not implemented in v0.6.0-alpha)
 
 > This section is design guidance for a future release. Dataset Forge
-> v0.5.0-alpha does not expose cleanup, repair planning, repair, regeneration, or export
+> v0.6.0-alpha does not expose cleanup, repair planning, repair, regeneration, or export
 > commands.
 
 Cleanup must be artifact-specific. A single generic smoothing filter applied
@@ -568,7 +598,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Batch Exclusion and Export Workflow (future  --  v2+)
 
 > This section describes the planned non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.5.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.6.0-alpha should be designed around
 > it or expose it through the public CLI.
 
 ---

@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.5.0-alpha** -- implements the inspect-only image inspection platform plus internal Calibration Evidence, Review Decisions, and Validation Dossiers.
+**v0.6.0-alpha** -- implements the inspect-only image inspection platform plus internal Calibration Evidence, Review Decisions, Validation Dossiers, and the Real-World Validation Corpus framework.
 
 Dataset Forge inspects image datasets for GPT-style artifacts and produces
 explainable, evidence-backed findings.
@@ -9,7 +9,7 @@ It is designed for practitioners preparing LoRA training datasets who want to
 understand what is wrong with their data -- and what should be left alone --
 before doing anything to it.
 
-**v0.5.0-alpha is analysis only.** It reads your dataset. It does not touch your images.
+**v0.6.0-alpha is analysis only.** It reads your dataset. It does not touch your images.
 Cleanup, repair, export, UI, plugins, and analyzer families beyond the listed
 first-pass set are not part of this release.
 
@@ -25,7 +25,7 @@ what action (if any) is warranted.
 A healthy dataset can legitimately produce zero findings. That is a valid
 and correct result, not a failure.
 
-**Analyzers in v0.5.0-alpha:**
+**Analyzers in v0.6.0-alpha:**
 
 | Analyzer | What it detects | Status |
 |---|---|---|
@@ -60,7 +60,7 @@ edge halos.
 
 ---
 
-## Current limitations (v0.5.0-alpha)
+## Current limitations (v0.6.0-alpha)
 
 - **Analyzers are not calibrated to published ground truth.** Thresholds were
   derived from an initial labeled review of one private dataset. Precision and
@@ -72,7 +72,7 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No cleanup, repair planning, repair, or export.** v0.5.0-alpha is read-only. Cleanup,
+- **No cleanup, repair planning, repair, or export.** v0.6.0-alpha is read-only. Cleanup,
   repair, and export are future work and will require human approval at every
   step. See [ROADMAP.md](ROADMAP.md). Code for future phases exists in the
   repository but is not active or supported in the public CLI.
@@ -178,7 +178,7 @@ repair, reject, regenerate, or export images.
 
 ### Internal: calibration evidence
 
-v0.5.0-alpha includes internal Calibration Evidence: comparing an existing
+v0.6.0-alpha includes internal Calibration Evidence: comparing an existing
 `inspection_report.json` with a small ground-truth label file to compute
 per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and
 false-positive rate.
@@ -189,7 +189,7 @@ behavior.
 
 ### Internal: review decisions
 
-v0.5.0-alpha includes internal Review Decisions: schema-versioned JSON files that
+v0.6.0-alpha includes internal Review Decisions: schema-versioned JSON files that
 record human intent for images or finding categories after inspection and
 calibration review.
 
@@ -201,7 +201,7 @@ human-approved Repair Planning.
 
 ### Internal: validation dossiers
 
-v0.5.0-alpha adds internal Validation Dossiers: deterministic JSON summaries
+v0.6.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
 that combine an existing `inspection_report.json`, calibration labels, and
 optional Review Decisions to assess analyzer reliability.
 
@@ -209,6 +209,20 @@ Validation Dossiers report per-analyzer and per-category metrics, false-positive
 and false-negative examples, review disagreement counts, threshold-review
 candidates, and conservative repair-planning readiness statuses. They are the
 gate before any future Repair Planning. They do not change thresholds, modify
+images, plan repair, export datasets, or change the public `inspect` behavior.
+
+### Internal: real-world validation corpus
+
+v0.6.0-alpha adds the Real-World Validation Corpus framework under
+`benchmarks/real_world/`. It defines how labeled real-world LoRA/image datasets
+should be organized for future reliability validation.
+
+The committed corpus uses synthetic placeholder metadata only so fresh clones
+remain deterministic. Legally safe public-domain/CC0 real-world fixtures can be
+added later with labels and expected validation outputs. Private/local datasets
+may be used under the ignored private corpus path and are skipped when absent.
+
+The corpus is methodology only. It does not change analyzer thresholds, modify
 images, plan repair, export datasets, or change the public `inspect` behavior.
 
 ### Optional: inspection gallery
@@ -256,7 +270,7 @@ Images with no findings are listed separately. They are not an afterthought.
   No move, rename, modify, or delete operation is performed on source images.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
-- **Cleanup, repair planning, repair, and export are not implemented in v0.5.0-alpha.** There is
+- **Cleanup, repair planning, repair, and export are not implemented in v0.6.0-alpha.** There is
   no public flag or command that plans, modifies, repairs, exports, rejects, or
   regenerates images. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,
@@ -296,11 +310,11 @@ default, stores measurements only, and has no CLI flags.
 uv run pytest tests/
 ```
 
-835 tests passing, 1 skipped. Tests cover the full inspect pipeline: Finding,
+844 tests passing, 1 skipped. The automated suite covers the full inspect pipeline: Finding,
 DatasetContext, Analyzer contracts, report writers, CLI, inspect runner,
 gallery, benchmark framework, committed fixtures, post-inspection review
 guidance, calibration evidence, review decisions, validation dossiers, and
-public CLI surface.
+the real-world validation corpus framework, and public CLI surface.
 
 ---
 
@@ -318,7 +332,7 @@ MIT. See [LICENSE](LICENSE).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Inspect pipeline structure, Finding schema, artifact family model |
 | [WHY.md](WHY.md) | Reasoning behind major design decisions |
 | [DIRECTION.md](DIRECTION.md) | Current milestone and scope |
-| [ROADMAP.md](ROADMAP.md) | v0.5.0-alpha status and future milestone plan |
+| [ROADMAP.md](ROADMAP.md) | v0.6.0-alpha status and future milestone plan |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Implementation status; resume from here |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Acceptance criteria for terminal and report output |
 | [benchmarks/README.md](benchmarks/README.md) | Benchmark manifests and fixture inventory |

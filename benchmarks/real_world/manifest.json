@@ -1,0 +1,55 @@
+{
+  "schema": "dataset-forge/real-world-validation-corpus/v1",
+  "corpus_name": "Dataset Forge Real-World Validation Corpus",
+  "version": "v1",
+  "description": "A schema and methodology framework for labeled real-world validation datasets. The committed group is a synthetic placeholder so fresh clones remain reproducible until legally safe public real-world images are added.",
+  "groups": [
+    {
+      "id": "public-placeholder-synthetic-v1",
+      "title": "Public placeholder methodology fixture",
+      "visibility": "public",
+      "fixture_kind": "placeholder_synthetic",
+      "description": "Uses existing committed synthetic fixtures only to validate corpus wiring, label compatibility, and dossier compatibility. It is not real-world calibration evidence.",
+      "labels_path": "labels/placeholder_labels.json",
+      "expected_dossier_path": "expected/placeholder_expected.json",
+      "cases": [
+        {
+          "image_id": "placeholder-clean-texture",
+          "image_path": "../synthetic_defects/09_texture_clean.png",
+          "license": "project-generated-synthetic",
+          "source": "Dataset Forge synthetic benchmark fixture",
+          "committed": true,
+          "optional": false
+        },
+        {
+          "image_id": "placeholder-texture-positive",
+          "image_path": "../synthetic_defects/10_texture_positive.png",
+          "license": "project-generated-synthetic",
+          "source": "Dataset Forge synthetic benchmark fixture",
+          "committed": true,
+          "optional": false
+        }
+      ]
+    },
+    {
+      "id": "local-private-real-world-v1",
+      "title": "Local private real-world validation examples",
+      "visibility": "private",
+      "fixture_kind": "real_world",
+      "description": "Optional local-only LoRA or image dataset examples. These files are ignored by git and must not be required for fresh-clone tests.",
+      "labels_path": "private/labels/private_labels.json",
+      "review_decisions_path": "private/review_decisions.json",
+      "expected_dossier_path": "private/expected/private_validation_dossier.json",
+      "cases": [
+        {
+          "image_id": "local-private-example-001",
+          "image_path": "private/images/local_private_example_001.png",
+          "license": "local-private-not-for-commit",
+          "source": "Local private validation dataset",
+          "committed": false,
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

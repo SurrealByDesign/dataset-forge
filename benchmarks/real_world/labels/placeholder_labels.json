@@ -1,0 +1,15 @@
+{
+  "schema": "dataset-forge/calibration-labels/v1",
+  "labels": [
+    {
+      "image_path": "../synthetic_defects/09_texture_clean.png",
+      "categories": []
+    },
+    {
+      "image_path": "../synthetic_defects/10_texture_positive.png",
+      "categories": [
+        "texture.high_microtexture"
+      ]
+    }
+  ]
+}

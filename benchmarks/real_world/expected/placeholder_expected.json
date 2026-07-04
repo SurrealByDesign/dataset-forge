@@ -1,0 +1,8 @@
+{
+  "schema": "dataset-forge/real-world-corpus-expected/v1",
+  "description": "Placeholder expected validation behavior for corpus wiring tests. This is methodology evidence only, not real-world analyzer reliability evidence.",
+  "expected": {
+    "evaluated_image_count": 2,
+    "readiness_status": "insufficient_evidence"
+  }
+}

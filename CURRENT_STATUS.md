@@ -1,18 +1,18 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-03. Reflects v0.5.0-alpha.*
+*Last updated: 2026-07-04. Reflects v0.6.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.5.0-alpha** implements the inspect-only image inspection platform plus internal Calibration Evidence, Review Decisions, and Validation Dossiers:
+**Dataset Forge v0.6.0-alpha** implements the inspect-only image inspection platform plus internal Calibration Evidence, Review Decisions, Validation Dossiers, and the Real-World Validation Corpus framework:
 
 ```
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.5.0-alpha:
+Supported in v0.6.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Optional gallery PNG (`--gallery`)
@@ -29,11 +29,15 @@ Supported in v0.5.0-alpha:
   ignored, and locked decisions
 - Internal Validation Dossiers over existing inspection reports, labels, and optional review decisions
 - Emit per-analyzer/per-category reliability summaries, examples, threshold-review candidates, and conservative repair-planning readiness statuses
+- Internal Real-World Validation Corpus framework for legally safe, labeled
+  validation datasets
+- Validate corpus manifests, label compatibility, committed fixture paths, and
+  optional private/local fixture skipping
 - No analyzer threshold changes
 - No public CLI expansion
 - No cleanup, repair planning, repair, export, UI, plugins, or new analyzers
 
-Not supported in v0.5.0-alpha (planned for later releases):
+Not supported in v0.6.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Repair (future)
@@ -47,15 +51,15 @@ Not supported in v0.5.0-alpha (planned for later releases):
 
 ## Test suite
 
-**835 tests passing, 1 skipped.**
+**844 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
-review-decision/validation helpers.
+review-decision/validation/corpus helpers.
 
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
 inspect runner, gallery, benchmark framework, committed fixtures,
 post-inspection review guidance, calibration evidence, review decisions, and
-validation dossiers, and public CLI surface.
+validation dossiers, real-world corpus validation, and public CLI surface.
 
 ```
 uv run pytest tests/
@@ -75,6 +79,7 @@ uv run pytest tests/
 | Calibration Evidence | `src/dataset_forge/calibration_evidence.py` | Internal metrics over reports and labels |
 | Review Decisions | `src/dataset_forge/review_decisions.py` | Internal human-intent model over images/findings |
 | Validation Dossiers | `src/dataset_forge/validation_dossier.py` | Internal reliability summaries over reports, labels, and review decisions |
+| Real-World Validation Corpus | `src/dataset_forge/real_world_corpus.py`; `benchmarks/real_world/` | Internal corpus methodology and manifest validation |
 | `Finding` dataclass | `src/dataset_forge/finding.py` | Done |
 | `DatasetContext` dataclass | `src/dataset_forge/context.py` | Done |
 | `Analyzer` base class | `src/dataset_forge/analyzers/base.py` | Done |
@@ -135,7 +140,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.5.0-alpha):
+**Public tools** (documented, supported in v0.6.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -175,6 +180,10 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 - `high_frequency_isolated_artifact_analyzer/v1`: residual connected-component
   rule validated against synthetic fixtures only. Confidence capped at 0.45.
   Real-world precision and recall are not yet known.
+- Real-World Validation Corpus v1 is methodology only. The committed public
+  group uses synthetic placeholder fixtures to validate wiring; it is not
+  real-world analyzer reliability evidence. Optional private real-world datasets
+  are skipped when absent.
 - All first-pass analyzers emit `"calibrated": false` in their evidence dicts.
 - Dataset Summary and Review Queue are advisory only. They organize existing
   findings for human review; they do not reject, regenerate, repair, export, or
@@ -184,23 +193,30 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 - Validation Dossiers assess analyzer reliability only. They do not implement
   repair planning, cleanup, repair, export, rejection, regeneration, or image
   modification.
+- The Real-World Validation Corpus organizes validation inputs only. It does
+  not implement public validation workflows, repair planning, cleanup, repair,
+  export, rejection, regeneration, or image modification.
 
 ---
 
 ## Next recommended tasks
 
-1. **Use Validation Dossiers on labeled real-world datasets** -- combine
+1. **Populate the Real-World Validation Corpus with legally safe labeled data** --
+   add public-domain/CC0 or otherwise redistributable real-world examples, labels,
+   and expected validation outputs before claiming real-world reliability.
+
+2. **Use Validation Dossiers on labeled real-world datasets** -- combine
    precision/recall/F1, false-positive/false-negative examples, and review
    decisions before changing analyzer thresholds or planning repair.
 
-2. **Collect Review Decisions from human audit passes** -- use the v0.4
+3. **Collect Review Decisions from human audit passes** -- use the v0.4
    schema to record confirmed artifacts, false positives, acceptable style,
    ignored, locked, and needs-review outcomes before any repair planning.
 
-3. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
+4. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
    11 UNSURE images from the anthropomorph review need a dedicated pass.
 
-4. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
+5. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
    interleaving cannot be resolved by threshold adjustment alone. Candidates:
    spatial coherence, directional frequency energy, micro-edge profile.
 

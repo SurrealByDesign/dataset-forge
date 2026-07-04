@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.6.0-alpha
+
+- Added the internal Real-World Validation Corpus framework for organizing
+  legally safe labeled validation datasets.
+- Added corpus manifest validation, Calibration Evidence label compatibility
+  checks, optional private/local fixture skipping, and committed placeholder
+  methodology fixtures.
+- Kept analyzer thresholds, analyzer behavior, inspect output, public CLI
+  surface, repair planning, cleanup, repair, export, plugins, UI, and analyzer
+  set unchanged.
+
 ## v0.5.0-alpha
 
 - Added internal Validation Dossiers for combining existing inspection reports,

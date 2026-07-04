@@ -25,6 +25,7 @@ generated/private cases may be skipped when their local images are absent.
 |---|---|---|
 | `benchmark_manifest.json` | Yes | Public suite  --  committed synthetic fixtures plus optional generated/private cases |
 | `local_benchmark_manifest.json` | **No** | Private suite  --  real dataset samples |
+| `real_world/manifest.json` | Yes | Real-world validation corpus framework  --  committed placeholder methodology fixtures plus optional private/local groups |
 
 ### Public manifest (`benchmark_manifest.json`)
 
@@ -98,6 +99,24 @@ To generate them, a local reference image is required (see `generate_benchmark_d
 All image files here are gitignored. Place private calibration images here manually.
 Filenames and expected scores are documented in `local_benchmark_manifest.json`
 (also gitignored).
+
+---
+
+## Real-world validation corpus (`benchmarks/real_world/`)
+
+v0.6.0-alpha adds a corpus framework for labeled real-world validation datasets.
+It is methodology only: no analyzer thresholds, inspect output, CLI behavior,
+repair planning, cleanup, repair, export, or UI behavior changes.
+
+The committed corpus currently includes a public synthetic placeholder group to
+prove manifest, label, and validation-dossier compatibility. It is not
+real-world reliability evidence. Legally safe public-domain/CC0 or otherwise
+redistributable real-world fixtures can be added later with source/license
+metadata, labels, and expected outputs.
+
+Private/local real-world datasets belong under `benchmarks/real_world/private/`,
+which is gitignored. Missing optional private fixtures are skipped cleanly so
+fresh-clone benchmark and test behavior remains deterministic.
 
 ---
 

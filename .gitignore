@@ -93,6 +93,7 @@ benchmarks/results/
 benchmarks/generated/
 benchmarks/output/
 benchmarks/outputs/
+benchmarks/real_world/private/
 benchmarks/real_samples/*.jpg
 benchmarks/real_samples/*.jpeg
 benchmarks/real_samples/*.png

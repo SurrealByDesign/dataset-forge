@@ -129,8 +129,33 @@ repair planning, cleanup, repair, export, plugins, UI, or new analyzers, and
 does not expand the public `inspect` CLI. Validation Dossiers are the gate
 before future Repair Planning.
 
+### v0.6: Real-World Validation Corpus
+
+**Status:** Implemented in v0.6.0-alpha.
+
+**Goal:** Define a legally safe, reproducible corpus structure for labeled
+real-world validation datasets.
+
+The Real-World Validation Corpus framework adds:
+
+- a schema-versioned corpus manifest
+- committed placeholder methodology fixtures
+- Calibration Evidence label compatibility checks
+- optional private/local fixture skipping
+- documented rules for what can and cannot be committed publicly
+- expected-output placeholders for future Validation Dossier checks
+
+This is a corpus/methodology layer only. v0.6 does not add analyzers, change
+thresholds, implement repair planning, cleanup, repair, export, plugins, UI, or
+public validation workflows, and does not expand the public `inspect` CLI.
+Real-world validation is the evidence gate before future action
+recommendations.
+
 ### Analyzer improvement (v1.x)
 
+- Populate the Real-World Validation Corpus with legally safe public-domain/CC0
+  or otherwise redistributable LoRA/image examples before claiming real-world
+  reliability.
 - Use Validation Dossiers on labeled real-world datasets before changing
   thresholds, adding analyzer families, or planning repair.
 - TextureAnalyzer calibration against labeled ground truth.
