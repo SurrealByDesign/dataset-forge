@@ -5,7 +5,7 @@
 
 ---
 
-## v0.4.0-alpha Inspect Pipeline
+## v0.5.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -18,7 +18,7 @@ Dataset
 Every component in the public inspect surface maps to this pipeline. The
 current report stage also includes additive post-inspection sections:
 Aggregation, Dataset Summary, and Review Queue. Cleanup, repair, regeneration,
-export, UI, and plugins are future work and are not part of v0.4.0-alpha.
+export, UI, and plugins are future work and are not part of v0.5.0-alpha.
 
 ---
 
@@ -126,7 +126,7 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.4.0-alpha outputs:
+v0.5.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `inspection_gallery.png`  --  optional visual review contact sheet
@@ -263,25 +263,58 @@ additive; it does not alter `inspection_report.json`.
 
 ---
 
-## Future-Only / Not Implemented in v0.4.0-alpha
+## Validation Dossiers
+
+Validation Dossiers are the v0.5 reliability gate before future Repair
+Planning. They combine existing inspection reports, calibration labels, and
+optional Review Decisions into a deterministic analyzer-reliability summary.
+They do not run analyzers, change thresholds, modify images, or plan
+cleanup/repair/export work.
+
+Input artifacts:
+- `inspection_report.json` with schema `dataset-forge/inspection/v1`
+- Ground-truth labels with schema `dataset-forge/calibration-labels/v1`
+- Optional Review Decisions with schema `dataset-forge/review-decisions/v1`
+
+Output schema: `dataset-forge/validation-dossier/v1`
+
+The output includes:
+- per-analyzer metrics
+- per-category metrics
+- false-positive and false-negative examples
+- confirmed artifact counts
+- false-positive review-decision counts
+- conservative `ready_for_repair_planning` statuses per category
+- explicit `insufficient_evidence` statuses when label counts are too low
+- threshold-review candidates
+
+Readiness is conservative. A category is not considered ready for future repair
+planning unless it has enough labeled positive/negative examples, high
+precision and recall, low false-positive rate, and no false-positive Review
+Decisions. Readiness is evidence for future design only; it is not a repair
+plan and does not authorize automated changes.
+
+---
+
+## Future-Only / Not Implemented in v0.5.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.4.0-alpha inspect release. They should not be modified, expanded, or
+v0.5.0-alpha inspect release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.4.0-alpha |
-| `plugins/` | Future only; not public in v0.4.0-alpha |
-| `execution/` | Future only; not public in v0.4.0-alpha |
-| `transforms/` | Future only; not public in v0.4.0-alpha |
-| `exporters/` | Future only; not public in v0.4.0-alpha |
-| `review/` | Future only; not public in v0.4.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.4.0-alpha |
+| `cleanup/` | Future only; not public in v0.5.0-alpha |
+| `plugins/` | Future only; not public in v0.5.0-alpha |
+| `execution/` | Future only; not public in v0.5.0-alpha |
+| `transforms/` | Future only; not public in v0.5.0-alpha |
+| `exporters/` | Future only; not public in v0.5.0-alpha |
+| `review/` | Future only; not public in v0.5.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.5.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.4.0-alpha CLI or report behavior.
+v0.5.0-alpha CLI or report behavior.
 
 ---
 
@@ -467,10 +500,10 @@ When an analyzer is uncalibrated:
 
 ---
 
-### Cleanup Routing (future only -- not implemented in v0.4.0-alpha)
+### Cleanup Routing (future only -- not implemented in v0.5.0-alpha)
 
 > This section is design guidance for a future release. Dataset Forge
-> v0.4.0-alpha does not expose cleanup, repair, regeneration, or export
+> v0.5.0-alpha does not expose cleanup, repair planning, repair, regeneration, or export
 > commands.
 
 Cleanup must be artifact-specific. A single generic smoothing filter applied
@@ -535,7 +568,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Batch Exclusion and Export Workflow (future  --  v2+)
 
 > This section describes the planned non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.4.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.5.0-alpha should be designed around
 > it or expose it through the public CLI.
 
 ---

@@ -107,10 +107,32 @@ cleanup, repair, export, plugins, UI, or analyzer behavior, and does not expand
 the public `inspect` CLI. Review Decisions are the bridge between Calibration
 Evidence and future human-approved Repair Planning.
 
+### v0.5: Validation Dossiers
+
+**Status:** Implemented in v0.5.0-alpha.
+
+**Goal:** Assess analyzer reliability before any repair-planning work.
+
+Validation Dossiers combine:
+
+- an existing `inspection_report.json`
+- schema-versioned calibration labels
+- optional Review Decisions
+
+The output is a schema-versioned reliability dossier containing per-analyzer
+metrics, per-category metrics, false-positive examples, false-negative examples,
+confirmed artifact counts, false-positive review-decision counts, conservative
+repair-planning readiness statuses, and threshold-review candidates.
+
+This is a validation layer only. v0.5 does not change analyzer thresholds, add
+repair planning, cleanup, repair, export, plugins, UI, or new analyzers, and
+does not expand the public `inspect` CLI. Validation Dossiers are the gate
+before future Repair Planning.
+
 ### Analyzer improvement (v1.x)
 
-- Use Calibration Evidence on labeled real-world datasets before changing
-  thresholds or adding analyzer families.
+- Use Validation Dossiers on labeled real-world datasets before changing
+  thresholds, adding analyzer families, or planning repair.
 - TextureAnalyzer calibration against labeled ground truth.
 - Fourth discriminating signal for `CrystallineFacetingAnalyzer` -- resolve
   grain 45-55 TP/FP interleaving (spatial coherence, directional frequency

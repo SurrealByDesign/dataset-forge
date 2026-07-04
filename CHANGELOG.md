@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.0-alpha
+
+- Added internal Validation Dossiers for combining existing inspection reports,
+  calibration labels, and optional Review Decisions into analyzer reliability
+  summaries.
+- Added conservative per-category repair-planning readiness statuses,
+  false-positive/false-negative examples, review-disagreement counts, and
+  threshold-review candidates.
+- Kept analyzer thresholds, calibration logic, inspect behavior, public CLI
+  surface, repair planning, cleanup, repair, export, plugins, UI, and analyzer
+  set unchanged.
+
 ## v0.4.0-alpha
 
 - Added internal Review Decisions helpers for schema-versioned human decisions
