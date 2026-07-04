@@ -20,6 +20,12 @@ current report stage also includes additive post-inspection sections:
 Aggregation, Dataset Summary, and Review Queue. Cleanup, repair, regeneration,
 export, UI, and plugins are future work and are not part of v0.6.0-alpha.
 
+The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
+should help users decide which images are ready to train, which need review,
+and which should be excluded from training. Internal systems exist to improve
+decision quality, confidence communication, false-positive reduction, and review
+efficiency.
+
 ---
 
 ## DatasetContext
@@ -164,6 +170,11 @@ Review Queue is advisory only. It never rejects, regenerates, repairs,
 exports, deletes, moves, renames, or modifies images. It must never hide the
 underlying Findings that caused an image to appear in the queue.
 
+Future decision guidance should be layered over this evidence. It may label
+images as Ready to train, Needs review, or Priority review /
+Exclude-from-training candidate, but it must cite the underlying Findings and
+must treat exclusion as training-set advice, not file deletion.
+
 ---
 
 ## Benchmarks
@@ -185,8 +196,8 @@ Every analyzer ships with a benchmark that validates its thresholds.
 
 ## Calibration Evidence
 
-Calibration Evidence is the v0.3 bridge between inspect-only findings and any
-future repair/export planning. It measures existing analyzer output against
+Calibration Evidence is the v0.3 bridge between inspect-only findings and
+trustworthy decision guidance. It measures existing analyzer output against
 ground-truth labels. It does not run analyzers, edit thresholds, modify images,
 or make human-review decisions.
 
@@ -228,10 +239,10 @@ review, but it must not silently change analyzer behavior.
 
 ## Review Decisions
 
-Review Decisions are the v0.4 bridge between Calibration Evidence and future
-human-approved Repair Planning. They record human intent over existing inspected
-images and finding categories. They do not run analyzers, change thresholds,
-modify images, or plan cleanup/export work.
+Review Decisions are the v0.4 human-intent layer for improving future
+recommendation quality. They record human intent over existing inspected images
+and finding categories. They do not run analyzers, change thresholds, modify
+images, or plan cleanup/export work.
 
 Input schema: `dataset-forge/review-decisions/v1`
 
@@ -266,9 +277,9 @@ additive; it does not alter `inspection_report.json`.
 
 ## Validation Dossiers
 
-Validation Dossiers are the v0.5 reliability gate before future Repair
-Planning. They combine existing inspection reports, calibration labels, and
-optional Review Decisions into a deterministic analyzer-reliability summary.
+Validation Dossiers are the v0.5 reliability gate before stronger public
+decision guidance. They combine existing inspection reports, calibration labels,
+and optional Review Decisions into a deterministic analyzer-reliability summary.
 They do not run analyzers, change thresholds, modify images, or plan
 cleanup/repair/export work.
 
@@ -285,15 +296,15 @@ The output includes:
 - false-positive and false-negative examples
 - confirmed artifact counts
 - false-positive review-decision counts
-- conservative `ready_for_repair_planning` statuses per category
+- conservative readiness statuses per category
 - explicit `insufficient_evidence` statuses when label counts are too low
 - threshold-review candidates
 
-Readiness is conservative. A category is not considered ready for future repair
-planning unless it has enough labeled positive/negative examples, high
-precision and recall, low false-positive rate, and no false-positive Review
-Decisions. Readiness is evidence for future design only; it is not a repair
-plan and does not authorize automated changes.
+Readiness is conservative. A category is not considered ready for stronger
+recommendation language unless it has enough labeled positive/negative
+examples, high precision and recall, low false-positive rate, and no
+false-positive Review Decisions. Readiness is evidence for future design only;
+it is not a repair plan and does not authorize automated changes.
 
 ---
 
@@ -323,6 +334,19 @@ real-world calibration evidence.
 The corpus layer does not run analyzers, change thresholds, modify images,
 create reports, plan repair, export datasets, or alter `inspection_report.json`.
 It is internal and additive.
+
+---
+
+## Why Dataset Forge does not repair images yet
+
+Repair is deferred until Dataset Forge can reliably identify images that deserve
+intervention. A repair workflow built on weak or uncalibrated findings would
+damage trust and risk changing images that should be left alone.
+
+The current architecture therefore optimizes for evidence-backed decisions:
+measure, explain, prioritize review, validate against labels, and communicate
+confidence honestly. Cleanup, repair, and export remain future-only because the
+decision layer must be trustworthy first.
 
 ---
 
@@ -376,7 +400,7 @@ power at all. Different artifact families require different metrics.
 ### Artifact Families
 
 Each family is a distinct contamination phenomenon requiring its own analyzer,
-evidence schema, benchmark, and (eventually) cleanup strategy.
+evidence schema, benchmark, and decision guidance.
 
 | Family | Description | Primary Signal | Status |
 |---|---|---|---|
@@ -400,7 +424,7 @@ Artifact Family
                     ├─► category      e.g. "artifact.crystalline_faceting"
                     ├─► confidence    calibrated against benchmark
                     ├─► false_positive_rate  from labeled review data
-                    └─► recommendation  family-specific action
+                    └─► recommendation  family-specific guidance
 ```
 
 **Current finding categories:**
@@ -463,7 +487,7 @@ Rules that must hold:
 - No analyzer emits more than one Finding per image per category.
 - Findings are independent. One Finding does not suppress or modify another.
 - The report layer presents all Findings for an image without merging them.
-- Future cleanup routing must use each Finding independently. A
+- Future decision guidance must use each Finding independently. A
   `HIGH artifact.crystalline_faceting` finding and a co-occurring
   `MEDIUM texture.high_microtexture` finding would remain separate artifact
   families, not a merged generic texture decision.
@@ -530,11 +554,12 @@ When an analyzer is uncalibrated:
 
 ---
 
-### Cleanup Routing (future only -- not implemented in v0.6.0-alpha)
+### Archived Future Repair Research (not current roadmap)
 
-> This section is design guidance for a future release. Dataset Forge
-> v0.6.0-alpha does not expose cleanup, repair planning, repair, regeneration, or export
-> commands.
+> This section is an archived design note, not the current roadmap. Dataset
+> Forge v0.6.0-alpha does not expose cleanup, repair planning, repair,
+> regeneration, or export commands. Repair, cleanup, and export should not be
+> reconsidered until decision guidance is reliable on labeled real-world data.
 
 Cleanup must be artifact-specific. A single generic smoothing filter applied
 to all findings would:
@@ -558,7 +583,7 @@ Cleanup families inherit their scope from the corresponding Finding. An image
 with a future `artifact.high_frequency_isolated` cleanup candidate would receive
 isolated-component cleanup, not microtexture cleanup.
 
-**Cleanup routing flow (v2 target):**
+**Possible cleanup routing flow if repair is ever justified:**
 
 ```
 Finding (per family, per image)
@@ -595,11 +620,11 @@ Silent or automatic modification would corrupt it with no recovery path.
 
 ---
 
-## Batch Exclusion and Export Workflow (future  --  v2+)
+## Archived Batch Exclusion and Export Research (future only)
 
-> This section describes the planned non-destructive export mechanism.
+> This section describes a possible non-destructive export mechanism.
 > It is not yet implemented. Nothing in v0.6.0-alpha should be designed around
-> it or expose it through the public CLI.
+> it or expose it through the public CLI. Export is not an assumed next step.
 
 ---
 
@@ -760,8 +785,9 @@ The most common use case is a simple severity gate with no category filter:
 
 > "Exclude all images with any finding at MEDIUM or above."
 
-This must work with a single flag, defaulting to a recommended threshold, and
-producing the exclusion list in one command without requiring a review pass.
+If this workflow is ever revived, it may support a single explicit flag with a
+recommended threshold, producing the exclusion list in one command without
+requiring a review pass.
 The review pass is still recommended but not mandatory for this path.
 
 The fast path must display a summary (N images excluded, N included, severity
@@ -803,4 +829,4 @@ positive rate than the calibrated estimate.
 ## Guiding Rule
 
 > Core should orchestrate. Analyzers should specialize. Finding is the contract.
-> Each artifact family is a first-class citizen with its own detector, evidence, and cleanup path.
+> Each artifact family is a first-class citizen with its own detector, evidence, and decision path.

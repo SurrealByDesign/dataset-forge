@@ -6,7 +6,12 @@
 
 ## Release
 
-**Dataset Forge v0.6.0-alpha** implements the inspect-only image inspection platform plus internal Calibration Evidence, Review Decisions, Validation Dossiers, and the Real-World Validation Corpus framework:
+**Dataset Forge v0.6.0-alpha** implements the inspect-only foundation for a
+LoRA Dataset Decision Engine. The product direction is to help users decide
+which images are ready to train, which need review, and which should be
+excluded from training.
+
+Current public behavior remains inspect-only:
 
 ```
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
@@ -28,11 +33,12 @@ Supported in v0.6.0-alpha:
 - Summarize confirmed artifacts, false positives, acceptable style, review,
   ignored, and locked decisions
 - Internal Validation Dossiers over existing inspection reports, labels, and optional review decisions
-- Emit per-analyzer/per-category reliability summaries, examples, threshold-review candidates, and conservative repair-planning readiness statuses
+- Emit per-analyzer/per-category reliability summaries, examples, threshold-review candidates, and conservative readiness statuses
 - Internal Real-World Validation Corpus framework for legally safe, labeled
   validation datasets
 - Validate corpus manifests, label compatibility, committed fixture paths, and
   optional private/local fixture skipping
+- No public Ready / Review / Exclude-from-training recommendation layer yet
 - No analyzer threshold changes
 - No public CLI expansion
 - No cleanup, repair planning, repair, export, UI, plugins, or new analyzers
@@ -188,6 +194,8 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 - Dataset Summary and Review Queue are advisory only. They organize existing
   findings for human review; they do not reject, regenerate, repair, export, or
   modify images.
+- Public recommendations are not implemented yet. v0.6 does not emit formal
+  Ready / Needs Review / Exclude-from-training decisions.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement
@@ -201,22 +209,28 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-1. **Populate the Real-World Validation Corpus with legally safe labeled data** --
+1. **Design and implement the v0.7 decision/recommendation UX** -- turn existing
+   findings, Dataset Summary, and Review Queue into advisory Ready / Needs
+   Review / Priority Review or Exclude-from-training-candidate guidance.
+
+2. **Populate the Real-World Validation Corpus with legally safe labeled data** --
    add public-domain/CC0 or otherwise redistributable real-world examples, labels,
    and expected validation outputs before claiming real-world reliability.
 
-2. **Use Validation Dossiers on labeled real-world datasets** -- combine
+3. **Use Validation Dossiers on labeled real-world datasets** -- combine
    precision/recall/F1, false-positive/false-negative examples, and review
-   decisions before changing analyzer thresholds or planning repair.
+   decisions before changing analyzer thresholds or strengthening recommendation
+   language.
 
-3. **Collect Review Decisions from human audit passes** -- use the v0.4
+4. **Collect Review Decisions from human audit passes** -- use the v0.4
    schema to record confirmed artifacts, false positives, acceptable style,
-   ignored, locked, and needs-review outcomes before any repair planning.
+   ignored, locked, and needs-review outcomes before public recommendation
+   validation.
 
-4. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
+5. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
    11 UNSURE images from the anthropomorph review need a dedicated pass.
 
-5. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
+6. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
    interleaving cannot be resolved by threshold adjustment alone. Candidates:
    spatial coherence, directional frequency energy, micro-edge profile.
 

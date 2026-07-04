@@ -9,14 +9,18 @@
 
 ## Mission
 
-Dataset Forge exists to produce the highest-quality AI training datasets through
-evidence-based analysis and minimally invasive intervention.
+Rule Zero: Dataset Forge exists to reduce uncertainty, not automate judgment.
+
+Dataset Forge helps LoRA dataset builders decide which images are ready to
+train, which need review, and which should be excluded from training. Every
+recommendation must be grounded in deterministic analysis, measurable evidence,
+and explainable findings.
 
 Its purpose is not to make images prettier.
 
-Its purpose is to understand datasets, identify genuine problems, and recommend
-the smallest necessary action to improve training quality while preserving the
-original artistic intent.
+Its purpose is to understand datasets, identify genuine problems, and help the
+user make better training-set decisions while preserving original artistic
+intent.
 
 The ideal outcome for a healthy dataset is a thorough analysis that recommends
 no changes at all.
@@ -25,15 +29,19 @@ no changes at all.
 
 ## Core Philosophy
 
-- Preserve first.
-- Analyze before modifying.
+- Source images are sacred.
+- Evidence comes before recommendations.
+- Recommendations are advisory.
+- Exclusion is not deletion.
+- Healthy images should stay quiet.
 - Prefer deterministic methods.
 - Dataset context matters.
 - No image should be judged in isolation when meaningful dataset context exists.
 - A finding without calibration is an opinion.
 - A finding with calibration is evidence.
 - Every recommendation must be explainable.
-- The least invasive action is preferred.
+- Benchmarks are product assets, not test chores.
+- The decision is the product; gallery and report are interfaces.
 - The architecture should anticipate growth.
 - The implementation should not.
 
@@ -41,13 +49,16 @@ no changes at all.
 
 ## What Dataset Forge Is
 
-Dataset Forge is an AI dataset understanding and quality assurance platform.
+Dataset Forge is a LoRA Dataset Decision Engine.
 
-Cleanup is only one possible consequence of understanding.
+It helps users decide which images are ready to train, which images need human
+review, and which images should be excluded from training.
 
-The analyzer is more important than the cleanup.
+Inspection is the evidence layer.
 
-The report is more important than automation.
+The analyzer is more important than cleanup.
+
+The decision is more important than automation.
 
 ---
 
@@ -63,10 +74,12 @@ Dataset Forge is not:
 - a prompt generator
 - a caption generator
 - a UI-first application
+- an automatic dataset judge
+- an automatic deletion tool
 
 It should never optimize for making images "look nicer."
 
-It should optimize for producing better training datasets.
+It should optimize for reducing uncertainty before training.
 
 ---
 
@@ -87,29 +100,30 @@ Specifically:
 - Detect inconsistent texture treatment
 - Preserve watercolor and colored-pencil appearance
 - Leave healthy images untouched
-- Improve LoRA training quality through conservative intervention
+- Improve LoRA training quality through conservative dataset decisions
 
 If a proposed feature does not make this dataset better, it should not be part of v1.
 
 ---
 
-## Version 1: Dataset Forge Inspect
+## Version 1: Dataset Forge Decision Engine
 
-Version 1 is analysis only.
+Version 1 is read-only decision support.
 
 Its pipeline is:
 
 ```
-Dataset -> DatasetContext -> Analyzer -> Finding -> Report
+Dataset -> DatasetContext -> Analyzer -> Finding -> Decision Guidance -> Report / Gallery
 ```
 
 No cleanup is required for v1.
 
 No AI is required for v1.
 
-No UI is required for v1.
+No source-image modification is allowed in v1.
 
-Success is measured by producing trustworthy findings.
+Success is measured by producing trustworthy Ready / Review /
+Exclude-from-training guidance backed by findings.
 
 ---
 
@@ -210,7 +224,7 @@ The project should use exception-based approval.
 
 Healthy images should pass automatically.
 
-Only uncertain or significant interventions should require user review.
+Only uncertain or significant training-set decisions should require user review.
 
 Users should never be forced to manually inspect hundreds of healthy images.
 
@@ -252,13 +266,13 @@ Version 1 succeeds if:
 
 - DatasetContext is built correctly.
 - Analyzers emit calibrated Findings.
-- Reports clearly explain recommendations.
+- Reports and galleries clearly explain decision guidance.
 - Benchmark tests validate analyzer performance.
-- Healthy datasets may legitimately receive zero recommended modifications.
+- Healthy datasets may legitimately receive zero review or exclusion candidates.
 
-The project succeeds by understanding datasets.
+The project succeeds by reducing uncertainty before training.
 
-Cleanup is optional.
+Cleanup is future-only and optional.
 
 ---
 
@@ -266,7 +280,7 @@ Cleanup is optional.
 
 Before implementing any feature, ask:
 
-> Does this improve understanding of the dataset?
+> Does this improve the user's ability to decide what belongs in the training set?
 
 If not, it probably does not belong in Dataset Forge.
 
@@ -293,10 +307,10 @@ If the answer to (5) is yes, the amendment should be strongly questioned.
 Dataset Forge should become the trusted evidence engine for AI training datasets.
 
 Its value should come from producing reliable, explainable, benchmarked
-understanding rather than opaque automation.
+training-set decisions rather than opaque automation.
 
 The software should earn trust through measurement, transparency, and restraint.
 
 The best compliment a user can give Dataset Forge is:
 
-> "It looked carefully at my dataset and correctly decided to leave almost everything alone."
+> "It showed me exactly which images needed attention before training, and left the rest alone."

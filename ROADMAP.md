@@ -2,16 +2,45 @@
 
 ---
 
-## v0.2.0-alpha: Dataset Forge Inspect -- Released
+## Product Direction
 
-**Goal:** Produce explainable, read-only findings for image datasets.
+Dataset Forge is a LoRA Dataset Decision Engine.
+
+Its purpose is to help LoRA dataset builders decide which images are ready to
+train, which need review, and which should be excluded from training. Every
+recommendation must be grounded in deterministic analysis, measurable evidence,
+and explainable findings.
+
+Everything after v0.6 should improve one of:
+
+- decision quality
+- confidence communication
+- false-positive reduction
+- review efficiency
+- benchmark and corpus evidence
+
+Repair, cleanup, and export remain future-only possibilities, not assumed next
+steps.
+
+---
+
+## Released Foundations
+
+### v0.1.0-alpha: Inspect Foundation
+
+**Status:** Released.
+
+- Stable Finding and Analyzer contracts.
+- `dataset-forge inspect`.
+- JSON/TXT inspection reports.
+- Optional gallery output.
+- First public benchmark framework.
+
+### v0.2.0-alpha: Four-Analyzer Inspect Platform
+
+**Status:** Released.
 
 **Pipeline:** `Dataset -> DatasetContext -> Analyzer -> Finding -> Aggregation -> Dataset Summary -> Review Queue -> Report`
-
-**Status:** Released. See [CURRENT_STATUS.md](CURRENT_STATUS.md) for the
-authoritative implementation state.
-
-### v0.2.0-alpha -- Shipped
 
 | Component | Status |
 |---|---|
@@ -22,78 +51,34 @@ authoritative implementation state.
 | `CrystallineFacetingAnalyzer` -- pencil_grain + texture_consistency | shipped; first-pass uncalibrated |
 | `OversharpeningHaloAnalyzer` -- edge-localized USM residuals | shipped; first-pass uncalibrated |
 | `HighFrequencyIsolatedArtifactAnalyzer` -- sparse residual components | shipped; first-pass uncalibrated |
-| JSON + TXT report writers | shipped |
-| CLI: `dataset-forge inspect <path>` | shipped |
-| Optional gallery PNG output | shipped |
-| Dataset Summary + Review Queue -- advisory post-inspection guidance | shipped |
-| Public benchmark suite (committed fixtures plus optional generated/private cases) | shipped |
+| Dataset Summary + Review Queue | shipped; advisory |
+| Public benchmark suite | shipped |
 | Public CLI surface locked to inspect-only | shipped |
 
-**v0.2.0-alpha does not include:** cleanup, repair, regeneration, AI editing,
-UI, captions, plugins, or exporters.
+v0.2.0-alpha did not include cleanup, repair, regeneration, AI editing, UI,
+captions, plugins, or exporters.
 
-### v0.2.0-alpha -- Analyzer Research Status
+### v0.3.0-alpha: Calibration Evidence
 
-The current alpha includes four first-pass analyzers. Some shipped analyzers
-still need real-world calibration; that calibration work is post-alpha.
-
-| Artifact family | Status | Reason |
-|---|---|---|
-| Texture (`artifact.texture` family; runtime category `texture.high_microtexture`) | first-pass implemented | dataset-relative microtexture z-score; real-world calibration still pending |
-| Speck / glitter (`artifact.high_frequency_isolated`) | first-pass implemented | residual connected-component signal validated on synthetic bright/dark speck fixtures; real-world calibration still pending |
-| Crystalline faceting (`artifact.crystalline_faceting`) | first-pass implemented | pencil grain + smoothness + microtexture rule; crystalline 45-55 grain band still needs better discrimination |
-| Oversharpening / halo (`artifact.oversharpening_halo`) | first-pass implemented | USM-residual signal validated on synthetic fixtures; real-world calibration still pending |
-| Periodic frequency noise | researched; not approved for implementation | FFT symmetric peaks plus autocorrelation failed to separate positives from intentional repeated patterns and crystalline guard fixtures; postponed until a better discriminator exists |
-| Recursive detail (`artifact.recursive_detail`) | not yet investigated | no probe conducted; no partial signal |
-
-Research reports: `benchmarks/results/probe_speck_glitter/` and
-`benchmarks/results/probe_oversharpening/`.
-
-### v0.2.0-alpha -- Known limitations
-
-- Analyzer thresholds are uncalibrated against published ground truth.
-  Confidence is capped (TextureAnalyzer: 0.70, CrystallineFacetingAnalyzer: 0.45,
-  OversharpeningHaloAnalyzer: 0.45, HighFrequencyIsolatedArtifactAnalyzer: 0.45).
-  All emit `"calibrated": false` in evidence dicts.
-- Crystalline grain 45-55 range has significant TP/FP interleaving;
-  a fourth discriminating signal is needed before precision improves.
-- TextureAnalyzer z-score thresholds are derived from one private dataset.
-
----
-
-## Post-v0.2.0-alpha Work
-
-The following items belong in subsequent releases. No timeline is set for any of
-these.
-
-### v0.3: Calibration Evidence
-
-**Status:** Implemented.
-
-**Goal:** Measure how reliable the existing four analyzers are on labeled
-real-world LoRA dataset images.
+**Status:** Released.
 
 Calibration Evidence compares an existing `inspection_report.json` against a
 small ground-truth label file and reports:
 
 - per-analyzer TP / FP / FN / TN
 - precision, recall, F1, and false-positive rate
-- category-level summary
+- category-level summaries
 - schema-versioned JSON output
 
-This is an evidence layer only. v0.3 does not change analyzer thresholds, add
-cleanup, repair, export, plugins, UI, or new analyzers, and does not expand the
-public `inspect` CLI.
+This is internal evidence tooling. It does not change analyzer thresholds or
+expand the public CLI.
 
-### v0.4: Review Decisions
+### v0.4.0-alpha: Review Decisions
 
-**Status:** Implemented in v0.4.0-alpha.
+**Status:** Released.
 
-**Goal:** Record human intent after inspection and calibration without planning
-or applying any dataset changes.
-
-Review Decisions load schema-versioned JSON files over existing
-`inspection_report.json` paths and finding categories. They can record:
+Review Decisions record human intent over inspected images and finding
+categories:
 
 - confirmed artifacts
 - false positives
@@ -102,16 +87,12 @@ Review Decisions load schema-versioned JSON files over existing
 - ignored images/categories
 - locked images/categories
 
-This is a modeling layer only. v0.4 does not change analyzer thresholds,
-cleanup, repair, export, plugins, UI, or analyzer behavior, and does not expand
-the public `inspect` CLI. Review Decisions are the bridge between Calibration
-Evidence and future human-approved Repair Planning.
+This is internal decision-quality evidence. It does not plan or apply dataset
+changes.
 
-### v0.5: Validation Dossiers
+### v0.5.0-alpha: Validation Dossiers
 
-**Status:** Implemented in v0.5.0-alpha.
-
-**Goal:** Assess analyzer reliability before any repair-planning work.
+**Status:** Released.
 
 Validation Dossiers combine:
 
@@ -119,113 +100,158 @@ Validation Dossiers combine:
 - schema-versioned calibration labels
 - optional Review Decisions
 
-The output is a schema-versioned reliability dossier containing per-analyzer
-metrics, per-category metrics, false-positive examples, false-negative examples,
-confirmed artifact counts, false-positive review-decision counts, conservative
-repair-planning readiness statuses, and threshold-review candidates.
+The output summarizes per-analyzer and per-category reliability, false-positive
+and false-negative examples, review disagreement, and threshold-review
+candidates.
 
-This is a validation layer only. v0.5 does not change analyzer thresholds, add
-repair planning, cleanup, repair, export, plugins, UI, or new analyzers, and
-does not expand the public `inspect` CLI. Validation Dossiers are the gate
-before future Repair Planning.
+This is a validation layer for confidence communication and future
+recommendation quality. It does not implement repair planning.
 
-### v0.6: Real-World Validation Corpus
+### v0.6.0-alpha: Real-World Validation Corpus
 
-**Status:** Implemented in v0.6.0-alpha.
+**Status:** Released.
 
-**Goal:** Define a legally safe, reproducible corpus structure for labeled
-real-world validation datasets.
+The Real-World Validation Corpus framework defines how legally safe, labeled
+real-world validation datasets should be organized.
 
-The Real-World Validation Corpus framework adds:
+It adds:
 
 - a schema-versioned corpus manifest
 - committed placeholder methodology fixtures
 - Calibration Evidence label compatibility checks
 - optional private/local fixture skipping
-- documented rules for what can and cannot be committed publicly
-- expected-output placeholders for future Validation Dossier checks
+- public rules for what can and cannot be committed
 
-This is a corpus/methodology layer only. v0.6 does not add analyzers, change
-thresholds, implement repair planning, cleanup, repair, export, plugins, UI, or
-public validation workflows, and does not expand the public `inspect` CLI.
-Real-world validation is the evidence gate before future action
-recommendations.
+The corpus is methodology only. It does not change analyzer thresholds,
+implement recommendations, or expand the public CLI.
 
-### Analyzer improvement (v1.x)
+---
 
-- Populate the Real-World Validation Corpus with legally safe public-domain/CC0
-  or otherwise redistributable LoRA/image examples before claiming real-world
-  reliability.
+## v0.7: Recommendation / Decision Summary Layer
+
+**Goal:** Turn existing findings, Dataset Summary, and Review Queue into
+advisory training-set guidance.
+
+Proposed decision language:
+
+- **Ready to train** -- no concerning findings.
+- **Needs review** -- evidence suggests a human should inspect before training.
+- **Priority review / exclude-from-training candidate** -- stronger or multiple
+  findings suggest the image may not belong in the training set unless the
+  artifact is intentional.
+
+Constraints:
+
+- No deletion.
+- No repair.
+- No cleanup.
+- No export.
+- No image modification.
+- Exclusion is not deletion.
+- Recommendations must cite underlying findings and evidence.
+- Uncalibrated signals must be labeled clearly.
+- Existing report fields remain backward-compatible.
+
+---
+
+## v0.8: Recommendation Validation
+
+**Goal:** Measure whether decision guidance matches labels and review decisions.
+
+This phase should use Calibration Evidence, Review Decisions, Validation
+Dossiers, and the Real-World Validation Corpus to answer:
+
+- How often are review recommendations useful?
+- How often are exclude-from-training candidates false positives?
+- Which artifact families are trustworthy enough for stronger wording?
+- Which confidence messages reduce overtrust?
+
+No analyzer thresholds should change until validation evidence supports the
+change.
+
+---
+
+## v0.9: Review Experience / Gallery Improvement
+
+**Goal:** Make human review fast enough that users run Dataset Forge before
+every LoRA.
+
+Focus areas:
+
+- Decision-oriented gallery sections.
+- Evidence summaries that are useful at thumbnail and full-image scale.
+- Clear confidence wording.
+- Better grouping by reason for review.
+- Easy handoff from terminal summary to visual review.
+
+Still out of scope: cleanup, repair, export, UI-first redesign, and AI editing.
+
+---
+
+## v1.0: Stable LoRA Dataset Decision Engine
+
+**Goal:** Ship a stable, read-only product that helps users decide what belongs
+in a LoRA training set before training.
+
+v1.0 should include:
+
+- Stable `inspect` behavior.
+- Stable decision guidance.
+- Evidence-backed Ready / Review / Exclude-from-training candidate language.
+- Clear calibration and confidence communication.
+- Public benchmark and corpus evidence.
+- Reports and gallery that reduce review burden.
+- No source-image modification.
+
+v1.0 succeeds when a user can say:
+
+> "Instead of reviewing 400 images, Dataset Forge showed me the handful that
+> actually needed attention."
+
+---
+
+## Analyzer Improvement
+
+Analyzer work should be driven by decision quality, not novelty.
+
+Priority areas:
+
+- Populate the Real-World Validation Corpus with legally safe public-domain,
+  CC0, or otherwise redistributable LoRA/image examples before claiming
+  real-world reliability.
 - Use Validation Dossiers on labeled real-world datasets before changing
-  thresholds, adding analyzer families, or planning repair.
-- TextureAnalyzer calibration against labeled ground truth.
-- Fourth discriminating signal for `CrystallineFacetingAnalyzer` -- resolve
-  grain 45-55 TP/FP interleaving (spatial coherence, directional frequency
-  energy, or micro-edge profile).
-- Periodic frequency noise: postponed until a better discriminator separates
-  synthetic periodic contamination from intentional repeated patterns.
-- Research probe for `artifact.recursive_detail` (no signal investigation yet).
-- Oversharpening/halo calibration against labeled real-world examples; current
-  USM-residual analyzer is synthetic-fixture-backed only.
-- High-frequency isolated artifact calibration against labeled real-world
-  examples; current residual component analyzer is synthetic-fixture-backed only.
+  thresholds or adding analyzer families.
+- Calibrate TextureAnalyzer against labeled ground truth.
+- Resolve the CrystallineFacetingAnalyzer grain 45-55 TP/FP interleaving with
+  evidence from a fourth discriminating signal.
+- Keep Periodic Frequency Noise postponed until a better discriminator separates
+  synthetic contamination from intentional repeated patterns.
 
 ---
 
-## v2: Dataset Forge Clean (future, no timeline)
+## Future Vision Only
 
-**Goal:** Apply deterministic, artifact-specific cleanup to images where Findings justify it.
+The following may become valuable only after decision guidance is reliable:
 
-Cleanup is per artifact family  --  not a single generic filter:
+- Non-destructive export of human-approved training sets.
+- Repair planning.
+- Deterministic repair candidates.
+- Additional analyzers.
+- Dataset comparison.
+- Lightweight review UI.
+- LoRA validation feedback loop.
 
-| Finding category | Cleanup strategy |
-|---|---|
-| `artifact.texture` / `texture.high_microtexture` | Edge-preserving denoise |
-| `artifact.high_frequency_isolated` | Isolated bright/dark component suppression with local inpainting |
-| `artifact.crystalline_faceting` | Mid-frequency band suppression |
-| `artifact.recursive_detail` | Frequency-domain attenuation |
-| `artifact.oversharpening_halo` | Unsharp-mask reversal; edge deconvolution |
-
-Non-destructive pipeline (absolute):
-- Originals are never modified
-- Candidates written to separate output folder
-- Side-by-side human review required before export
-- Final export assembled from individually approved images only
-
-**Prerequisite:** v1 findings are trusted.
+These are not assumed next steps. They require evidence that Dataset Forge can
+reliably identify images that deserve intervention.
 
 ---
 
-## v3: Semantic Conservator (future, no timeline)
+## Why Dataset Forge does not repair images yet
 
-**Goal:** Reduce GPT fingerprints that deterministic methods cannot reach.
+Repair is deferred until the tool can reliably identify images that deserve
+intervention. A repair workflow built on weak or uncalibrated recommendations
+would damage user trust and risk altering images that should be left alone.
 
-- AI-proposed changes only; never automatic application
-- All proposals compared against original using v1 metrics
-- Human review at every step
-- Dataset Forge remains the decision-maker
-
-**Prerequisite:** v2 deterministic cleanup is validated.
-
----
-
-## Future Phases (no timeline)
-
-- Caption auditing
-- Style consistency analysis
-- Duplicate detection (surface in v1 DatasetContext, action in later version)
-- Licensing analysis
-- Real-world benchmark collections (Flux, SDXL, Ideogram, Midjourney)
-- LoRA validation feedback loop
-
----
-
-## Priority Order (post v0.2.0-alpha)
-
-Calibration Evidence against labeled ground truth > threshold review for
-existing analyzers > fourth crystalline discriminating signal > new artifact
-family research > v2 cleanup work.
-
-The inspect vertical slice is shipped. The most valuable next step is
-calibrating existing analyzer thresholds with precision/recall/F1 evidence
-from labeled ground truth, then resolving the crystalline 45-55 TP/FP problem.
+Dataset Forge should first prove that it can reduce uncertainty: find the
+images worth reviewing, explain the evidence, and communicate confidence
+honestly. Only then should repair, cleanup, or export be reconsidered.
