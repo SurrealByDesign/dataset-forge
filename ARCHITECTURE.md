@@ -5,7 +5,7 @@
 
 ---
 
-## v0.12.0-alpha Inspect Pipeline
+## v0.13.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -18,9 +18,10 @@ Dataset
 Every component in the public inspect surface maps to this pipeline. The
 current report stage also includes additive post-inspection sections:
 Aggregation, Dataset Summary, Review Queue, Recommendation Summary sidecars,
-an optional static review gallery, and optional recommendation contact sheets.
+an optional static review gallery, optional recommendation contact sheets, and
+optional persistent human review-decision sidecars.
 Cleanup, repair, regeneration, export, interactive UI, and plugins are future
-work and are not part of v0.12.0-alpha.
+work and are not part of v0.13.0-alpha.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
 should help users decide which images are ready to train, which need review,
@@ -134,11 +135,12 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.12.0-alpha outputs:
+v0.13.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `recommendation_summary.json`  --  machine-readable advisory review priorities
 - `recommendation_summary.md`  --  plain-language advisory review priorities
+- `review_decisions_template.json`  --  starter human review sidecar, written only when absent
 - `review_gallery.html`  --  optional static visual review surface
 - `priority_review_contact_sheet.png`  --  optional Priority Review contact sheet
 - `needs_review_contact_sheet.png`  --  optional Needs Review contact sheet
@@ -246,10 +248,10 @@ review, but it must not silently change analyzer behavior.
 
 ## Review Decisions
 
-Review Decisions are the v0.4 human-intent layer for improving future
-recommendation quality. They record human intent over existing inspected images
-and finding categories. They do not run analyzers, change thresholds, modify
-images, or plan cleanup/export work.
+Review Decisions are the human-intent layer for preserving review knowledge
+across inspect runs and improving future recommendation quality. They record
+human intent over existing inspected images and finding categories. They do not
+run analyzers, change thresholds, modify images, or plan cleanup/export work.
 
 Input schema: `dataset-forge/review-decisions/v1`
 
@@ -266,19 +268,32 @@ Input schema: `dataset-forge/review-decisions/v1`
       "image_path": "image_002.png",
       "decision": "LOCKED",
       "reason": "Preserve original approved style."
+    },
+    {
+      "image_path": "image_003.png",
+      "recommendation": "Needs Review",
+      "decision": null,
+      "notes": ""
     }
   ]
 }
 ```
 
 Supported decision values are `CONFIRMED_ARTIFACT`, `FALSE_POSITIVE`,
-`ACCEPTABLE_STYLE`, `NEEDS_REVIEW`, `IGNORE`, and `LOCKED`.
+`ACCEPTABLE_STYLE`, `NEEDS_REVIEW`, `IGNORE`, and `LOCKED`. Template entries
+may use `decision: null` to mean no human decision has been recorded yet.
 
 The review-decision layer provides deterministic summaries and helper queries
 for future planning code, such as whether an image is locked, whether a finding
 was confirmed, whether a finding was rejected as a false positive, and whether
 an image/category should be excluded from future action. It is internal and
 additive; it does not alter `inspection_report.json`.
+
+In v0.13, `dataset-forge inspect` writes `review_decisions_template.json` only
+when the template does not already exist. If `review_decisions.json` exists in
+the output folder, inspect loads it and annotates `recommendation_summary.md`
+and optional `review_gallery.html` with Already Reviewed / Pending Review
+status. Existing review decision files and templates are never overwritten.
 
 ---
 
@@ -356,9 +371,9 @@ It consumes only:
 - `DatasetContext.image_paths`
 - source report schema metadata
 
-It does not inspect images, run analyzers, generate new evidence, modify
-Findings, read Review Decisions, read Validation Dossiers, interpret
-Calibration Evidence, or alter `inspection_report.json`.
+Its core recommendation engine does not inspect images, run analyzers, generate
+new evidence, modify Findings, read Review Decisions, read Validation Dossiers,
+interpret Calibration Evidence, or alter `inspection_report.json`.
 
 The v0.9 engine is deliberately boring:
 
@@ -379,12 +394,12 @@ is deterministic, but ordering is not a score.
 In v0.10, `dataset-forge inspect` writes `recommendation_summary.json` and
 `recommendation_summary.md` alongside inspection reports and prints aggregate
 recommendation counts. There is no public `dataset-forge recommend` command, no
-embedding into `inspection_report.json`, no cleanup, no repair, no export, no
-validation coupling, and no review-decision coupling.
+embedding into `inspection_report.json`, no cleanup, no repair, no export, and
+no validation coupling.
 
-Every Recommendation Summary must be reproducible from `inspection_report.json`
-alone. `Ready for Training` means no current findings requiring review were
-emitted; it does not guarantee the image is artifact-free.
+The recommendation JSON and recommendation labels must be reproducible from
+`inspection_report.json` alone. `Ready for Training` means no current findings
+requiring review were emitted; it does not guarantee the image is artifact-free.
 
 v0.9 changed Markdown presentation only. `recommendation_summary.md` is a
 human-facing review report: summary counts, Priority Review first, Needs Review
@@ -414,6 +429,12 @@ analyzer names, and finding count. It does not add new analysis, confidence
 tiers, scores, schemas, review state, validation coupling, or recommendation
 rules.
 
+v0.13 adds persistent review status presentation only. Recommendations remain
+derived from `inspection_report.json`; `recommendation_summary.json` remains
+unchanged. Existing review decisions annotate Markdown and optional HTML output,
+but they do not affect recommendation rules, finding generation, analyzer
+behavior, contact sheets, or inspection report schema.
+
 ---
 
 ## Why Dataset Forge does not repair images yet
@@ -429,25 +450,25 @@ decision layer must be trustworthy first.
 
 ---
 
-## Future-Only / Not Implemented in v0.12.0-alpha
+## Future-Only / Not Implemented in v0.13.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.12.0-alpha inspect release. They should not be modified, expanded, or
+v0.13.0-alpha inspect release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.12.0-alpha |
-| `plugins/` | Future only; not public in v0.12.0-alpha |
-| `execution/` | Future only; not public in v0.12.0-alpha |
-| `transforms/` | Future only; not public in v0.12.0-alpha |
-| `exporters/` | Future only; not public in v0.12.0-alpha |
-| `review/` | Future only; not public in v0.12.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.12.0-alpha |
+| `cleanup/` | Future only; not public in v0.13.0-alpha |
+| `plugins/` | Future only; not public in v0.13.0-alpha |
+| `execution/` | Future only; not public in v0.13.0-alpha |
+| `transforms/` | Future only; not public in v0.13.0-alpha |
+| `exporters/` | Future only; not public in v0.13.0-alpha |
+| `review/` | Future only; not public in v0.13.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.13.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.12.0-alpha CLI or report behavior.
+v0.13.0-alpha CLI or report behavior.
 
 ---
 
@@ -636,7 +657,7 @@ When an analyzer is uncalibrated:
 ### Archived Future Repair Research (not current roadmap)
 
 > This section is an archived design note, not the current roadmap. Dataset
-> Forge v0.12.0-alpha does not expose cleanup, repair planning, repair,
+> Forge v0.13.0-alpha does not expose cleanup, repair planning, repair,
 > regeneration, or export commands. Repair, cleanup, and export should not be
 > reconsidered until decision guidance is reliable on labeled real-world data.
 
@@ -702,7 +723,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Archived Batch Exclusion and Export Research (future only)
 
 > This section describes a possible non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.12.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.13.0-alpha should be designed around
 > it or expose it through the public CLI. Export is not an assumed next step.
 
 ---

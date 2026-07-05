@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.12.0-alpha** -- makes recommendation outputs easier to understand at a glance.
+**v0.13.0-alpha** -- remembers human review decisions across inspect runs.
 
 Know which images belong in your training set before you train your LoRA.
 
@@ -9,11 +9,14 @@ train, which need review, and which deserve priority attention before training. 
 recommendation must be grounded in deterministic analysis, measurable evidence,
 and explainable findings.
 
-**v0.12.0-alpha is analysis only.** It reads your dataset. It does not touch your images.
-`dataset-forge inspect` writes additive Recommendation Summary sidecars and can
-optionally render static visual review outputs from those sidecars.
-There is still no public recommendation command, review-decision workflow,
-cleanup, repair, export, web app, plugins, or new analyzer family in this release.
+**v0.13.0-alpha is analysis only.** It reads your dataset. It does not touch your images.
+`dataset-forge inspect` writes additive Recommendation Summary sidecars,
+optionally renders static visual review outputs, and creates a
+`review_decisions_template.json` starter file when one does not already exist.
+If `review_decisions.json` exists, Dataset Forge reads it and annotates
+Markdown/HTML review outputs with already-reviewed or pending status.
+There is still no public recommendation command, browser editing, cleanup,
+repair, export, web app, plugins, or new analyzer family in this release.
 
 ---
 
@@ -28,7 +31,7 @@ Exclude-from-training guidance.
 A healthy dataset can legitimately produce zero findings. That is a valid
 and correct result, not a failure.
 
-**Analyzers in v0.12.0-alpha:**
+**Analyzers in v0.13.0-alpha:**
 
 | Analyzer | What it detects | Status |
 |---|---|---|
@@ -43,9 +46,9 @@ read-only, uses synthetic benchmark fixtures to validate its USM-residual signal
 shape, and remains uncalibrated for real-world precision/recall. The isolated
 high-frequency analyzer is also read-only and synthetic-fixture-backed only.
 Treat findings as candidates for human review, not automated decisions. In
-v0.12 keeps the recommendation rules, JSON, inspection schema, and contact
-sheets unchanged while making `recommendation_summary.md` and
-`review_gallery.html` more immediately explainable.
+v0.13 keeps the recommendation rules, JSON, inspection schema, gallery behavior,
+and contact sheet behavior unchanged while preserving human review state in
+schema-versioned sidecar files.
 
 ---
 
@@ -66,7 +69,7 @@ edge halos.
 
 ---
 
-## Current limitations (v0.12.0-alpha)
+## Current limitations (v0.13.0-alpha)
 
 - **Analyzers are not calibrated to published ground truth.** Thresholds were
   derived from an initial labeled review of one private dataset. Precision and
@@ -78,18 +81,18 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.12.0-alpha exposes inspect-only
+- **No public recommendation command yet.** v0.13.0-alpha exposes inspect-only
   CLI behavior. `inspect` writes Recommendation Summary sidecar files, but
   there is no separate `dataset-forge recommend` command.
 
-- **No cleanup, repair planning, repair, or export.** v0.12.0-alpha is read-only.
+- **No cleanup, repair planning, repair, or export.** v0.13.0-alpha is read-only.
   Cleanup, repair, and export are future-only possibilities, not assumed next
   steps. See [ROADMAP.md](ROADMAP.md). Code for future phases exists in the
   repository but is not active or supported in the public CLI.
 
 - **No web app.** Dataset Forge is a CLI tool. Reports are JSON, plain text,
   Markdown, optional static HTML, and optional PNG contact sheets. These visual
-  outputs are not interactive and record no review state.
+  outputs are not interactive and record no review state by themselves.
 
 - **z-score findings require dataset context.** `texture_analyzer/v1` uses
   dataset-relative z-scores. On a dataset of fewer than five images the baseline
@@ -248,7 +251,7 @@ Recommendation Summary order.
 
 ### Internal: calibration evidence
 
-v0.12.0-alpha includes internal Calibration Evidence: comparing an existing
+v0.13.0-alpha includes internal Calibration Evidence: comparing an existing
 `inspection_report.json` with a small ground-truth label file to compute
 per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and
 false-positive rate.
@@ -259,19 +262,21 @@ behavior.
 
 ### Internal: review decisions
 
-v0.12.0-alpha includes internal Review Decisions: schema-versioned JSON files that
-record human intent for images or finding categories after inspection and
+v0.13.0-alpha includes persistent Review Decisions: schema-versioned JSON files
+that record human intent for images or finding categories after inspection and
 calibration review.
 
 Review Decisions can mark findings as confirmed artifacts, false positives,
-acceptable style, needing review, ignored, or locked. They are a modeling layer
-only: they do not modify images, plan repair, export datasets, or change
-analyzer behavior. They are the bridge between Calibration Evidence and future
-human-approved Repair Planning.
+acceptable style, needing review, ignored, or locked. `dataset-forge inspect`
+creates `review_decisions_template.json` only when absent and reads
+`review_decisions.json` when present so Markdown/HTML outputs can show Already
+Reviewed or Pending Review status. Review Decisions do not modify images,
+change recommendations, plan repair, export datasets, or change analyzer
+behavior.
 
 ### Internal: validation dossiers
 
-v0.12.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
+v0.13.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
 that combine an existing `inspection_report.json`, calibration labels, and
 optional Review Decisions to assess analyzer reliability.
 
@@ -284,7 +289,7 @@ thresholds, modify images, plan repair, export datasets, or change the public
 
 ### Internal: real-world validation corpus
 
-v0.12.0-alpha includes the Real-World Validation Corpus framework under
+v0.13.0-alpha includes the Real-World Validation Corpus framework under
 `benchmarks/real_world/`. It defines how labeled real-world LoRA/image datasets
 should be organized for future reliability validation.
 
@@ -298,14 +303,15 @@ images, plan repair, export datasets, or change the public `inspect` behavior.
 
 ### Recommendation summary
 
-v0.12.0-alpha writes Recommendation Summary sidecars from `dataset-forge inspect`
+v0.13.0-alpha writes Recommendation Summary sidecars from `dataset-forge inspect`
 with schema
 `dataset-forge/recommendation-summary/v1`.
 
 It consumes only existing inspection findings and DatasetContext image paths. It
 does not inspect images, run analyzers, generate new evidence, modify Findings,
-read Review Decisions, read Validation Dossiers, or interpret calibration
-evidence.
+read Validation Dossiers, or interpret calibration evidence. Existing Review
+Decisions may annotate Markdown/HTML presentation only; they do not affect
+recommendation rules or `recommendation_summary.json`.
 
 The deliberately boring four-rule engine is:
 
@@ -316,9 +322,9 @@ The deliberately boring four-rule engine is:
 - no findings -> Ready for Training
 
 The output has no numeric quality score and no serialized priority field. It is
-additive and is not embedded into `inspection_report.json`. Every
-Recommendation Summary must be reproducible from the Inspection Report alone.
-There is no public `dataset-forge recommend` command.
+additive and is not embedded into `inspection_report.json`. Recommendation
+labels and `recommendation_summary.json` must be reproducible from the
+Inspection Report alone. There is no public `dataset-forge recommend` command.
 
 `recommendation_summary.md` is organized for human review: Dataset Summary,
 most common finding categories, Priority Review first, Needs Review second,
@@ -386,8 +392,9 @@ Images with no findings are listed separately. They are not an afterthought.
   No move, rename, modify, or delete operation is performed on source images.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
-- **Cleanup, repair planning, repair, and export are not implemented in v0.12.0-alpha.** There is
-  no public flag or command that plans, modifies, repairs, exports, rejects, or
+- **Cleanup, repair planning, repair, and export are not implemented in
+  v0.13.0-alpha.** There is no public flag or command that plans, modifies,
+  repairs, exports, rejects, or
   regenerates images. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,
   a human-readable explanation, and a recommendation. No black-box scores.
@@ -450,7 +457,7 @@ MIT. See [LICENSE](LICENSE).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Inspect pipeline structure, Finding schema, artifact family model |
 | [WHY.md](WHY.md) | Reasoning behind major design decisions |
 | [DIRECTION.md](DIRECTION.md) | Current milestone and scope |
-| [ROADMAP.md](ROADMAP.md) | v0.12.0-alpha status and future milestone plan |
+| [ROADMAP.md](ROADMAP.md) | v0.13.0-alpha status and future milestone plan |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Implementation status; resume from here |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Acceptance criteria for terminal and report output |
 | [benchmarks/README.md](benchmarks/README.md) | Benchmark manifests and fixture inventory |

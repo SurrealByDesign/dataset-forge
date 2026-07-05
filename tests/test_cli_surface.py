@@ -23,7 +23,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Dataset Forge v0.12.0-alpha", stdout)
+        self.assertIn("Dataset Forge v0.13.0-alpha", stdout)
         self.assertIn("inspect", stdout)
         self.assertIn("--help", stdout)
         self.assertIn("--version", stdout)
@@ -59,7 +59,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 0.12.0a0")
+        self.assertEqual(stdout.strip(), "dataset-forge 0.13.0a0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -78,7 +78,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
                 self.assertEqual(exit_code, 2)
                 self.assertEqual(stdout, "")
-                self.assertIn("not part of the public v0.12.0-alpha CLI", stderr)
+                self.assertIn("not part of the public v0.13.0-alpha CLI", stderr)
 
     def test_inspect_prints_recommendation_summary_counts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -107,6 +107,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
             self.assertIn("Source images were not modified.", stdout)
             self.assertIn("recommendation_summary.json", stdout)
             self.assertIn("recommendation_summary.md", stdout)
+            self.assertIn("review_decisions_template.json", stdout)
 
     def test_inspect_review_gallery_flag_writes_html(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

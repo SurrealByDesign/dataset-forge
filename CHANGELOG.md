@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.13.0-alpha
+
+- Added persistent human review-decision sidecars to inspect runs.
+- `dataset-forge inspect` now writes `review_decisions_template.json` only when
+  the template does not already exist.
+- Existing `review_decisions.json` files are loaded and preserved; existing
+  templates and human decision files are never overwritten.
+- `recommendation_summary.md` and optional `review_gallery.html` now display
+  Already Reviewed / Pending Review status and recorded decision labels.
+- Kept recommendation rules, `recommendation_summary.json`,
+  `inspection_report.json`, analyzer behavior, contact sheets, cleanup, repair,
+  export, schemas, and public CLI command surface unchanged.
+
 ## v0.12.0-alpha
 
 - Improved `recommendation_summary.md` and `review_gallery.html` explainability.

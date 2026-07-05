@@ -63,6 +63,7 @@ Report written:
   inspection_report.txt
   recommendation_summary.json
   recommendation_summary.md
+  review_decisions_template.json
   review_gallery.html  # only with --review-gallery
   priority_review_contact_sheet.png  # only with --contact-sheets
   needs_review_contact_sheet.png     # only with --contact-sheets
@@ -213,8 +214,8 @@ The static gallery:
 - includes advisory wording that recommendations are review priorities, source
   images were not modified, and Ready for Training is not a guarantee of
   artifact-free images
-- does not add buttons, checkboxes, forms, scripts, review decisions, cleanup,
-  repair, export, or server behavior
+- does not add buttons, checkboxes, forms, scripts, review-decision editing,
+  cleanup, repair, export, or server behavior
 
 The JSON sidecars remain the source of truth.
 
@@ -241,7 +242,7 @@ The contact sheets:
 - do not create Ready for Training sheets by default
 - show at most the first 100 images per sheet
 - do not rerun analyzers, recompute recommendations, write thumbnails beside
-  source images, add review decisions, cleanup, repair, export, web app, or
+  source images, edit review decisions, cleanup, repair, export, web app, or
   server behavior
 
 The JSON sidecars remain the source of truth.
@@ -277,6 +278,12 @@ The JSON sidecars remain the source of truth.
 Recommendation:
 Priority Review
 
+Review Status:
+Already Reviewed
+
+Decision:
+Acceptable Style
+
 Primary reason:
 High-severity finding detected.
 
@@ -302,6 +309,12 @@ Finding count:
 
 Recommendation:
 Needs Review
+
+Review Status:
+Pending Review
+
+Decision:
+None recorded
 
 Primary reason:
 Measurable finding detected.

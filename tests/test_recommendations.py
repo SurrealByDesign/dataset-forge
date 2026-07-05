@@ -24,6 +24,7 @@ from dataset_forge.recommendation_summary import (
     render_recommendation_summary_markdown,
     write_recommendation_summary_files,
 )
+from dataset_forge.review_persistence import ReviewStatus
 
 
 def _context(image_count: int = 4) -> DatasetContext:
@@ -358,6 +359,27 @@ class RecommendationContractTests(unittest.TestCase):
         self.assertIn("Analyzer:\n- texture_analyzer/v1", markdown)
         self.assertIn("Severity:\nLOW", markdown)
         self.assertIn("Finding count:\n1", markdown)
+        self.assertIn("Review Status:\nPending Review", markdown)
+        self.assertIn("Decision:\nNone recorded", markdown)
+
+    def test_markdown_displays_existing_review_decision_status(self) -> None:
+        summary = build_recommendation_summary(
+            [_finding("img_0.png", severity=Severity.HIGH)],
+            _context(),
+        )
+
+        markdown = render_recommendation_summary_markdown(
+            summary,
+            review_statuses={
+                "img_0.png": ReviewStatus(
+                    status="Already Reviewed",
+                    decisions=("Acceptable Style",),
+                ),
+            },
+        )
+
+        self.assertIn("Review Status:\nAlready Reviewed", markdown)
+        self.assertIn("Decision:\nAcceptable Style", markdown)
 
     def test_markdown_uses_stable_group_and_image_ordering(self) -> None:
         summary = build_recommendation_summary(
@@ -478,7 +500,15 @@ class RecommendationContractTests(unittest.TestCase):
         )
         before = json.dumps(summary.to_dict(), indent=2, ensure_ascii=False)
 
-        render_recommendation_summary_markdown(summary)
+        render_recommendation_summary_markdown(
+            summary,
+            review_statuses={
+                "img_0.png": ReviewStatus(
+                    status="Already Reviewed",
+                    decisions=("False Positive",),
+                ),
+            },
+        )
 
         after = json.dumps(summary.to_dict(), indent=2, ensure_ascii=False)
         self.assertEqual(after, before)
@@ -537,6 +567,12 @@ class RecommendationContractTests(unittest.TestCase):
             json_path, markdown_path = write_recommendation_summary_files(
                 summary,
                 Path(tmp),
+                review_statuses={
+                    "img_0.png": ReviewStatus(
+                        status="Already Reviewed",
+                        decisions=("Locked",),
+                    ),
+                },
             )
 
             self.assertEqual(json_path.name, "recommendation_summary.json")

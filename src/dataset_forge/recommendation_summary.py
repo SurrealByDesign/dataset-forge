@@ -180,6 +180,8 @@ def build_recommendation_summary_from_report(
 def write_recommendation_summary_files(
     summary: RecommendationSummary,
     output_dir: Path,
+    *,
+    review_statuses: Mapping[str, Any] | None = None,
 ) -> tuple[Path, Path]:
     """Write recommendation_summary.json and recommendation_summary.md."""
 
@@ -190,11 +192,21 @@ def write_recommendation_summary_files(
         json.dumps(summary.to_dict(), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    md_path.write_text(render_recommendation_summary_markdown(summary), encoding="utf-8")
+    md_path.write_text(
+        render_recommendation_summary_markdown(
+            summary,
+            review_statuses=review_statuses,
+        ),
+        encoding="utf-8",
+    )
     return json_path, md_path
 
 
-def render_recommendation_summary_markdown(summary: RecommendationSummary) -> str:
+def render_recommendation_summary_markdown(
+    summary: RecommendationSummary,
+    *,
+    review_statuses: Mapping[str, Any] | None = None,
+) -> str:
     """Render a plain Markdown review-priority summary."""
 
     lines = [
@@ -214,8 +226,8 @@ def render_recommendation_summary_markdown(summary: RecommendationSummary) -> st
         "# Recommended Review Order",
         "",
     ])
-    lines.extend(_markdown_review_group(summary, PRIORITY_REVIEW))
-    lines.extend(_markdown_review_group(summary, NEEDS_REVIEW))
+    lines.extend(_markdown_review_group(summary, PRIORITY_REVIEW, review_statuses))
+    lines.extend(_markdown_review_group(summary, NEEDS_REVIEW, review_statuses))
     lines.extend([
         "# Ready for Training",
         "",
@@ -258,6 +270,7 @@ def render_recommendation_summary_markdown(summary: RecommendationSummary) -> st
 def _markdown_review_group(
     summary: RecommendationSummary,
     recommendation: str,
+    review_statuses: Mapping[str, Any] | None,
 ) -> list[str]:
     items = [
         item for item in summary.recommendations
@@ -271,7 +284,7 @@ def _markdown_review_group(
     for family, family_items in _group_by_artifact_family(items):
         lines.extend([f"### {family}", ""])
         for item in family_items:
-            lines.extend(_markdown_explanation_item(item))
+            lines.extend(_markdown_explanation_item(item, review_statuses))
         lines.append("")
     lines.append("")
     return lines
@@ -287,10 +300,14 @@ def _markdown_common_categories(summary: RecommendationSummary) -> list[str]:
     ]
 
 
-def _markdown_explanation_item(item: ImageRecommendation) -> list[str]:
+def _markdown_explanation_item(
+    item: ImageRecommendation,
+    review_statuses: Mapping[str, Any] | None,
+) -> list[str]:
     categories = _ref_values(item, "category")
     analyzers = _ref_values(item, "analyzer")
     severities = _ref_values(item, "severity")
+    review_status, review_decision = _review_status_text(item.image_path, review_statuses)
     lines = [
         "---",
         "",
@@ -298,6 +315,12 @@ def _markdown_explanation_item(item: ImageRecommendation) -> list[str]:
         "",
         "Recommendation:",
         f"{item.display_label}",
+        "",
+        "Review Status:",
+        review_status,
+        "",
+        "Decision:",
+        review_decision,
         "",
         "Primary reason:",
         f"{item.primary_reason}",
@@ -360,6 +383,22 @@ def _ref_values(item: ImageRecommendation, field: str) -> list[str]:
         if value not in values:
             values.append(value)
     return values or ["none"]
+
+
+def _review_status_text(
+    image_path: str,
+    review_statuses: Mapping[str, Any] | None,
+) -> tuple[str, str]:
+    if review_statuses is None:
+        return ("Pending Review", "None recorded")
+    status = review_statuses.get(image_path)
+    if status is None:
+        return ("Pending Review", "None recorded")
+    status_text = str(getattr(status, "status", "Pending Review"))
+    decisions = tuple(getattr(status, "decisions", ()))
+    if not decisions:
+        return (status_text, "None recorded")
+    return (status_text, "; ".join(str(decision) for decision in decisions))
 
 
 def _image_word(count: int) -> str:

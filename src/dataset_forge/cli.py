@@ -79,8 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.12.0-alpha: inspect image datasets and write "
-            "evidence-backed, read-only reports and optional visual review aids."
+            "Dataset Forge v0.13.0-alpha: inspect image datasets and preserve "
+            "read-only human review decisions."
         ),
     )
     parser.add_argument(
@@ -144,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.12.0-alpha CLI. "
+            "Error: this command is not part of the public v0.13.0-alpha CLI. "
             "Use 'dataset-forge inspect', '--help', or '--version'.",
             file=sys.stderr,
         )
@@ -388,7 +388,7 @@ def _inspect_main(argv: list[str]) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.12.0-alpha is analysis only: recommendations are advisory review priorities.\n"
+            "v0.13.0-alpha is analysis only: human review decisions are preserved as sidecars.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )
@@ -488,6 +488,8 @@ def _inspect_main(argv: list[str]) -> int:
     print(f"  {result.txt_report}")
     print(f"  {result.recommendation_json}")
     print(f"  {result.recommendation_markdown}")
+    if result.review_decisions_template:
+        print(f"  {result.review_decisions_template}")
     if result.review_gallery_path:
         print(f"  {result.review_gallery_path}")
     if result.priority_review_contact_sheet:

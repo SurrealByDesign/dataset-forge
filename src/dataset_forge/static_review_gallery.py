@@ -12,6 +12,8 @@ def write_static_review_gallery(
     inspection_report_path: Path,
     recommendation_summary_path: Path,
     output_path: Path,
+    *,
+    review_statuses: Mapping[str, Any] | None = None,
 ) -> Path:
     """Write review_gallery.html from existing report sidecars only."""
 
@@ -21,7 +23,11 @@ def write_static_review_gallery(
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
-        render_static_review_gallery(inspection_report, recommendation_summary),
+        render_static_review_gallery(
+            inspection_report,
+            recommendation_summary,
+            review_statuses=review_statuses,
+        ),
         encoding="utf-8",
     )
     return output_path
@@ -30,6 +36,8 @@ def write_static_review_gallery(
 def render_static_review_gallery(
     inspection_report: Mapping[str, Any],
     recommendation_summary: Mapping[str, Any],
+    *,
+    review_statuses: Mapping[str, Any] | None = None,
 ) -> str:
     """Render deterministic plain HTML from inspection and recommendation JSON."""
 
@@ -81,8 +89,8 @@ def render_static_review_gallery(
         "</header>",
     ])
 
-    lines.extend(_section("Priority Review", recommendations, "PRIORITY_REVIEW"))
-    lines.extend(_section("Needs Review", recommendations, "NEEDS_REVIEW"))
+    lines.extend(_section("Priority Review", recommendations, "PRIORITY_REVIEW", review_statuses))
+    lines.extend(_section("Needs Review", recommendations, "NEEDS_REVIEW", review_statuses))
     lines.extend([
         '<section class="ready-summary">',
         "<h2>Ready for Training</h2>",
@@ -103,6 +111,7 @@ def _section(
     title: str,
     recommendations: list[Mapping[str, Any]],
     recommendation: str,
+    review_statuses: Mapping[str, Any] | None,
 ) -> list[str]:
     items = [
         item for item in recommendations
@@ -114,12 +123,12 @@ def _section(
         return lines
     lines.append('<div class="cards">')
     for item in items:
-        lines.extend(_card(item))
+        lines.extend(_card(item, review_statuses))
     lines.extend(["</div>", "</section>"])
     return lines
 
 
-def _card(item: Mapping[str, Any]) -> list[str]:
+def _card(item: Mapping[str, Any], review_statuses: Mapping[str, Any] | None) -> list[str]:
     image_path = str(item.get("image_path", ""))
     refs = list(item.get("finding_refs", []))
     filename = Path(image_path).name or image_path
@@ -127,12 +136,15 @@ def _card(item: Mapping[str, Any]) -> list[str]:
     categories = _ref_values(refs, "category")
     analyzers = _ref_values(refs, "analyzer")
     severities = _ref_values(refs, "severity")
+    review_status, review_decision = _review_status_text(image_path, review_statuses)
     return [
         '<article class="card">',
         f'<img src="{escape(image_src)}" alt="{escape(filename)}">',
         "<div>",
         f"<h3>{escape(filename)}</h3>",
         f"<p><strong>Recommendation:</strong> {escape(str(item.get('display_label', '')))}</p>",
+        f"<p><strong>Review Status:</strong> {escape(review_status)}</p>",
+        f"<p><strong>Decision:</strong> {escape(review_decision)}</p>",
         f"<p><strong>Primary reason:</strong> {escape(str(item.get('primary_reason', '')))}</p>",
         (
             "<p><strong>Finding categories:</strong> "
@@ -187,6 +199,22 @@ def _ref_values(refs: list[Mapping[str, Any]], field: str) -> list[str]:
         if value and value not in values:
             values.append(value)
     return values or ["none"]
+
+
+def _review_status_text(
+    image_path: str,
+    review_statuses: Mapping[str, Any] | None,
+) -> tuple[str, str]:
+    if review_statuses is None:
+        return ("Pending Review", "None recorded")
+    status = review_statuses.get(image_path)
+    if status is None:
+        return ("Pending Review", "None recorded")
+    status_text = str(getattr(status, "status", "Pending Review"))
+    decisions = tuple(getattr(status, "decisions", ()))
+    if not decisions:
+        return (status_text, "None recorded")
+    return (status_text, "; ".join(str(decision) for decision in decisions))
 
 
 def _css() -> str:

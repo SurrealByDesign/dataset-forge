@@ -303,12 +303,37 @@ Constraints:
 
 ---
 
-## v0.13: Recommendation Validation
+### v0.13.0-alpha: Persistent Human Review Decisions
+
+**Status:** Released.
+
+v0.13 preserves human review knowledge across inspect runs:
+
+- `dataset-forge inspect` writes `review_decisions_template.json` only when no
+  template already exists.
+- Existing `review_decisions.json` files are loaded but never overwritten.
+- `recommendation_summary.md` and optional `review_gallery.html` show
+  Already Reviewed / Pending Review status.
+- Human decisions use the existing `dataset-forge/review-decisions/v1` schema.
+
+Constraints:
+
+- No recommendation rule changes.
+- No `recommendation_summary.json` schema changes.
+- No `inspection_report.json` schema changes.
+- No analyzer behavior changes.
+- No contact sheet behavior changes.
+- No browser editing, buttons, forms, server, cleanup, repair, export, or image
+  modification.
+
+---
+
+## v0.14 Candidate: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
 
-This phase should use Calibration Evidence, Review Decisions, Validation
-Dossiers, and the Real-World Validation Corpus to answer:
+This future phase should use Calibration Evidence, Review Decisions,
+Validation Dossiers, and the Real-World Validation Corpus to answer:
 
 - How often are review recommendations useful?
 - How often are Priority Review recommendations false positives?

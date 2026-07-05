@@ -1,3 +1,3 @@
 """Read-only image dataset inspection and analysis."""
 
-__version__ = "0.12.0a0"
+__version__ = "0.13.0a0"

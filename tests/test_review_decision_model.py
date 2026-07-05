@@ -81,6 +81,23 @@ class ReviewDecisionParsingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_review_decisions(raw)
 
+    def test_allows_pending_template_entries_with_recommendation_and_notes(self) -> None:
+        decisions = parse_review_decisions({
+            "schema": REVIEW_DECISIONS_SCHEMA,
+            "decisions": [
+                {
+                    "image_path": "image.png",
+                    "recommendation": "Needs Review",
+                    "decision": None,
+                    "notes": "",
+                },
+            ],
+        })
+
+        self.assertIsNone(decisions.decisions[0].decision)
+        self.assertEqual(decisions.decisions[0].recommendation, "Needs Review")
+        self.assertEqual(decisions.summary().to_dict()["total_decisions"], 0)
+
     def test_rejects_duplicate_image_scope(self) -> None:
         raw = _decisions()
         raw["decisions"].append({

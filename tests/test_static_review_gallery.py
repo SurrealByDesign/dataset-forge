@@ -9,6 +9,7 @@ from dataset_forge.static_review_gallery import (
     render_static_review_gallery,
     write_static_review_gallery,
 )
+from dataset_forge.review_persistence import ReviewStatus
 
 
 def _inspection_report(dataset: Path) -> dict:
@@ -150,6 +151,26 @@ class StaticReviewGalleryTests(unittest.TestCase):
         self.assertIn("<strong>Finding categories:</strong>", html)
         self.assertIn("<strong>Finding count:</strong> 1", html)
         self.assertIn("<strong>Analyzer:</strong>", html)
+        self.assertIn("<strong>Review Status:</strong> Pending Review", html)
+        self.assertIn("<strong>Decision:</strong> None recorded", html)
+
+    def test_cards_include_existing_review_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            summary = _recommendation_summary(root)
+            html = render_static_review_gallery(
+                _inspection_report(root),
+                summary,
+                review_statuses={
+                    str(root / "priority.png"): ReviewStatus(
+                        status="Already Reviewed",
+                        decisions=("Confirmed Artifact",),
+                    ),
+                },
+            )
+
+        self.assertIn("<strong>Review Status:</strong> Already Reviewed", html)
+        self.assertIn("<strong>Decision:</strong> Confirmed Artifact", html)
 
     def test_contains_no_action_or_app_controls(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

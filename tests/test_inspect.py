@@ -19,6 +19,7 @@ from PIL import Image
 from dataset_forge.analyzers.registry import analyzer_versions
 from dataset_forge.inspect import InspectResult, run_inspect
 from dataset_forge.measurements import measure_image as real_measure_image
+from dataset_forge.review_decisions import REVIEW_DECISIONS_SCHEMA
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +97,76 @@ class TestRunInspectBasic(unittest.TestCase):
         _write_smooth(self.dataset, n=2)
         result = run_inspect(self.dataset, self.output)
         self.assertTrue(result.recommendation_markdown.exists())
+
+    def test_review_decisions_template_written_when_absent(self):
+        _write_smooth(self.dataset, n=2)
+        run_inspect(self.dataset, self.output)
+        template = self.output / "review_decisions_template.json"
+        data = json.loads(template.read_text(encoding="utf-8"))
+
+        self.assertTrue(template.exists())
+        self.assertEqual(data["schema"], REVIEW_DECISIONS_SCHEMA)
+        self.assertEqual(len(data["decisions"]), 2)
+        self.assertIsNone(data["decisions"][0]["decision"])
+        self.assertIn("recommendation", data["decisions"][0])
+        self.assertIn("notes", data["decisions"][0])
+
+    def test_existing_review_decisions_template_is_not_overwritten(self):
+        _write_smooth(self.dataset, n=1)
+        template = self.output / "review_decisions_template.json"
+        self.output.mkdir()
+        template.write_text("human draft\n", encoding="utf-8")
+
+        run_inspect(self.dataset, self.output)
+
+        self.assertEqual(template.read_text(encoding="utf-8"), "human draft\n")
+
+    def test_existing_review_decisions_file_is_not_overwritten(self):
+        images = _write_smooth(self.dataset, n=1)
+        self.output.mkdir()
+        decisions = self.output / "review_decisions.json"
+        original = json.dumps({
+            "schema": REVIEW_DECISIONS_SCHEMA,
+            "decisions": [
+                {
+                    "image_path": str(images[0]),
+                    "decision": "ACCEPTABLE_STYLE",
+                    "notes": "human checked this one",
+                },
+            ],
+        }, indent=2)
+        decisions.write_text(original, encoding="utf-8")
+
+        run_inspect(self.dataset, self.output)
+
+        self.assertEqual(decisions.read_text(encoding="utf-8"), original)
+
+    def test_existing_review_decisions_do_not_change_recommendation_json(self):
+        images = _write_smooth(self.dataset, n=1)
+        baseline_output = Path(self.tmp.name) / "baseline"
+        baseline = run_inspect(self.dataset, baseline_output)
+
+        self.output.mkdir()
+        decisions = self.output / "review_decisions.json"
+        decisions.write_text(
+            json.dumps({
+                "schema": REVIEW_DECISIONS_SCHEMA,
+                "decisions": [
+                    {
+                        "image_path": str(images[0]),
+                        "decision": "ACCEPTABLE_STYLE",
+                    },
+                ],
+            }),
+            encoding="utf-8",
+        )
+
+        with_decisions = run_inspect(self.dataset, self.output)
+
+        self.assertEqual(
+            json.loads(with_decisions.recommendation_json.read_text(encoding="utf-8")),
+            json.loads(baseline.recommendation_json.read_text(encoding="utf-8")),
+        )
 
     def test_existing_inspection_outputs_remain_present(self):
         _write_smooth(self.dataset, n=2)
@@ -194,6 +265,7 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertNotIn("recommendation_summary", data)
         self.assertNotIn("review_gallery", data)
         self.assertNotIn("contact_sheets", data)
+        self.assertNotIn("review_decisions", data)
 
     def test_inspect_uses_analyzer_registry(self):
         class RecordingAnalyzer:

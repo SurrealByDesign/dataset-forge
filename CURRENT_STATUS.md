@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-05. Reflects v0.12.0-alpha.*
+*Last updated: 2026-07-05. Reflects v0.13.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.12.0-alpha** implements the inspect-only foundation for a
+**Dataset Forge v0.13.0-alpha** implements the inspect-only foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -14,7 +14,10 @@ changing recommendation rules or JSON output. v0.10 adds an optional static
 `review_gallery.html` generated from existing sidecars. v0.11 adds optional
 recommendation contact sheets generated from the same sidecars. v0.12 improves
 Markdown and HTML recommendation explainability without changing rules or
-schemas.
+schemas. v0.13 adds persistent human review decisions as sidecar state:
+`inspect` creates `review_decisions_template.json` when absent, reads
+`review_decisions.json` when present, and annotates Markdown/HTML review
+outputs without changing recommendations.
 
 Current public behavior remains inspect-only:
 
@@ -22,7 +25,7 @@ Current public behavior remains inspect-only:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.12.0-alpha:
+Supported in v0.13.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Recommendation Summary sidecars (`recommendation_summary.json`,
@@ -32,6 +35,9 @@ Supported in v0.12.0-alpha:
 - Optional Recommendation Contact Sheets (`priority_review_contact_sheet.png`,
   `needs_review_contact_sheet.png`) from
   `dataset-forge inspect --contact-sheets`
+- Persistent Review Decisions sidecars:
+  `review_decisions_template.json` and optional user-authored
+  `review_decisions.json`
 - Optional gallery PNG (`--gallery`)
 - Additive Dataset Summary and Review Queue report sections
 - Public benchmark suite (committed fixture expectations pass from fresh clone;
@@ -58,21 +64,24 @@ Supported in v0.12.0-alpha:
   instead of listed image-by-image
 - Show explanation fields in Markdown and HTML review outputs: primary reason,
   finding categories, severity, analyzer names, and finding count
+- Show review status in Markdown and HTML outputs when `review_decisions.json`
+  exists: Already Reviewed with decision, or Pending Review
 - Print concise aggregate recommendation counts after inspect
 - No public recommendation command
 - No embedding Recommendation Summary into `inspection_report.json`
-- No validation, calibration, or Review Decisions coupling for Recommendation Summary
+- No validation or calibration coupling for Recommendation Summary
+- No Review Decisions coupling to recommendation rules or JSON schemas
 - No analyzer threshold changes
 - No public CLI command expansion
 - No cleanup, repair planning, repair, export, web app, plugins, or new analyzers
 
-Not supported in v0.12.0-alpha (planned for later releases):
+Not supported in v0.13.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Repair (future)
 - Export (future)
 - Interactive UI (future)
-- Review decisions in the static gallery
+- Browser editing of review decisions
 - Plugin system (v2+)
 - Additional analyzers beyond the current first-pass set (v1.x)
 - Calibrated thresholds (pending labeled benchmark ground truth)
@@ -81,7 +90,7 @@ Not supported in v0.12.0-alpha (planned for later releases):
 
 ## Test suite
 
-**899 tests passing, 1 skipped.**
+**909 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.
@@ -109,6 +118,7 @@ uv run pytest tests/
 | Dataset Summary + Review Queue | `src/dataset_forge/post_inspection.py` | Advisory post-inspection sections |
 | Calibration Evidence | `src/dataset_forge/calibration_evidence.py` | Internal metrics over reports and labels |
 | Review Decisions | `src/dataset_forge/review_decisions.py` | Internal human-intent model over images/findings |
+| Review Persistence | `src/dataset_forge/review_persistence.py` | Persistent inspect sidecars for human review status |
 | Validation Dossiers | `src/dataset_forge/validation_dossier.py` | Internal reliability summaries over reports, labels, and review decisions |
 | Real-World Validation Corpus | `src/dataset_forge/real_world_corpus.py`; `benchmarks/real_world/` | Internal corpus methodology and manifest validation |
 | Recommendation Summary | `src/dataset_forge/recommendation_summary.py` | Additive four-rule sidecar guidance over existing findings |
@@ -174,7 +184,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.12.0-alpha):
+**Public tools** (documented, supported in v0.13.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -240,6 +250,11 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
   analyzer names, and finding count more clearly. Recommendation rules,
   recommendation JSON, inspect schema, analyzer behavior, contact sheets,
   validation, and review decisions are unchanged.
+- v0.13 adds persistent review-decision sidecars only. Inspect creates a
+  template when absent, reads existing decisions when present, and annotates
+  Markdown/HTML presentation. Recommendation rules, recommendation JSON,
+  inspect schema, analyzer behavior, contact sheets, validation, cleanup,
+  repair, and export are unchanged.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement
@@ -265,10 +280,10 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
    decisions before changing analyzer thresholds or strengthening recommendation
    language.
 
-4. **Collect Review Decisions from human audit passes** -- use the v0.4
-   schema to record confirmed artifacts, false positives, acceptable style,
-   ignored, locked, and needs-review outcomes before public recommendation
-   validation.
+4. **Collect Review Decisions from human audit passes** -- use the v0.13
+   persistent sidecars to record confirmed artifacts, false positives,
+   acceptable style, ignored, locked, and needs-review outcomes before public
+   recommendation validation.
 
 5. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
    11 UNSURE images from the anthropomorph review need a dedicated pass.

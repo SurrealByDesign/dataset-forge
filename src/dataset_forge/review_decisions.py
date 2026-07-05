@@ -26,7 +26,15 @@ class ReviewDecisionValue(str, Enum):
 
 _DECISION_ORDER = tuple(value.value for value in ReviewDecisionValue)
 _TOP_LEVEL_FIELDS = {"schema", "decisions"}
-_DECISION_FIELDS = {"image_path", "decision", "category", "analyzer", "reason"}
+_DECISION_FIELDS = {
+    "image_path",
+    "decision",
+    "category",
+    "analyzer",
+    "reason",
+    "recommendation",
+    "notes",
+}
 _EXCLUDE_FROM_FUTURE_ACTION = {
     ReviewDecisionValue.FALSE_POSITIVE.value,
     ReviewDecisionValue.ACCEPTABLE_STYLE.value,
@@ -38,12 +46,14 @@ _EXCLUDE_FROM_FUTURE_ACTION = {
 @dataclass(frozen=True)
 class ReviewDecision:
     image_path: str
-    decision: str
+    decision: str | None
     category: str | None = None
     analyzer: str | None = None
+    recommendation: str | None = None
+    notes: str = ""
     reason: str = ""
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, str | None]:
         payload = {
             "image_path": self.image_path,
             "decision": self.decision,
@@ -52,6 +62,10 @@ class ReviewDecision:
             payload["category"] = self.category
         if self.analyzer is not None:
             payload["analyzer"] = self.analyzer
+        if self.recommendation is not None:
+            payload["recommendation"] = self.recommendation
+        if self.notes:
+            payload["notes"] = self.notes
         if self.reason:
             payload["reason"] = self.reason
         return payload
@@ -209,6 +223,8 @@ def summarize_review_decisions(
     unresolved_review_count = 0
 
     for decision in items:
+        if decision.decision is None:
+            continue
         counts_by_decision[decision.decision] += 1
         if decision.analyzer is not None:
             counts_by_analyzer[decision.analyzer] = counts_by_analyzer.get(decision.analyzer, 0) + 1
@@ -222,7 +238,7 @@ def summarize_review_decisions(
             unresolved_review_count += 1
 
     return ReviewDecisionSummary(
-        total_decisions=len(items),
+        total_decisions=sum(1 for decision in items if decision.decision is not None),
         counts_by_decision=counts_by_decision,
         counts_by_analyzer=dict(sorted(counts_by_analyzer.items())),
         counts_by_category=dict(sorted(counts_by_category.items())),
@@ -246,11 +262,18 @@ def write_review_decisions_json(
 
 def _parse_decision(raw: dict[str, Any]) -> ReviewDecision:
     decision = raw.get("decision")
-    if decision not in _DECISION_ORDER:
+    if decision is not None and decision not in _DECISION_ORDER:
         raise ValueError(f"unknown review decision value: {decision!r}")
     image_path = _normalize_path(raw.get("image_path"))
     category = _optional_non_empty_string(raw.get("category"), "category")
     analyzer = _optional_non_empty_string(raw.get("analyzer"), "analyzer")
+    recommendation = _optional_non_empty_string(
+        raw.get("recommendation"),
+        "recommendation",
+    )
+    notes = raw.get("notes", "")
+    if not isinstance(notes, str):
+        raise ValueError("notes must be a string when provided")
     reason = raw.get("reason", "")
     if not isinstance(reason, str):
         raise ValueError("reason must be a string when provided")
@@ -259,6 +282,8 @@ def _parse_decision(raw: dict[str, Any]) -> ReviewDecision:
         decision=decision,
         category=category,
         analyzer=analyzer,
+        recommendation=recommendation,
+        notes=notes,
         reason=reason,
     )
 
@@ -313,7 +338,7 @@ def _decision_sort_key(decision: ReviewDecision) -> tuple[str, str, str, str]:
         decision.image_path,
         decision.category or "",
         decision.analyzer or "",
-        decision.decision,
+        decision.decision or "",
     )
 
 
