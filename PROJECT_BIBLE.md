@@ -60,6 +60,33 @@ The analyzer is more important than cleanup.
 
 The decision is more important than automation.
 
+Dataset Forge's long-term purpose is deterministic, evidence-backed dataset
+improvement. Cleanup may eventually belong in the product, but only after the
+tool has earned trust as a decision engine.
+
+The only acceptable long-term cleanup path is:
+
+```
+Inspect
+-> Recommend
+-> Explain
+-> Human Review
+-> Persistent Decisions
+-> Dataset Comparison
+-> Cleanup Planning
+-> Optional Cleanup Execution
+```
+
+The forbidden path is:
+
+```
+Inspect
+-> Automatically Clean
+```
+
+This is not a promise to build cleanup now. It is a constraint on any future
+cleanup work.
+
 ---
 
 ## What Dataset Forge Is Not
@@ -272,7 +299,9 @@ Version 1 succeeds if:
 
 The project succeeds by reducing uncertainty before training.
 
-Cleanup is future-only and optional.
+Cleanup is future-only and optional. If it is ever implemented, it must be
+justified by inspection evidence, recommendation explanations, human review,
+persistent decisions, and comparison outputs. It must never be automatic.
 
 ---
 
@@ -305,6 +334,12 @@ If the answer to (5) is yes, the amendment should be strongly questioned.
 ## Long-Term Vision
 
 Dataset Forge should become the trusted evidence engine for AI training datasets.
+
+The long-term product may grow from evidence-backed decisions into
+evidence-backed dataset improvement, including cleanup planning and optional
+cleanup execution. That future must preserve the same rule: source images are
+sacred, human intent is explicit, and automatic cleanup after inspection alone
+is never acceptable.
 
 Its value should come from producing reliable, explainable, benchmarked
 training-set decisions rather than opaque automation.

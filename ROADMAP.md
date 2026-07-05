@@ -22,6 +22,31 @@ Everything after v0.8 should improve one of:
 Repair, cleanup, and export remain future-only possibilities, not assumed next
 steps.
 
+The long-term direction is deterministic, evidence-backed dataset improvement.
+Dataset Forge may later support cleanup planning and optional cleanup execution,
+but only after the decision path is trustworthy:
+
+```
+Inspect
+-> Recommend
+-> Explain
+-> Human Review
+-> Persistent Decisions
+-> Dataset Comparison
+-> Cleanup Planning
+-> Optional Cleanup Execution
+```
+
+It must never become:
+
+```
+Inspect
+-> Automatically Clean
+```
+
+This is not a commitment to build cleanup in the current roadmap. The current
+product remains a LoRA Dataset Decision Engine.
+
 ---
 
 ## Released Foundations
@@ -354,7 +379,44 @@ Constraints:
 
 ---
 
-## v0.15 Candidate: Recommendation Validation
+### v0.15.0-alpha: Dataset Comparison
+
+**Status:** Released.
+
+v0.15 lets users compare two existing inspect output folders:
+
+- `dataset-forge compare <before_inspect_output> <after_inspect_output> --output <comparison_output>`
+- Reads `inspection_report.json`, `recommendation_summary.json`, and optional
+  `review_decisions.json`
+- Writes `comparison_summary.json`
+- Writes `comparison_summary.md`
+
+The comparison answers what deserves attention because something changed:
+
+- recommendation count changes
+- finding category changes
+- analyzer output count changes
+- images whose recommendation changed
+- findings present after but not before
+- findings present before but not after
+- review-decision availability and decision counts only
+
+Constraints:
+
+- No analyzer reruns.
+- No image inspection or pixel comparison.
+- No recommendation rule changes.
+- No `recommendation_summary.json` schema changes.
+- No `inspection_report.json` schema changes.
+- No review-decision interpretation.
+- No cleanup, repair, export, browser UI, charts, graphs, scores, or
+  better/worse wording.
+- Finding identity uses normalized image path, category, analyzer, and severity;
+  duplicate findings are treated as multisets.
+
+---
+
+## Future Candidate: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
 
@@ -435,6 +497,8 @@ The following may become valuable only after decision guidance is reliable:
 
 - Non-destructive export of human-approved training sets.
 - Repair planning.
+- Evidence-backed cleanup planning.
+- Optional cleanup execution after explicit human decisions.
 - Deterministic repair candidates.
 - Additional analyzers.
 - Dataset comparison.
@@ -443,6 +507,11 @@ The following may become valuable only after decision guidance is reliable:
 
 These are not assumed next steps. They require evidence that Dataset Forge can
 reliably identify images that deserve intervention.
+
+Any future cleanup work must follow the evidence-backed path:
+Inspect -> Recommend -> Explain -> Human Review -> Persistent Decisions ->
+Dataset Comparison -> Cleanup Planning -> Optional Cleanup Execution. Automatic
+cleanup directly after inspect is not allowed.
 
 ---
 
@@ -455,3 +524,7 @@ would damage user trust and risk altering images that should be left alone.
 Dataset Forge should first prove that it can reduce uncertainty: find the
 images worth reviewing, explain the evidence, and communicate confidence
 honestly. Only then should repair, cleanup, or export be reconsidered.
+
+Cleanup planning and cleanup execution, if ever implemented, must be downstream
+of persistent human decisions and dataset comparison. They are not replacements
+for human judgment.

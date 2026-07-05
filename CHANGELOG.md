@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.15.0-alpha
+
+- Added `dataset-forge compare <before_inspect_output> <after_inspect_output>
+  --output <comparison_output>`.
+- Added deterministic sidecar-only Dataset Comparison over existing
+  `inspection_report.json`, `recommendation_summary.json`, and optional
+  `review_decisions.json`.
+- Added `comparison_summary.json` with schema
+  `dataset-forge/comparison-summary/v1`.
+- Added `comparison_summary.md` ordered for human review: changed
+  recommendations, new findings, resolved findings, then count deltas.
+- Kept analyzer behavior, recommendation rules, inspect output schemas, review
+  decisions, source images, cleanup, repair, export, browser UI, charts,
+  scores, and pixel comparison unchanged.
+
 ## v0.14.0-alpha
 
 - Added optional `dataset-forge review <inspect_output>`.

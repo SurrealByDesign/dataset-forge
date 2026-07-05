@@ -101,6 +101,51 @@ The local review server:
 
 ---
 
+## Compare Command
+
+```
+dataset-forge compare path/to/before/inspect_output/ path/to/after/inspect_output/ --output path/to/comparison/
+```
+
+Expected terminal output:
+
+```
+Dataset Forge Compare
+=====================
+Before: path/to/before/inspect_output
+After:  path/to/after/inspect_output
+Output: path/to/comparison
+
+Comparison written:
+  comparison_summary.json
+  comparison_summary.md
+```
+
+The comparison command:
+
+- reads `inspection_report.json`, `recommendation_summary.json`, and optional
+  `review_decisions.json` from each inspect output folder
+- writes only `comparison_summary.json` and `comparison_summary.md`
+- validates sidecar schemas before comparison
+- does not inspect images, compare pixels, rerun analyzers, modify existing
+  reports, modify recommendations, or modify review decisions
+- does not classify changes as better or worse
+
+`comparison_summary.md` is ordered for human review:
+
+1. Dataset Summary
+2. Images With Changed Recommendations
+3. Images With New Findings
+4. Images With Resolved Findings
+5. Recommendation Count Changes
+6. Finding Category Changes
+7. Analyzer Output Changes
+
+`comparison_summary.json` uses schema
+`dataset-forge/comparison-summary/v1`.
+
+---
+
 ## JSON Report Structure
 
 ```json

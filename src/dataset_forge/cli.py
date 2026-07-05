@@ -35,6 +35,7 @@ from dataset_forge.cleanup import (
 from dataset_forge.cleanup.controls import OVERRIDES_JSON
 from dataset_forge.cleanup.execute import TRANSFORMS
 from dataset_forge.cleanup.io import load_cleanup_plan, write_cleanup_plan
+from dataset_forge.comparison import ComparisonError, compare_inspect_outputs
 from dataset_forge.core.structured import load_structured_file
 from dataset_forge.discovery import discover_images
 from dataset_forge.analysis.texture import generate_texture_report
@@ -85,8 +86,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.14.0-alpha: inspect image datasets and record "
-            "local-only human review decisions."
+            "Dataset Forge v0.15.0-alpha: inspect image datasets, record "
+            "local-only human review decisions, and compare inspect outputs."
         ),
     )
     parser.add_argument(
@@ -139,6 +140,26 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_REVIEW_PORT,
         help=f"Localhost port to serve. Default: {DEFAULT_REVIEW_PORT}.",
     )
+    compare_parser = commands.add_parser(
+        "compare",
+        help="Compare two existing inspect output folders.",
+    )
+    compare_parser.add_argument(
+        "before_inspect_output",
+        type=Path,
+        help="Earlier inspect output folder.",
+    )
+    compare_parser.add_argument(
+        "after_inspect_output",
+        type=Path,
+        help="Later inspect output folder.",
+    )
+    compare_parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Output folder for comparison_summary.json and comparison_summary.md.",
+    )
     return parser
 
 
@@ -168,10 +189,16 @@ def main(argv: list[str] | None = None) -> int:
             return _review_main(arguments)
         except SystemExit as exc:
             return int(exc.code or 0)
+    if arguments[0] == "compare":
+        try:
+            return _compare_main(arguments)
+        except SystemExit as exc:
+            return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.14.0-alpha CLI. "
-            "Use 'dataset-forge inspect', 'review', '--help', or '--version'.",
+            "Error: this command is not part of the public v0.15.0-alpha CLI. "
+            "Use 'dataset-forge inspect', 'review', 'compare', '--help', "
+            "or '--version'.",
             file=sys.stderr,
         )
         return 2
@@ -414,7 +441,8 @@ def _inspect_main(argv: list[str]) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.14.0-alpha is analysis only: review decisions are local sidecars.\n"
+            "v0.15.0-alpha is analysis only: review decisions and comparisons "
+            "are sidecars.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )
@@ -565,6 +593,59 @@ def _review_main(argv: list[str]) -> int:
     except (OSError, ReviewServerError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
+    return 0
+
+
+def _compare_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="dataset-forge compare",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Compare two existing inspect output folders.\n"
+            "Reads sidecars only and writes comparison_summary.json and "
+            "comparison_summary.md."
+        ),
+    )
+    parser.add_argument(
+        "before_inspect_output",
+        type=Path,
+        help="Earlier inspect output folder.",
+    )
+    parser.add_argument(
+        "after_inspect_output",
+        type=Path,
+        help="Later inspect output folder.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Output folder for comparison_summary.json and comparison_summary.md.",
+    )
+    args = parser.parse_args(argv[1:])
+
+    before_output = args.before_inspect_output.expanduser().resolve()
+    after_output = args.after_inspect_output.expanduser().resolve()
+    output_dir = args.output.expanduser().resolve()
+    try:
+        json_path, markdown_path = compare_inspect_outputs(
+            before_output,
+            after_output,
+            output_dir,
+        )
+    except (ComparisonError, OSError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
+    print("Dataset Forge Compare")
+    print("=====================")
+    print(f"Before: {before_output}")
+    print(f"After:  {after_output}")
+    print(f"Output: {output_dir}")
+    print()
+    print("Comparison written:")
+    print(f"  {json_path}")
+    print(f"  {markdown_path}")
     return 0
 
 

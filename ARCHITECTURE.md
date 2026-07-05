@@ -5,7 +5,7 @@
 
 ---
 
-## v0.14.0-alpha Inspect Pipeline
+## v0.15.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -21,14 +21,40 @@ Aggregation, Dataset Summary, Review Queue, Recommendation Summary sidecars,
 an optional static review gallery, optional recommendation contact sheets, and
 optional persistent human review-decision sidecars.
 v0.14 also includes an optional local review decision server over those
-sidecars. Cleanup, repair, regeneration, export, hosted UI, and plugins are
-future work and are not part of v0.14.0-alpha.
+sidecars. v0.15 adds deterministic comparison between two existing inspect
+output folders. Cleanup, repair, regeneration, export, hosted UI, and plugins
+are future work and are not part of v0.15.0-alpha.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
 should help users decide which images are ready to train, which need review,
 and which deserve priority attention before training. Internal systems exist to improve
 decision quality, confidence communication, false-positive reduction, and review
 efficiency.
+
+The long-term architectural direction is deterministic, evidence-backed dataset
+improvement. Dataset Forge may later support cleanup planning and optional
+cleanup execution, but only downstream of the decision pipeline:
+
+```text
+Inspect
+-> Recommend
+-> Explain
+-> Human Review
+-> Persistent Decisions
+-> Dataset Comparison
+-> Cleanup Planning
+-> Optional Cleanup Execution
+```
+
+The architecture must never support:
+
+```text
+Inspect
+-> Automatically Clean
+```
+
+This is a future boundary, not current product scope. v0.15 remains a LoRA
+Dataset Decision Engine.
 
 ---
 
@@ -136,7 +162,7 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.14.0-alpha outputs:
+v0.15.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `recommendation_summary.json`  --  machine-readable advisory review priorities
@@ -146,6 +172,8 @@ v0.14.0-alpha outputs:
 - `priority_review_contact_sheet.png`  --  optional Priority Review contact sheet
 - `needs_review_contact_sheet.png`  --  optional Needs Review contact sheet
 - `inspection_gallery.png`  --  optional visual review contact sheet
+- `comparison_summary.json`  --  optional sidecar-only comparison between inspect outputs
+- `comparison_summary.md`  --  optional human-readable comparison summary
 
 Reports must not re-run analysis, modify images, or make cleanup/repair/export
 decisions. They present findings and advisory review organization.
@@ -307,6 +335,45 @@ truth.
 
 ---
 
+## Dataset Comparison
+
+Dataset Comparison is the v0.15 sidecar comparison layer. It compares two
+existing inspect output folders and answers: "What deserves attention because
+something changed?"
+
+Public command:
+
+```text
+dataset-forge compare <before_inspect_output> <after_inspect_output> --output <comparison_output>
+```
+
+Required inputs:
+- `inspection_report.json` with schema `dataset-forge/inspection/v1`
+- `recommendation_summary.json` with schema `dataset-forge/recommendation-summary/v1`
+
+Optional input:
+- `review_decisions.json` with schema `dataset-forge/review-decisions/v1`
+
+Outputs:
+- `comparison_summary.json` with schema `dataset-forge/comparison-summary/v1`
+- `comparison_summary.md`
+
+The comparison layer reports recommendation count changes, finding category
+changes, analyzer output count changes, images whose recommendation changed,
+findings present after but not before, findings present before but not after,
+and review-decision availability/counts only.
+
+Finding identity is deterministic and uses normalized image path, category,
+analyzer, and severity. Path normalization changes path separators only. There
+is no fuzzy matching and duplicate findings are treated as multisets.
+
+Dataset Comparison must not inspect images, compare pixels, rerun analyzers,
+modify source images, modify existing reports, modify recommendations, modify
+review decisions, classify changes as better/worse, produce scores, generate
+charts, or create browser UI.
+
+---
+
 ## Validation Dossiers
 
 Validation Dossiers are the v0.5 reliability gate before stronger public
@@ -451,6 +518,11 @@ change `recommendation_summary.json`, `inspection_report.json`,
 `review_gallery.html`, contact sheets, analyzers, thresholds, or recommendation
 rules.
 
+v0.15 adds sidecar-only Dataset Comparison. It consumes two existing inspect
+output folders and writes `comparison_summary.json` and `comparison_summary.md`.
+It does not rerun analyzers, inspect source images, modify sidecars, compare
+pixels, or add scores.
+
 ---
 
 ## Why Dataset Forge does not repair images yet
@@ -464,27 +536,32 @@ measure, explain, prioritize review, validate against labels, and communicate
 confidence honestly. Cleanup, repair, and export remain future-only because the
 decision layer must be trustworthy first.
 
+If cleanup planning and cleanup execution are ever implemented, they must sit
+after Inspect, Recommend, Explain, Human Review, Persistent Decisions, and
+Dataset Comparison. Cleanup must be evidence-backed, explicitly reviewed, and
+optional. The direct path from Inspect to Automatically Clean is forbidden.
+
 ---
 
-## Future-Only / Not Implemented in v0.14.0-alpha
+## Future-Only / Not Implemented in v0.15.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.14.0-alpha release. They should not be modified, expanded, or
+v0.15.0-alpha release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.14.0-alpha |
-| `plugins/` | Future only; not public in v0.14.0-alpha |
-| `execution/` | Future only; not public in v0.14.0-alpha |
-| `transforms/` | Future only; not public in v0.14.0-alpha |
-| `exporters/` | Future only; not public in v0.14.0-alpha |
-| `review/` | Future only; not public in v0.14.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.14.0-alpha |
+| `cleanup/` | Future only; not public in v0.15.0-alpha |
+| `plugins/` | Future only; not public in v0.15.0-alpha |
+| `execution/` | Future only; not public in v0.15.0-alpha |
+| `transforms/` | Future only; not public in v0.15.0-alpha |
+| `exporters/` | Future only; not public in v0.15.0-alpha |
+| `review/` | Future only; not public in v0.15.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.15.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.14.0-alpha CLI or report behavior.
+v0.15.0-alpha CLI or report behavior.
 
 ---
 
@@ -673,7 +750,7 @@ When an analyzer is uncalibrated:
 ### Archived Future Repair Research (not current roadmap)
 
 > This section is an archived design note, not the current roadmap. Dataset
-> Forge v0.14.0-alpha does not expose cleanup, repair planning, repair,
+> Forge v0.15.0-alpha does not expose cleanup, repair planning, repair,
 > regeneration, or export commands. Repair, cleanup, and export should not be
 > reconsidered until decision guidance is reliable on labeled real-world data.
 
@@ -717,6 +794,26 @@ just determines the default path.
 Cleanup is never automatic. Every finding-triggered cleanup must pass through
 the human approval step before it affects any exported file.
 
+The preferred long-term path is:
+
+```text
+Inspect
+-> Recommend
+-> Explain
+-> Human Review
+-> Persistent Decisions
+-> Dataset Comparison
+-> Cleanup Planning
+-> Optional Cleanup Execution
+```
+
+The forbidden path is:
+
+```text
+Inspect
+-> Automatically Clean
+```
+
 ---
 
 ### Non-Destructive Requirement
@@ -739,7 +836,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Archived Batch Exclusion and Export Research (future only)
 
 > This section describes a possible non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.14.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.15.0-alpha should be designed around
 > it or expose it through the public CLI. Export is not an assumed next step.
 
 ---

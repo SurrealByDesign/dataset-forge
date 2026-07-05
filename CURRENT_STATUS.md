@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-05. Reflects v0.14.0-alpha.*
+*Last updated: 2026-07-05. Reflects v0.15.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.14.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.15.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -19,6 +19,7 @@ schemas. v0.13 adds persistent human review decisions as sidecar state:
 `review_decisions.json` when present, and annotates Markdown/HTML review
 outputs without changing recommendations. v0.14 adds an optional local-only
 review server so users can record those decisions without hand-editing JSON.
+v0.15 adds deterministic comparison between two existing inspect output folders.
 
 Current public behavior remains inspect-first:
 
@@ -26,9 +27,11 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.14.0-alpha:
+Supported in v0.15.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- optional local-only review decision server
+- `dataset-forge compare <before_inspect_output> <after_inspect_output>
+  --output <comparison_output>` -- sidecar-only comparison between inspect runs
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Recommendation Summary sidecars (`recommendation_summary.json`,
   `recommendation_summary.md`)
@@ -43,6 +46,10 @@ Supported in v0.14.0-alpha:
 - Local Review Decision Server:
   serves existing sidecars from `127.0.0.1` and writes only
   `review_decisions.json`
+- Dataset Comparison:
+  compares existing `inspection_report.json`, `recommendation_summary.json`,
+  and optional `review_decisions.json` sidecars; writes
+  `comparison_summary.json` and `comparison_summary.md`
 - Optional gallery PNG (`--gallery`)
 - Additive Dataset Summary and Review Queue report sections
 - Public benchmark suite (committed fixture expectations pass from fresh clone;
@@ -79,13 +86,15 @@ Supported in v0.14.0-alpha:
 - No analyzer threshold changes
 - No cleanup, repair planning, repair, export, hosted web app, plugins, or new analyzers
 
-Not supported in v0.14.0-alpha (planned for later releases):
+Not supported in v0.15.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Repair (future)
 - Export (future)
 - Hosted/remote UI (future)
 - Browser editing outside the local `review` command
+- Image/pixel comparison
+- Detailed review-decision comparison
 - Plugin system (v2+)
 - Additional analyzers beyond the current first-pass set (v1.x)
 - Calibrated thresholds (pending labeled benchmark ground truth)
@@ -94,7 +103,7 @@ Not supported in v0.14.0-alpha (planned for later releases):
 
 ## Test suite
 
-**925 tests passing, 1 skipped.**
+**940 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.
@@ -124,6 +133,7 @@ uv run pytest tests/
 | Review Decisions | `src/dataset_forge/review_decisions.py` | Internal human-intent model over images/findings |
 | Review Persistence | `src/dataset_forge/review_persistence.py` | Persistent inspect sidecars for human review status |
 | Local Review Server | `src/dataset_forge/review_server.py` | Optional localhost UI that writes only `review_decisions.json` |
+| Dataset Comparison | `src/dataset_forge/comparison.py` | Sidecar-only comparison between two inspect outputs |
 | Validation Dossiers | `src/dataset_forge/validation_dossier.py` | Internal reliability summaries over reports, labels, and review decisions |
 | Real-World Validation Corpus | `src/dataset_forge/real_world_corpus.py`; `benchmarks/real_world/` | Internal corpus methodology and manifest validation |
 | Recommendation Summary | `src/dataset_forge/recommendation_summary.py` | Additive four-rule sidecar guidance over existing findings |
@@ -189,7 +199,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.14.0-alpha):
+**Public tools** (documented, supported in v0.15.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -264,6 +274,10 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
   serves `127.0.0.1`, writes only `review_decisions.json`, and does not change
   recommendations, reports, analyzers, contact sheets, source images, cleanup,
   repair, or export.
+- v0.15 adds sidecar-only dataset comparison. It reads two inspect output
+  folders, writes `comparison_summary.json` and `comparison_summary.md`, and
+  does not inspect images, rerun analyzers, modify reports, modify review
+  decisions, or classify changes as better or worse.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement
