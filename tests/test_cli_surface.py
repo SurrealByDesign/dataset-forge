@@ -23,7 +23,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Dataset Forge v0.10.0-alpha", stdout)
+        self.assertIn("Dataset Forge v0.11.0-alpha", stdout)
         self.assertIn("inspect", stdout)
         self.assertIn("--help", stdout)
         self.assertIn("--version", stdout)
@@ -50,6 +50,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
         self.assertIn("--output", stdout)
         self.assertIn("--gallery", stdout)
         self.assertIn("--review-gallery", stdout)
+        self.assertIn("--contact-sheets", stdout)
         self.assertNotIn("cleanup", stdout.lower())
         self.assertNotIn("export", stdout.lower())
 
@@ -58,7 +59,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 0.10.0a0")
+        self.assertEqual(stdout.strip(), "dataset-forge 0.11.0a0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -77,7 +78,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
                 self.assertEqual(exit_code, 2)
                 self.assertEqual(stdout, "")
-                self.assertIn("not part of the public v0.10.0-alpha CLI", stderr)
+                self.assertIn("not part of the public v0.11.0-alpha CLI", stderr)
 
     def test_inspect_prints_recommendation_summary_counts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -129,6 +130,32 @@ class PublicCliSurfaceTests(unittest.TestCase):
             self.assertEqual(stderr, "")
             self.assertTrue((output / "review_gallery.html").exists())
             self.assertIn("review_gallery.html", stdout)
+
+    def test_inspect_contact_sheets_flag_writes_pngs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dataset = root / "dataset"
+            output = root / "output"
+            dataset.mkdir()
+            Image.fromarray(np.full((32, 32, 3), 128, dtype=np.uint8)).save(
+                dataset / "img.png"
+            )
+
+            exit_code, stdout, stderr = self._run([
+                "inspect",
+                str(dataset),
+                "--output",
+                str(output),
+                "--contact-sheets",
+            ])
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stderr, "")
+            self.assertTrue((output / "priority_review_contact_sheet.png").exists())
+            self.assertTrue((output / "needs_review_contact_sheet.png").exists())
+            self.assertFalse((output / "ready_for_training_contact_sheet.png").exists())
+            self.assertIn("priority_review_contact_sheet.png", stdout)
+            self.assertIn("needs_review_contact_sheet.png", stdout)
 
     def test_public_cli_has_no_recommend_command(self) -> None:
         exit_code, stdout, stderr = self._run(["recommend", "--help"])

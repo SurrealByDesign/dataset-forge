@@ -64,6 +64,8 @@ Report written:
   recommendation_summary.json
   recommendation_summary.md
   review_gallery.html  # only with --review-gallery
+  priority_review_contact_sheet.png  # only with --contact-sheets
+  needs_review_contact_sheet.png     # only with --contact-sheets
 ```
 
 ---
@@ -210,6 +212,34 @@ The static gallery:
   artifact-free images
 - does not add buttons, checkboxes, forms, scripts, review decisions, cleanup,
   repair, export, or server behavior
+
+The JSON sidecars remain the source of truth.
+
+---
+
+## Recommendation Contact Sheets
+
+When `dataset-forge inspect path/to/dataset/ --contact-sheets` is used, inspect
+writes recommendation-oriented PNG contact sheets alongside the existing
+inspection and recommendation sidecars:
+
+- `priority_review_contact_sheet.png`
+- `needs_review_contact_sheet.png`
+
+The contact sheets:
+
+- are generated from `inspection_report.json` and `recommendation_summary.json`
+- use Recommendation Summary ordering
+- show image thumbnail, filename, recommendation label, and primary reason or
+  finding category
+- use fixed thumbnail sizing and plain labels
+- write deterministic empty-state sheets when Priority Review or Needs Review
+  groups are empty
+- do not create Ready for Training sheets by default
+- show at most the first 100 images per sheet
+- do not rerun analyzers, recompute recommendations, write thumbnails beside
+  source images, add review decisions, cleanup, repair, export, web app, or
+  server behavior
 
 The JSON sidecars remain the source of truth.
 

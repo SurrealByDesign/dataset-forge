@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.11.0-alpha
+
+- Added optional `dataset-forge inspect --contact-sheets` output.
+- Added `priority_review_contact_sheet.png` and
+  `needs_review_contact_sheet.png`, read-only visual review aids generated from
+  existing `inspection_report.json` and `recommendation_summary.json` sidecars.
+- Empty Priority Review or Needs Review groups produce deterministic
+  empty-state sheets. Ready for Training images do not get contact sheets by
+  default.
+- Kept recommendation rules, `recommendation_summary.json`, inspect schema,
+  analyzer behavior, public CLI command surface, review-decision coupling,
+  validation coupling, cleanup, repair, export, plugins, web app behavior, and
+  analyzer set unchanged.
+
 ## v0.10.0-alpha
 
 - Added optional `dataset-forge inspect --review-gallery` output.

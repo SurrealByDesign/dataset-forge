@@ -5,7 +5,7 @@
 
 ---
 
-## v0.10.0-alpha Inspect Pipeline
+## v0.11.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -18,8 +18,9 @@ Dataset
 Every component in the public inspect surface maps to this pipeline. The
 current report stage also includes additive post-inspection sections:
 Aggregation, Dataset Summary, Review Queue, Recommendation Summary sidecars,
-and an optional static review gallery. Cleanup, repair, regeneration, export,
-interactive UI, and plugins are future work and are not part of v0.10.0-alpha.
+an optional static review gallery, and optional recommendation contact sheets.
+Cleanup, repair, regeneration, export, interactive UI, and plugins are future
+work and are not part of v0.11.0-alpha.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
 should help users decide which images are ready to train, which need review,
@@ -133,12 +134,14 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.10.0-alpha outputs:
+v0.11.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `recommendation_summary.json`  --  machine-readable advisory review priorities
 - `recommendation_summary.md`  --  plain-language advisory review priorities
 - `review_gallery.html`  --  optional static visual review surface
+- `priority_review_contact_sheet.png`  --  optional Priority Review contact sheet
+- `needs_review_contact_sheet.png`  --  optional Needs Review contact sheet
 - `inspection_gallery.png`  --  optional visual review contact sheet
 
 Reports must not re-run analysis, modify images, or make cleanup/repair/export
@@ -396,6 +399,14 @@ with embedded CSS and no front-end framework, server, buttons, checkboxes, or
 review state. It is a review surface only; the JSON sidecars remain the source
 of truth.
 
+v0.11 adds `dataset-forge inspect --contact-sheets`, which writes
+`priority_review_contact_sheet.png` and `needs_review_contact_sheet.png` from
+the existing `inspection_report.json` and `recommendation_summary.json`
+sidecars. Empty groups produce deterministic empty-state sheets. Ready for
+Training images do not get contact sheets by default. The sheets use fixed
+thumbnail sizing, Recommendation Summary ordering, and at most the first 100
+images per sheet.
+
 ---
 
 ## Why Dataset Forge does not repair images yet
@@ -411,25 +422,25 @@ decision layer must be trustworthy first.
 
 ---
 
-## Future-Only / Not Implemented in v0.10.0-alpha
+## Future-Only / Not Implemented in v0.11.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.10.0-alpha inspect release. They should not be modified, expanded, or
+v0.11.0-alpha inspect release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.10.0-alpha |
-| `plugins/` | Future only; not public in v0.10.0-alpha |
-| `execution/` | Future only; not public in v0.10.0-alpha |
-| `transforms/` | Future only; not public in v0.10.0-alpha |
-| `exporters/` | Future only; not public in v0.10.0-alpha |
-| `review/` | Future only; not public in v0.10.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.10.0-alpha |
+| `cleanup/` | Future only; not public in v0.11.0-alpha |
+| `plugins/` | Future only; not public in v0.11.0-alpha |
+| `execution/` | Future only; not public in v0.11.0-alpha |
+| `transforms/` | Future only; not public in v0.11.0-alpha |
+| `exporters/` | Future only; not public in v0.11.0-alpha |
+| `review/` | Future only; not public in v0.11.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.11.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.10.0-alpha CLI or report behavior.
+v0.11.0-alpha CLI or report behavior.
 
 ---
 
@@ -618,7 +629,7 @@ When an analyzer is uncalibrated:
 ### Archived Future Repair Research (not current roadmap)
 
 > This section is an archived design note, not the current roadmap. Dataset
-> Forge v0.10.0-alpha does not expose cleanup, repair planning, repair,
+> Forge v0.11.0-alpha does not expose cleanup, repair planning, repair,
 > regeneration, or export commands. Repair, cleanup, and export should not be
 > reconsidered until decision guidance is reliable on labeled real-world data.
 
@@ -684,7 +695,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Archived Batch Exclusion and Export Research (future only)
 
 > This section describes a possible non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.10.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.11.0-alpha should be designed around
 > it or expose it through the public CLI. Export is not an assumed next step.
 
 ---

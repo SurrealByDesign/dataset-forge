@@ -242,7 +242,37 @@ Constraints:
 
 ---
 
-## v0.11: Recommendation Validation
+### v0.11.0-alpha: Recommendation Contact Sheets
+
+**Status:** Released.
+
+v0.11 adds optional recommendation-oriented PNG contact sheets:
+
+- `dataset-forge inspect <dataset> --contact-sheets`
+- `priority_review_contact_sheet.png`
+- `needs_review_contact_sheet.png`
+
+The contact sheets consume existing sidecars only:
+
+- `inspection_report.json`
+- `recommendation_summary.json`
+- source image paths referenced by those reports
+
+Constraints:
+
+- No analyzer reruns.
+- No recommendation recomputation.
+- No recommendation rule changes.
+- No `inspection_report.json` or `recommendation_summary.json` schema changes.
+- No Ready for Training contact sheet by default.
+- Empty Priority Review or Needs Review groups produce deterministic
+  empty-state sheets.
+- No review decisions, buttons, forms, server, web app, deletion, repair,
+  cleanup, export, regeneration, or image modification.
+
+---
+
+## v0.12: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
 

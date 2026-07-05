@@ -122,6 +122,34 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertTrue(result.review_gallery_path.exists())
         self.assertEqual(result.review_gallery_path.name, "review_gallery.html")
 
+    def test_contact_sheets_not_written_by_default(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+
+        self.assertIsNone(result.priority_review_contact_sheet)
+        self.assertIsNone(result.needs_review_contact_sheet)
+        self.assertFalse((self.output / "priority_review_contact_sheet.png").exists())
+        self.assertFalse((self.output / "needs_review_contact_sheet.png").exists())
+
+    def test_contact_sheets_written_when_requested(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output, contact_sheets=True)
+
+        self.assertIsNotNone(result.priority_review_contact_sheet)
+        self.assertIsNotNone(result.needs_review_contact_sheet)
+        assert result.priority_review_contact_sheet is not None
+        assert result.needs_review_contact_sheet is not None
+        self.assertTrue(result.priority_review_contact_sheet.exists())
+        self.assertTrue(result.needs_review_contact_sheet.exists())
+        self.assertEqual(
+            result.priority_review_contact_sheet.name,
+            "priority_review_contact_sheet.png",
+        )
+        self.assertEqual(
+            result.needs_review_contact_sheet.name,
+            "needs_review_contact_sheet.png",
+        )
+
     def test_json_report_valid(self):
         _write_smooth(self.dataset, n=2)
         result = run_inspect(self.dataset, self.output)
@@ -165,6 +193,7 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertEqual(data["schema"], "dataset-forge/inspection/v1")
         self.assertNotIn("recommendation_summary", data)
         self.assertNotIn("review_gallery", data)
+        self.assertNotIn("contact_sheets", data)
 
     def test_inspect_uses_analyzer_registry(self):
         class RecordingAnalyzer:

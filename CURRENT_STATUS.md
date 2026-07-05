@@ -1,17 +1,18 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-05. Reflects v0.10.0-alpha.*
+*Last updated: 2026-07-05. Reflects v0.11.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.10.0-alpha** implements the inspect-only foundation for a
+**Dataset Forge v0.11.0-alpha** implements the inspect-only foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
 changing recommendation rules or JSON output. v0.10 adds an optional static
-`review_gallery.html` generated from existing sidecars.
+`review_gallery.html` generated from existing sidecars. v0.11 adds optional
+recommendation contact sheets generated from the same sidecars.
 
 Current public behavior remains inspect-only:
 
@@ -19,13 +20,16 @@ Current public behavior remains inspect-only:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.10.0-alpha:
+Supported in v0.11.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Recommendation Summary sidecars (`recommendation_summary.json`,
   `recommendation_summary.md`)
 - Optional static review gallery (`review_gallery.html`) from
   `dataset-forge inspect --review-gallery`
+- Optional Recommendation Contact Sheets (`priority_review_contact_sheet.png`,
+  `needs_review_contact_sheet.png`) from
+  `dataset-forge inspect --contact-sheets`
 - Optional gallery PNG (`--gallery`)
 - Additive Dataset Summary and Review Queue report sections
 - Public benchmark suite (committed fixture expectations pass from fresh clone;
@@ -58,7 +62,7 @@ Supported in v0.10.0-alpha:
 - No public CLI command expansion
 - No cleanup, repair planning, repair, export, web app, plugins, or new analyzers
 
-Not supported in v0.10.0-alpha (planned for later releases):
+Not supported in v0.11.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Repair (future)
@@ -73,7 +77,7 @@ Not supported in v0.10.0-alpha (planned for later releases):
 
 ## Test suite
 
-**888 tests passing, 1 skipped.**
+**897 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.
@@ -105,6 +109,7 @@ uv run pytest tests/
 | Real-World Validation Corpus | `src/dataset_forge/real_world_corpus.py`; `benchmarks/real_world/` | Internal corpus methodology and manifest validation |
 | Recommendation Summary | `src/dataset_forge/recommendation_summary.py` | Additive four-rule sidecar guidance over existing findings |
 | Static Review Gallery | `src/dataset_forge/static_review_gallery.py` | Optional read-only HTML surface over inspection and recommendation sidecars |
+| Recommendation Contact Sheets | `src/dataset_forge/recommendation_contact_sheets.py` | Optional read-only PNG review aids over inspection and recommendation sidecars |
 | `Finding` dataclass | `src/dataset_forge/finding.py` | Done |
 | `DatasetContext` dataclass | `src/dataset_forge/context.py` | Done |
 | `Analyzer` base class | `src/dataset_forge/analyzers/base.py` | Done |
@@ -165,7 +170,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.10.0-alpha):
+**Public tools** (documented, supported in v0.11.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -221,10 +226,11 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
   consume Review Decisions, Calibration Evidence, or Validation Dossiers.
   Ready for Training means no current findings requiring review were emitted;
   it does not guarantee an image is artifact-free.
-- v0.10 adds optional static `review_gallery.html` output only. It consumes
-  existing inspection and recommendation sidecars, records no state, and does
-  not change recommendation rules, `recommendation_summary.json`, inspect
-  schema, analyzer behavior, or CLI command surface.
+- v0.11 adds optional Recommendation Contact Sheets only. They consume existing
+  inspection and recommendation sidecars, record no state, do not create Ready
+  for Training sheets by default, and do not change recommendation rules,
+  `recommendation_summary.json`, inspect schema, analyzer behavior, or CLI
+  command surface.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement

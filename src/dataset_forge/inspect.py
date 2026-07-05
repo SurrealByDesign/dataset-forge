@@ -21,6 +21,9 @@ from dataset_forge.discovery import discover_images
 from dataset_forge.finding import Finding
 from dataset_forge.inspect_gallery import write_inspection_gallery
 from dataset_forge.measurements import ImageMeasurements
+from dataset_forge.recommendation_contact_sheets import (
+    write_recommendation_contact_sheets,
+)
 from dataset_forge.recommendation_summary import (
     build_recommendation_summary,
     write_recommendation_summary_files,
@@ -53,6 +56,8 @@ class InspectResult:
     priority_review_count: int
     gallery_path: Path | None = None
     review_gallery_path: Path | None = None
+    priority_review_contact_sheet: Path | None = None
+    needs_review_contact_sheet: Path | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +93,7 @@ def run_inspect(
     limit: int | None = None,
     gallery: bool = False,
     review_gallery: bool = False,
+    contact_sheets: bool = False,
 ) -> InspectResult:
     """Run the full v1 inspect pipeline on a dataset folder.
 
@@ -137,7 +143,7 @@ def run_inspect(
         output_dir,
     )
 
-    # 6. Optionally write static review gallery from sidecar JSON files
+    # 6. Optionally write static visual outputs from sidecar JSON files
     review_gallery_path: Path | None = None
     if review_gallery:
         review_gallery_path = write_static_review_gallery(
@@ -146,7 +152,18 @@ def run_inspect(
             output_dir / "review_gallery.html",
         )
 
-    # 7. Optionally write gallery PNG
+    priority_review_contact_sheet: Path | None = None
+    needs_review_contact_sheet: Path | None = None
+    if contact_sheets:
+        priority_review_contact_sheet, needs_review_contact_sheet = (
+            write_recommendation_contact_sheets(
+                json_path,
+                recommendation_json,
+                output_dir,
+            )
+        )
+
+    # 7. Optionally write legacy gallery PNG
     gallery_path: Path | None = None
     if gallery and image_scores:
         gallery_path = write_inspection_gallery(
@@ -180,4 +197,6 @@ def run_inspect(
         priority_review_count=recommendation_summary.priority_review_count,
         gallery_path=gallery_path,
         review_gallery_path=review_gallery_path,
+        priority_review_contact_sheet=priority_review_contact_sheet,
+        needs_review_contact_sheet=needs_review_contact_sheet,
     )

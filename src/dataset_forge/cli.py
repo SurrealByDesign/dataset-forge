@@ -79,8 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.10.0-alpha: inspect image datasets and write "
-            "evidence-backed, read-only reports and optional review galleries."
+            "Dataset Forge v0.11.0-alpha: inspect image datasets and write "
+            "evidence-backed, read-only reports and optional visual review aids."
         ),
     )
     parser.add_argument(
@@ -114,6 +114,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--review-gallery", action="store_true", default=False,
         help="Generate review_gallery.html from inspection and recommendation sidecars.",
     )
+    inspect_parser.add_argument(
+        "--contact-sheets", action="store_true", default=False,
+        help="Generate recommendation contact sheet PNGs from recommendation sidecars.",
+    )
     return parser
 
 
@@ -140,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.10.0-alpha CLI. "
+            "Error: this command is not part of the public v0.11.0-alpha CLI. "
             "Use 'dataset-forge inspect', '--help', or '--version'.",
             file=sys.stderr,
         )
@@ -384,7 +388,7 @@ def _inspect_main(argv: list[str]) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.10.0-alpha is analysis only: recommendations are advisory review priorities.\n"
+            "v0.11.0-alpha is analysis only: recommendations are advisory review priorities.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )
@@ -409,6 +413,10 @@ def _inspect_main(argv: list[str]) -> int:
         "--review-gallery", action="store_true", default=False,
         help="Generate review_gallery.html from inspection and recommendation sidecars.",
     )
+    parser.add_argument(
+        "--contact-sheets", action="store_true", default=False,
+        help="Generate recommendation contact sheet PNGs from recommendation sidecars.",
+    )
     args = parser.parse_args(argv[1:])
 
     dataset_path = args.dataset.expanduser().resolve()
@@ -432,6 +440,7 @@ def _inspect_main(argv: list[str]) -> int:
             limit=args.limit,
             gallery=args.gallery,
             review_gallery=args.review_gallery,
+            contact_sheets=args.contact_sheets,
         )
     except ValueError as exc:
         print(f"Error: {exc}")
@@ -481,6 +490,10 @@ def _inspect_main(argv: list[str]) -> int:
     print(f"  {result.recommendation_markdown}")
     if result.review_gallery_path:
         print(f"  {result.review_gallery_path}")
+    if result.priority_review_contact_sheet:
+        print(f"  {result.priority_review_contact_sheet}")
+    if result.needs_review_contact_sheet:
+        print(f"  {result.needs_review_contact_sheet}")
     if result.gallery_path:
         print(f"  {result.gallery_path}")
     return 0
