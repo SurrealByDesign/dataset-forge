@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from dataset_forge.context import DatasetContext
 from dataset_forge.finding import Finding, Severity
@@ -152,6 +153,112 @@ def build_recommendation_summary(
     )
 
 
+def build_recommendation_summary_from_report(
+    report: Mapping[str, Any],
+) -> RecommendationSummary:
+    """Rebuild Recommendation Summary from inspection_report.json content."""
+
+    review_queue = report.get("review_queue", {})
+    image_paths = [
+        Path(str(item["image_path"]))
+        for item in review_queue.get("items", [])
+        if "image_path" in item
+    ]
+    findings = [_finding_from_report(item) for item in report.get("findings", [])]
+    for finding in findings:
+        if finding.image_path not in image_paths:
+            image_paths.append(finding.image_path)
+
+    context = DatasetContext.empty(image_paths=image_paths)
+    return build_recommendation_summary(
+        findings,
+        context,
+        source_report_schema=str(report.get("schema", "dataset-forge/inspection/v1")),
+    )
+
+
+def write_recommendation_summary_files(
+    summary: RecommendationSummary,
+    output_dir: Path,
+) -> tuple[Path, Path]:
+    """Write recommendation_summary.json and recommendation_summary.md."""
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / "recommendation_summary.json"
+    md_path = output_dir / "recommendation_summary.md"
+    json_path.write_text(
+        json.dumps(summary.to_dict(), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    md_path.write_text(render_recommendation_summary_markdown(summary), encoding="utf-8")
+    return json_path, md_path
+
+
+def render_recommendation_summary_markdown(summary: RecommendationSummary) -> str:
+    """Render a plain Markdown review-priority summary."""
+
+    lines = [
+        "# Dataset Forge Recommendation Summary",
+        "",
+        "Recommendations are advisory and based only on existing findings.",
+        "Source images were not modified.",
+        "",
+        "Ready for Training means Dataset Forge emitted no current findings "
+        "requiring review. It does not guarantee the image is artifact-free.",
+        "",
+        "## Counts",
+        "",
+        f"- Ready for Training: {summary.ready_for_training_count}",
+        f"- Needs Review: {summary.needs_review_count}",
+        f"- Priority Review: {summary.priority_review_count}",
+        "",
+    ]
+    for recommendation in (PRIORITY_REVIEW, NEEDS_REVIEW, READY_FOR_TRAINING):
+        lines.extend(_markdown_group(summary, recommendation))
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _markdown_group(
+    summary: RecommendationSummary,
+    recommendation: str,
+) -> list[str]:
+    items = [
+        item for item in summary.recommendations
+        if item.recommendation == recommendation
+    ]
+    lines = [f"## {DISPLAY_LABELS[recommendation]}", ""]
+    if not items:
+        lines.extend(["No images in this group.", ""])
+        return lines
+
+    for item in items:
+        lines.append(f"- `{Path(item.image_path).name}` - {item.primary_reason}")
+        if item.finding_refs:
+            refs = ", ".join(
+                f"{ref.category} ({ref.severity})"
+                for ref in item.finding_refs
+            )
+            lines.append(f"  - Findings: {refs}")
+        lines.append(f"  - Guidance: {item.guidance}")
+    lines.append("")
+    return lines
+
+
+def _finding_from_report(item: Mapping[str, Any]) -> Finding:
+    return Finding(
+        image_path=Path(str(item["image_path"])),
+        analyzer=str(item["analyzer"]),
+        category=str(item["category"]),
+        severity=Severity[str(item["severity"])],
+        confidence=float(item["confidence"]),
+        false_positive_rate=float(item["false_positive_rate"]),
+        benchmark_version=str(item["benchmark_version"]),
+        evidence=dict(item.get("evidence", {})),
+        explanation=str(item.get("explanation", "")),
+        recommendation=str(item.get("recommendation", "")),
+    )
+
+
 def _group_findings_by_image(
     findings: list[Finding],
     context: DatasetContext,
@@ -180,7 +287,8 @@ def _build_image_recommendation(
             findings=(),
             guidance=(
                 "Dataset Forge found no current evidence that this image needs "
-                "review before training."
+                "review before training. This does not guarantee the image is "
+                "artifact-free."
             ),
         )
 
@@ -289,4 +397,7 @@ __all__ = [
     "ImageRecommendation",
     "RecommendationSummary",
     "build_recommendation_summary",
+    "build_recommendation_summary_from_report",
+    "render_recommendation_summary_markdown",
+    "write_recommendation_summary_files",
 ]

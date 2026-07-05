@@ -7,11 +7,11 @@
 Dataset Forge is a LoRA Dataset Decision Engine.
 
 Its purpose is to help LoRA dataset builders decide which images are ready to
-train, which need review, and which should be excluded from training. Every
+train, which need review, and which deserve priority attention before training. Every
 recommendation must be grounded in deterministic analysis, measurable evidence,
 and explainable findings.
 
-Everything after v0.7 should improve one of:
+Everything after v0.8 should improve one of:
 
 - decision quality
 - confidence communication
@@ -156,7 +156,38 @@ Constraints:
 
 ---
 
-## v0.8: Recommendation Validation
+### v0.8.0-alpha: User-Visible Recommendation Summary
+
+**Status:** Released.
+
+`dataset-forge inspect` writes additive Recommendation Summary sidecars:
+
+- `recommendation_summary.json`
+- `recommendation_summary.md`
+
+The sidecars use the v0.7 four-rule engine unchanged:
+
+- analyzer error -> **Priority Review**
+- HIGH or CRITICAL finding -> **Priority Review**
+- findings from multiple categories -> **Priority Review**
+- any other finding -> **Needs Review**
+- no findings -> **Ready for Training**
+
+Constraints:
+
+- No `dataset-forge recommend` command.
+- No embedding into `inspection_report.json`.
+- No deletion, repair, cleanup, export, regeneration, or image modification.
+- No validation, calibration, or Review Decisions coupling.
+- No numeric quality scores or serialized priority fields.
+- Recommendations cite existing findings only.
+- Every Recommendation Summary must be reproducible from
+  `inspection_report.json` alone.
+- Ready for Training is not a guarantee that an image is artifact-free.
+
+---
+
+## v0.9: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
 
@@ -164,7 +195,7 @@ This phase should use Calibration Evidence, Review Decisions, Validation
 Dossiers, and the Real-World Validation Corpus to answer:
 
 - How often are review recommendations useful?
-- How often are exclude-from-training candidates false positives?
+- How often are Priority Review recommendations false positives?
 - Which artifact families are trustworthy enough for stronger wording?
 - Which confidence messages reduce overtrust?
 
@@ -173,7 +204,7 @@ change.
 
 ---
 
-## v0.9: Review Experience / Gallery Improvement
+## v1.0 Track: Review Experience / Gallery Improvement
 
 **Goal:** Make human review fast enough that users run Dataset Forge before
 every LoRA.

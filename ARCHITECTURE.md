@@ -5,7 +5,7 @@
 
 ---
 
-## v0.7.0-alpha Inspect Pipeline
+## v0.8.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -18,11 +18,11 @@ Dataset
 Every component in the public inspect surface maps to this pipeline. The
 current report stage also includes additive post-inspection sections:
 Aggregation, Dataset Summary, and Review Queue. Cleanup, repair, regeneration,
-export, UI, and plugins are future work and are not part of v0.7.0-alpha.
+export, UI, and plugins are future work and are not part of v0.8.0-alpha.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
 should help users decide which images are ready to train, which need review,
-and which should be excluded from training. Internal systems exist to improve
+and which deserve priority attention before training. Internal systems exist to improve
 decision quality, confidence communication, false-positive reduction, and review
 efficiency.
 
@@ -132,9 +132,11 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.7.0-alpha outputs:
+v0.8.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
+- `recommendation_summary.json`  --  machine-readable advisory review priorities
+- `recommendation_summary.md`  --  plain-language advisory review priorities
 - `inspection_gallery.png`  --  optional visual review contact sheet
 
 Reports must not re-run analysis, modify images, or make cleanup/repair/export
@@ -339,7 +341,7 @@ It is internal and additive.
 
 ## Recommendation Summary
 
-Recommendation Summary is the v0.7 internal decision-guidance layer.
+Recommendation Summary is the v0.8 user-visible decision-summary sidecar layer.
 
 Schema: `dataset-forge/recommendation-summary/v1`
 
@@ -351,9 +353,9 @@ It consumes only:
 
 It does not inspect images, run analyzers, generate new evidence, modify
 Findings, read Review Decisions, read Validation Dossiers, interpret
-Calibration Evidence, or change public `inspect` output.
+Calibration Evidence, or alter `inspection_report.json`.
 
-The v0.7 engine is deliberately boring:
+The v0.8 engine is deliberately boring:
 
 - analyzer error -> `PRIORITY_REVIEW`
 - HIGH or CRITICAL finding -> `PRIORITY_REVIEW`
@@ -369,9 +371,15 @@ only analyzer, category, and severity.
 It must not emit numeric quality scores or serialized priority fields. Sorting
 is deterministic, but ordering is not a score.
 
-In v0.7, Recommendation Summary is internal/additive only. There is no public
-recommendation command, no inspect report wiring, no cleanup, no repair, no
-export, no validation coupling, and no review-decision coupling.
+In v0.8, `dataset-forge inspect` writes `recommendation_summary.json` and
+`recommendation_summary.md` alongside inspection reports and prints aggregate
+recommendation counts. There is no public `dataset-forge recommend` command, no
+embedding into `inspection_report.json`, no cleanup, no repair, no export, no
+validation coupling, and no review-decision coupling.
+
+Every Recommendation Summary must be reproducible from `inspection_report.json`
+alone. `Ready for Training` means no current findings requiring review were
+emitted; it does not guarantee the image is artifact-free.
 
 ---
 
@@ -388,25 +396,25 @@ decision layer must be trustworthy first.
 
 ---
 
-## Future-Only / Not Implemented in v0.7.0-alpha
+## Future-Only / Not Implemented in v0.8.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.7.0-alpha inspect release. They should not be modified, expanded, or
+v0.8.0-alpha inspect release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.7.0-alpha |
-| `plugins/` | Future only; not public in v0.7.0-alpha |
-| `execution/` | Future only; not public in v0.7.0-alpha |
-| `transforms/` | Future only; not public in v0.7.0-alpha |
-| `exporters/` | Future only; not public in v0.7.0-alpha |
-| `review/` | Future only; not public in v0.7.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.7.0-alpha |
+| `cleanup/` | Future only; not public in v0.8.0-alpha |
+| `plugins/` | Future only; not public in v0.8.0-alpha |
+| `execution/` | Future only; not public in v0.8.0-alpha |
+| `transforms/` | Future only; not public in v0.8.0-alpha |
+| `exporters/` | Future only; not public in v0.8.0-alpha |
+| `review/` | Future only; not public in v0.8.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.8.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.7.0-alpha CLI or report behavior.
+v0.8.0-alpha CLI or report behavior.
 
 ---
 
@@ -595,7 +603,7 @@ When an analyzer is uncalibrated:
 ### Archived Future Repair Research (not current roadmap)
 
 > This section is an archived design note, not the current roadmap. Dataset
-> Forge v0.7.0-alpha does not expose cleanup, repair planning, repair,
+> Forge v0.8.0-alpha does not expose cleanup, repair planning, repair,
 > regeneration, or export commands. Repair, cleanup, and export should not be
 > reconsidered until decision guidance is reliable on labeled real-world data.
 
@@ -661,7 +669,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Archived Batch Exclusion and Export Research (future only)
 
 > This section describes a possible non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.7.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.8.0-alpha should be designed around
 > it or expose it through the public CLI. Export is not an assumed next step.
 
 ---

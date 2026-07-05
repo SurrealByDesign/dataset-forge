@@ -21,6 +21,10 @@ from dataset_forge.discovery import discover_images
 from dataset_forge.finding import Finding
 from dataset_forge.inspect_gallery import write_inspection_gallery
 from dataset_forge.measurements import ImageMeasurements
+from dataset_forge.recommendation_summary import (
+    build_recommendation_summary,
+    write_recommendation_summary_files,
+)
 from dataset_forge.report import write_inspection_report
 
 
@@ -34,6 +38,8 @@ class InspectResult:
     output_dir: Path
     json_report: Path
     txt_report: Path
+    recommendation_json: Path
+    recommendation_markdown: Path
     image_count: int
     analyzed_count: int
     error_count: int
@@ -41,6 +47,9 @@ class InspectResult:
     images_with_findings: int
     images_clean: int
     severity_counts: dict[str, int]
+    ready_for_training_count: int
+    needs_review_count: int
+    priority_review_count: int
     gallery_path: Path | None = None
 
 
@@ -118,7 +127,14 @@ def run_inspect(
         image_scores=image_scores,
     )
 
-    # 5. Optionally write gallery PNG
+    # 5. Write additive Recommendation Summary sidecars
+    recommendation_summary = build_recommendation_summary(findings, context)
+    recommendation_json, recommendation_markdown = write_recommendation_summary_files(
+        recommendation_summary,
+        output_dir,
+    )
+
+    # 6. Optionally write gallery PNG
     gallery_path: Path | None = None
     if gallery and image_scores:
         gallery_path = write_inspection_gallery(
@@ -127,7 +143,7 @@ def run_inspect(
             image_scores,
         )
 
-    # 6. Summarize
+    # 7. Summarize
     affected = {str(f.image_path) for f in findings}
     sev_counts: dict[str, int] = {}
     for f in findings:
@@ -138,6 +154,8 @@ def run_inspect(
         output_dir=output_dir,
         json_report=json_path,
         txt_report=txt_path,
+        recommendation_json=recommendation_json,
+        recommendation_markdown=recommendation_markdown,
         image_count=context.image_count,
         analyzed_count=context.analyzed_count,
         error_count=context.error_count,
@@ -145,5 +163,8 @@ def run_inspect(
         images_with_findings=len(affected),
         images_clean=context.image_count - len(affected),
         severity_counts=sev_counts,
+        ready_for_training_count=recommendation_summary.ready_for_training_count,
+        needs_review_count=recommendation_summary.needs_review_count,
+        priority_review_count=recommendation_summary.priority_review_count,
         gallery_path=gallery_path,
     )

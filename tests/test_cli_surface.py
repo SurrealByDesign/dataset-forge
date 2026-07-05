@@ -1,6 +1,11 @@
 import io
+import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
 
 from dataset_forge.cli import main
 
@@ -18,7 +23,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Dataset Forge v0.7.0-alpha", stdout)
+        self.assertIn("Dataset Forge v0.8.0-alpha", stdout)
         self.assertIn("inspect", stdout)
         self.assertIn("--help", stdout)
         self.assertIn("--version", stdout)
@@ -52,7 +57,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 0.7.0a0")
+        self.assertEqual(stdout.strip(), "dataset-forge 0.8.0a0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -71,7 +76,35 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
                 self.assertEqual(exit_code, 2)
                 self.assertEqual(stdout, "")
-                self.assertIn("not part of the public v0.7.0-alpha CLI", stderr)
+                self.assertIn("not part of the public v0.8.0-alpha CLI", stderr)
+
+    def test_inspect_prints_recommendation_summary_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dataset = root / "dataset"
+            output = root / "output"
+            dataset.mkdir()
+            Image.fromarray(np.full((32, 32, 3), 128, dtype=np.uint8)).save(
+                dataset / "img.png"
+            )
+
+            exit_code, stdout, stderr = self._run([
+                "inspect",
+                str(dataset),
+                "--output",
+                str(output),
+            ])
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stderr, "")
+            self.assertIn("Recommendation Summary", stdout)
+            self.assertIn("Ready for Training:", stdout)
+            self.assertIn("Needs Review:", stdout)
+            self.assertIn("Priority Review:", stdout)
+            self.assertIn("Recommendations are advisory", stdout)
+            self.assertIn("Source images were not modified.", stdout)
+            self.assertIn("recommendation_summary.json", stdout)
+            self.assertIn("recommendation_summary.md", stdout)
 
 
 if __name__ == "__main__":

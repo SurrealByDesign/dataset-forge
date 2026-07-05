@@ -49,9 +49,20 @@ Images with no issues:  81 / 100
 Recommendation: 81 images require no action.
                 19 images have findings. Review report for details.
 
+Recommendation Summary
+----------------------
+  Ready for Training: 81
+  Needs Review:       16
+  Priority Review:    3
+
+Recommendations are advisory and based only on existing findings.
+Source images were not modified.
+
 Report written:
   inspection_report.json
   inspection_report.txt
+  recommendation_summary.json
+  recommendation_summary.md
 ```
 
 ---
@@ -136,6 +147,49 @@ Report written:
 }
 ```
 
+`inspection_report.json` does not embed Recommendation Summary. The sidecar
+`recommendation_summary.json` is reproducible from the Inspection Report alone.
+
+---
+
+## Recommendation Summary Structure
+
+```json
+{
+  "schema": "dataset-forge/recommendation-summary/v1",
+  "source_report_schema": "dataset-forge/inspection/v1",
+  "summary": {
+    "image_count": 100,
+    "ready_for_training_count": 81,
+    "needs_review_count": 16,
+    "priority_review_count": 3,
+    "analyzer_error_count": 0
+  },
+  "recommendations": [
+    {
+      "image_path": "image_023.png",
+      "recommendation": "PRIORITY_REVIEW",
+      "display_label": "Priority Review",
+      "primary_reason": "High-severity finding detected.",
+      "reason_codes": ["finding.high_severity"],
+      "finding_refs": [
+        {
+          "analyzer": "high_frequency_isolated_artifact_analyzer/v1",
+          "category": "artifact.high_frequency_isolated",
+          "severity": "HIGH"
+        }
+      ],
+      "guidance": "Review this image early before deciding whether to include it in training.",
+      "confidence_note": "Recommendations are advisory and based only on existing findings. Uncalibrated analyzers are review signals, not final judgments."
+    }
+  ]
+}
+```
+
+The sidecar must not contain numeric quality scores or serialized priority
+fields. Ready for Training means Dataset Forge emitted no current findings
+requiring review. It does not guarantee the image is artifact-free.
+
 ---
 
 ## TXT Report Structure
@@ -207,3 +261,6 @@ Recommendation: Review findings before making any dataset changes.
 - A report with 100 clean images and 0 findings is a successful run.
 - Dataset Summary and Review Queue are additive report sections. They organize
   existing findings for human review and do not hide or replace findings.
+- Recommendation Summary sidecars are additive outputs. They organize existing
+  findings into Ready for Training, Needs Review, and Priority Review groups
+  without changing `inspection_report.json`.

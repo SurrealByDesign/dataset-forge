@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataset-forge"
-version = "0.7.0a0"
-description = "Dataset Forge v0.7.0-alpha -- inspect image datasets and summarize internal recommendation guidance."
+version = "0.8.0a0"
+description = "Dataset Forge v0.8.0-alpha -- inspect image datasets and write advisory recommendation summaries."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

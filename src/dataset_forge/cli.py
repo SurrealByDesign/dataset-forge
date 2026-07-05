@@ -79,7 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.7.0-alpha: inspect image datasets and write "
+            "Dataset Forge v0.8.0-alpha: inspect image datasets and write "
             "evidence-backed, read-only reports."
         ),
     )
@@ -136,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.7.0-alpha CLI. "
+            "Error: this command is not part of the public v0.8.0-alpha CLI. "
             "Use 'dataset-forge inspect', '--help', or '--version'.",
             file=sys.stderr,
         )
@@ -379,7 +379,7 @@ def _inspect_main(argv: list[str]) -> int:
         prog="dataset-forge inspect",
         description=(
             "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.7.0-alpha is analysis only: findings are candidates for review.\n"
+            "v0.8.0-alpha is analysis only: recommendations are advisory review priorities.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )
@@ -455,9 +455,20 @@ def _inspect_main(argv: list[str]) -> int:
             "Review report for details."
         )
     print()
+    print("Recommendation Summary")
+    print("----------------------")
+    print(f"  Ready for Training: {result.ready_for_training_count}")
+    print(f"  Needs Review:       {result.needs_review_count}")
+    print(f"  Priority Review:    {result.priority_review_count}")
+    print()
+    print("Recommendations are advisory and based only on existing findings.")
+    print("Source images were not modified.")
+    print()
     print("Report written:")
     print(f"  {result.json_report}")
     print(f"  {result.txt_report}")
+    print(f"  {result.recommendation_json}")
+    print(f"  {result.recommendation_markdown}")
     if result.gallery_path:
         print(f"  {result.gallery_path}")
     return 0

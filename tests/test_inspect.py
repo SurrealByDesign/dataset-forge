@@ -87,6 +87,25 @@ class TestRunInspectBasic(unittest.TestCase):
         result = run_inspect(self.dataset, self.output)
         self.assertTrue(result.txt_report.exists())
 
+    def test_recommendation_json_written(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+        self.assertTrue(result.recommendation_json.exists())
+
+    def test_recommendation_markdown_written(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+        self.assertTrue(result.recommendation_markdown.exists())
+
+    def test_existing_inspection_outputs_remain_present(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+
+        self.assertTrue(result.json_report.exists())
+        self.assertTrue(result.txt_report.exists())
+        self.assertTrue(result.recommendation_json.exists())
+        self.assertTrue(result.recommendation_markdown.exists())
+
     def test_json_report_valid(self):
         _write_smooth(self.dataset, n=2)
         result = run_inspect(self.dataset, self.output)
@@ -121,6 +140,14 @@ class TestRunInspectBasic(unittest.TestCase):
             data["context"]["analyzer_versions"],
             analyzer_versions(),
         )
+
+    def test_inspection_report_schema_is_unchanged(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+        data = json.loads(result.json_report.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["schema"], "dataset-forge/inspection/v1")
+        self.assertNotIn("recommendation_summary", data)
 
     def test_inspect_uses_analyzer_registry(self):
         class RecordingAnalyzer:

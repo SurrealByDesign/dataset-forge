@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.8.0-alpha
+
+- Made Recommendation Summary user-visible from `dataset-forge inspect` via
+  additive `recommendation_summary.json` and `recommendation_summary.md`
+  sidecar outputs.
+- Added concise terminal aggregate counts for Ready for Training, Needs Review,
+  and Priority Review.
+- Preserved the four-rule recommendation engine exactly and kept
+  recommendations reproducible from `inspection_report.json` alone.
+- Kept `inspection_report.json`, analyzer behavior, thresholds, public CLI
+  command surface, validation coupling, review-decision coupling, repair,
+  cleanup, export, plugins, UI, and analyzer set unchanged.
+
 ## v0.7.0-alpha
 
 - Added an internal Recommendation Summary layer with schema
