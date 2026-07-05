@@ -1,7 +1,16 @@
 # Dataset Forge -- CLI Output Specification
 
-This file defines what success looks like.
-The implementation should move toward producing this output.
+This file defines what success looks like for the public command-line
+experience.
+
+The CLI should answer a new user's first questions quickly:
+
+- What should I run first?
+- Where were the reports written?
+- Which file should I open first?
+- Were my source images changed?
+
+Dataset Forge should use user workflow language before architecture language.
 
 ---
 
@@ -43,11 +52,11 @@ Total findings:     23
   MEDIUM severity:  14
   LOW severity:      6
 
-Images with findings:   19 / 100
-Images with no issues:  81 / 100
+Images with findings:        19 / 100
+Images with no findings:     81 / 100
 
-Recommendation: 81 images require no action.
-                19 images have findings. Review report for details.
+Recommendation: 81 images are Ready for Training.
+                19 images deserve human review before training.
 
 Recommendation Summary
 ----------------------
@@ -58,7 +67,7 @@ Recommendation Summary
 Recommendations are advisory and based only on existing findings.
 Source images were not modified.
 
-Report written:
+Reports written:
   inspection_report.json
   inspection_report.txt
   recommendation_summary.json

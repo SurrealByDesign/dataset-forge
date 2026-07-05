@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.16.0-alpha
+
+- Improved first-time user onboarding for the LoRA Dataset Decision Engine.
+- Reworked the README opening around the normal user workflow:
+  inspect a dataset, read recommendations, review flagged images, record human
+  decisions, compare runs, then train.
+- Added a 60-second Quick Start with concrete commands and expected outputs.
+- Updated CLI help text to use user workflow language instead of architecture
+  language.
+- Made common missing-sidecar errors more actionable by telling users to run
+  `dataset-forge inspect <dataset>` first and pass the inspect output folder.
+- Kept analyzer behavior, recommendation behavior, report schemas, comparison
+  behavior, commands, cleanup, repair, export, browser features, and source
+  images unchanged.
+
 ## v0.15.0-alpha
 
 - Added `dataset-forge compare <before_inspect_output> <after_inspect_output>

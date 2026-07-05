@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-05. Reflects v0.15.0-alpha.*
+*Last updated: 2026-07-05. Reflects v0.16.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.15.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.16.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -20,6 +20,8 @@ schemas. v0.13 adds persistent human review decisions as sidecar state:
 outputs without changing recommendations. v0.14 adds an optional local-only
 review server so users can record those decisions without hand-editing JSON.
 v0.15 adds deterministic comparison between two existing inspect output folders.
+v0.16 improves first-time user onboarding, README flow, CLI help wording, and
+actionable sidecar error messages without changing behavior or schemas.
 
 Current public behavior remains inspect-first:
 
@@ -27,7 +29,7 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.15.0-alpha:
+Supported in v0.16.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- optional local-only review decision server
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
@@ -86,7 +88,7 @@ Supported in v0.15.0-alpha:
 - No analyzer threshold changes
 - No cleanup, repair planning, repair, export, hosted web app, plugins, or new analyzers
 
-Not supported in v0.15.0-alpha (planned for later releases):
+Not supported in v0.16.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Repair (future)
@@ -199,7 +201,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.15.0-alpha):
+**Public tools** (documented, supported in v0.16.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -278,6 +280,9 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
   folders, writes `comparison_summary.json` and `comparison_summary.md`, and
   does not inspect images, rerun analyzers, modify reports, modify review
   decisions, or classify changes as better or worse.
+- v0.16 changes documentation and help/error wording only. It does not change
+  analyzer behavior, recommendation behavior, report schemas, comparison
+  behavior, commands, cleanup, repair, export, or browser features.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement

@@ -42,6 +42,8 @@ no changes at all.
 - Every recommendation must be explainable.
 - Benchmarks are product assets, not test chores.
 - The decision is the product; gallery and report are interfaces.
+- First-time users should understand what Dataset Forge is, how to run it, and
+  what to open first within 60 seconds.
 - The architecture should anticipate growth.
 - The implementation should not.
 

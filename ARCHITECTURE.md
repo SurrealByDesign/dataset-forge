@@ -5,7 +5,7 @@
 
 ---
 
-## v0.15.0-alpha Inspect Pipeline
+## v0.16.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -23,7 +23,9 @@ optional persistent human review-decision sidecars.
 v0.14 also includes an optional local review decision server over those
 sidecars. v0.15 adds deterministic comparison between two existing inspect
 output folders. Cleanup, repair, regeneration, export, hosted UI, and plugins
-are future work and are not part of v0.15.0-alpha.
+are future work and are not part of v0.16.0-alpha. v0.16 is a documentation
+and UX refinement release; it does not change the pipeline, schemas, analyzers,
+recommendations, comparison behavior, or supported commands.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
 should help users decide which images are ready to train, which need review,
@@ -162,7 +164,7 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.15.0-alpha outputs:
+v0.16.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `recommendation_summary.json`  --  machine-readable advisory review priorities
@@ -543,25 +545,25 @@ optional. The direct path from Inspect to Automatically Clean is forbidden.
 
 ---
 
-## Future-Only / Not Implemented in v0.15.0-alpha
+## Future-Only / Not Implemented in v0.16.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.15.0-alpha release. They should not be modified, expanded, or
+v0.16.0-alpha release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.15.0-alpha |
-| `plugins/` | Future only; not public in v0.15.0-alpha |
-| `execution/` | Future only; not public in v0.15.0-alpha |
-| `transforms/` | Future only; not public in v0.15.0-alpha |
-| `exporters/` | Future only; not public in v0.15.0-alpha |
-| `review/` | Future only; not public in v0.15.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.15.0-alpha |
+| `cleanup/` | Future only; not public in v0.16.0-alpha |
+| `plugins/` | Future only; not public in v0.16.0-alpha |
+| `execution/` | Future only; not public in v0.16.0-alpha |
+| `transforms/` | Future only; not public in v0.16.0-alpha |
+| `exporters/` | Future only; not public in v0.16.0-alpha |
+| `review/` | Future only; not public in v0.16.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.16.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.15.0-alpha CLI or report behavior.
+v0.16.0-alpha CLI or report behavior.
 
 ---
 
@@ -750,7 +752,7 @@ When an analyzer is uncalibrated:
 ### Archived Future Repair Research (not current roadmap)
 
 > This section is an archived design note, not the current roadmap. Dataset
-> Forge v0.15.0-alpha does not expose cleanup, repair planning, repair,
+> Forge v0.16.0-alpha does not expose cleanup, repair planning, repair,
 > regeneration, or export commands. Repair, cleanup, and export should not be
 > reconsidered until decision guidance is reliable on labeled real-world data.
 
@@ -836,7 +838,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Archived Batch Exclusion and Export Research (future only)
 
 > This section describes a possible non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.15.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.16.0-alpha should be designed around
 > it or expose it through the public CLI. Export is not an assumed next step.
 
 ---

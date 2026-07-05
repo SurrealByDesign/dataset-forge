@@ -183,10 +183,14 @@ def _load_inspect_output(output_dir: Path, label: str) -> dict[str, Any]:
     inspection_path = root / INSPECTION_REPORT_FILENAME
     recommendation_path = root / RECOMMENDATION_SUMMARY_FILENAME
     if not inspection_path.is_file():
-        raise ComparisonError(f"Missing {label} inspection report: {inspection_path}")
+        raise ComparisonError(
+            f"Missing {label} inspection report: {inspection_path}. "
+            "Run 'dataset-forge inspect <dataset>' first and pass the inspect_output folder."
+        )
     if not recommendation_path.is_file():
         raise ComparisonError(
-            f"Missing {label} recommendation summary: {recommendation_path}"
+            f"Missing {label} recommendation summary: {recommendation_path}. "
+            "Run 'dataset-forge inspect <dataset>' first and pass the inspect_output folder."
         )
 
     inspection_report = _load_json_object(inspection_path, f"{label} inspection report")

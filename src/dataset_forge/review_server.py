@@ -62,9 +62,15 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
     decisions_path = root / REVIEW_DECISIONS_FILENAME
 
     if not inspection_path.exists():
-        raise ReviewServerError(f"Missing required sidecar: {inspection_path}")
+        raise ReviewServerError(
+            f"Missing required sidecar: {inspection_path}. "
+            "Run 'dataset-forge inspect <dataset>' first and pass the inspect_output folder."
+        )
     if not recommendation_path.exists():
-        raise ReviewServerError(f"Missing required sidecar: {recommendation_path}")
+        raise ReviewServerError(
+            f"Missing required sidecar: {recommendation_path}. "
+            "Run 'dataset-forge inspect <dataset>' first and pass the inspect_output folder."
+        )
 
     inspection_report = _load_json_object(inspection_path, "inspection report")
     recommendation_summary = _load_json_object(

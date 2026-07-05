@@ -416,6 +416,32 @@ Constraints:
 
 ---
 
+### v0.16.0-alpha: First-Time User Experience Audit
+
+**Status:** Released.
+
+v0.16 makes Dataset Forge easier to understand on first contact:
+
+- README opens with the LoRA dataset workflow instead of architecture.
+- Adds a 60-second Quick Start around `dataset-forge inspect my_dataset/`.
+- Explains the normal flow: Raw Dataset -> Inspect -> Recommendations ->
+  Review -> Human Decisions -> Compare -> Train.
+- Clarifies expected outputs and what to open first.
+- Separates beginner docs from advanced architecture/status documents.
+- Improves CLI help text using user workflow language.
+- Makes common missing-sidecar errors more actionable.
+
+Constraints:
+
+- No analyzer changes.
+- No recommendation rule changes.
+- No report schema changes.
+- No comparison behavior changes.
+- No new commands.
+- No cleanup, repair, export, browser features, or new analyzers.
+
+---
+
 ## Future Candidate: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.

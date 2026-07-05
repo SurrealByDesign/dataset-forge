@@ -86,8 +86,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.15.0-alpha: inspect image datasets, record "
-            "local-only human review decisions, and compare inspect outputs."
+            "Dataset Forge v0.16.0-alpha: decide which LoRA dataset images "
+            "are ready to train, need review, or deserve priority attention."
         ),
     )
     parser.add_argument(
@@ -98,51 +98,51 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", metavar="command")
     inspect_parser = commands.add_parser(
         "inspect",
-        help="Inspect an image dataset without modifying source images.",
+        help="Inspect a dataset and write recommendation reports.",
     )
     inspect_parser.add_argument("dataset", type=Path, help="Dataset folder to inspect.")
     inspect_parser.add_argument(
         "--output", type=Path, default=None,
-        help="Output folder for reports. Default: <dataset>/inspect_output/",
+        help="Where to write reports. Default: <dataset>/inspect_output/.",
     )
     inspect_parser.add_argument(
         "--recursive", action="store_true", default=False,
-        help="Scan sub-folders recursively.",
+        help="Also scan image files in sub-folders.",
     )
     inspect_parser.add_argument(
         "--limit", type=int, default=None,
-        help="Maximum number of images to analyze.",
+        help="Inspect only the first N images.",
     )
     inspect_parser.add_argument(
         "--gallery", action="store_true", default=False,
-        help="Generate inspection_gallery.png for visual review of findings.",
+        help="Also write inspection_gallery.png.",
     )
     inspect_parser.add_argument(
         "--review-gallery", action="store_true", default=False,
-        help="Generate review_gallery.html from inspection and recommendation sidecars.",
+        help="Also write a read-only review_gallery.html.",
     )
     inspect_parser.add_argument(
         "--contact-sheets", action="store_true", default=False,
-        help="Generate recommendation contact sheet PNGs from recommendation sidecars.",
+        help="Also write Priority Review and Needs Review contact sheets.",
     )
     review_parser = commands.add_parser(
         "review",
-        help="Open a local-only review decision server for an inspect output folder.",
+        help="Record human review decisions in a local-only browser.",
     )
     review_parser.add_argument(
         "inspect_output",
         type=Path,
-        help="Inspect output folder containing inspection and recommendation sidecars.",
+        help="Inspect output folder containing Dataset Forge sidecars.",
     )
     review_parser.add_argument(
         "--port",
         type=int,
         default=DEFAULT_REVIEW_PORT,
-        help=f"Localhost port to serve. Default: {DEFAULT_REVIEW_PORT}.",
+        help=f"Localhost port for the review page. Default: {DEFAULT_REVIEW_PORT}.",
     )
     compare_parser = commands.add_parser(
         "compare",
-        help="Compare two existing inspect output folders.",
+        help="Compare two existing inspect outputs.",
     )
     compare_parser.add_argument(
         "before_inspect_output",
@@ -158,7 +158,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=Path,
         required=True,
-        help="Output folder for comparison_summary.json and comparison_summary.md.",
+        help="Where to write comparison_summary.json and comparison_summary.md.",
     )
     return parser
 
@@ -196,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.15.0-alpha CLI. "
+            "Error: this command is not part of the public v0.16.0-alpha CLI. "
             "Use 'dataset-forge inspect', 'review', 'compare', '--help', "
             "or '--version'.",
             file=sys.stderr,
@@ -440,36 +440,34 @@ def _inspect_main(argv: list[str]) -> int:
         prog="dataset-forge inspect",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
-            "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.15.0-alpha is analysis only: review decisions and comparisons "
-            "are sidecars.\n"
-            "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
+            "Inspect a folder of images and write evidence-backed reports.\n"
+            "Source images are never modified. Start here before LoRA training."
         ),
     )
     parser.add_argument("dataset", type=Path, help="Dataset folder to inspect.")
     parser.add_argument(
         "--output", type=Path, default=None,
-        help="Output folder for reports. Default: <dataset>/inspect_output/",
+        help="Where to write reports. Default: <dataset>/inspect_output/.",
     )
     parser.add_argument(
         "--recursive", action="store_true", default=False,
-        help="Scan sub-folders recursively.",
+        help="Also scan image files in sub-folders.",
     )
     parser.add_argument(
         "--limit", type=int, default=None,
-        help="Maximum number of images to analyze.",
+        help="Inspect only the first N images.",
     )
     parser.add_argument(
         "--gallery", action="store_true", default=False,
-        help="Generate inspection_gallery.png for visual review of findings.",
+        help="Also write inspection_gallery.png.",
     )
     parser.add_argument(
         "--review-gallery", action="store_true", default=False,
-        help="Generate review_gallery.html from inspection and recommendation sidecars.",
+        help="Also write a read-only review_gallery.html.",
     )
     parser.add_argument(
         "--contact-sheets", action="store_true", default=False,
-        help="Generate recommendation contact sheet PNGs from recommendation sidecars.",
+        help="Also write Priority Review and Needs Review contact sheets.",
     )
     args = parser.parse_args(argv[1:])
 
@@ -560,20 +558,21 @@ def _review_main(argv: list[str]) -> int:
         prog="dataset-forge review",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
-            "Serve a local-only review surface for an inspect output folder.\n"
-            "Writes only review_decisions.json. Source images and reports are not modified."
+            "Open a local-only review page for an inspect output folder.\n"
+            "Use this after inspect to record human decisions in review_decisions.json.\n"
+            "Source images and reports are not modified."
         ),
     )
     parser.add_argument(
         "inspect_output",
         type=Path,
-        help="Inspect output folder containing inspection_report.json and recommendation_summary.json.",
+        help="Folder produced by dataset-forge inspect.",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=DEFAULT_REVIEW_PORT,
-        help=f"Localhost port to serve. Default: {DEFAULT_REVIEW_PORT}.",
+        help=f"Localhost port for the review page. Default: {DEFAULT_REVIEW_PORT}.",
     )
     args = parser.parse_args(argv[1:])
 
@@ -602,25 +601,25 @@ def _compare_main(argv: list[str]) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Compare two existing inspect output folders.\n"
-            "Reads sidecars only and writes comparison_summary.json and "
-            "comparison_summary.md."
+            "Use this after two inspect runs to see changed recommendations, "
+            "new findings, and resolved findings."
         ),
     )
     parser.add_argument(
         "before_inspect_output",
         type=Path,
-        help="Earlier inspect output folder.",
+        help="Earlier folder produced by dataset-forge inspect.",
     )
     parser.add_argument(
         "after_inspect_output",
         type=Path,
-        help="Later inspect output folder.",
+        help="Later folder produced by dataset-forge inspect.",
     )
     parser.add_argument(
         "--output",
         type=Path,
         required=True,
-        help="Output folder for comparison_summary.json and comparison_summary.md.",
+        help="Where to write comparison_summary.json and comparison_summary.md.",
     )
     args = parser.parse_args(argv[1:])
 

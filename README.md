@@ -1,42 +1,112 @@
 # Dataset Forge
 
-**v0.15.0-alpha** -- adds deterministic comparison between two inspect outputs.
+**v0.16.0-alpha** -- first-time user experience polish for the LoRA Dataset Decision Engine.
 
-Know which images belong in your training set before you train your LoRA.
+Dataset Forge helps you decide which images belong in your LoRA before you train.
 
-Dataset Forge helps LoRA dataset builders decide which images are ready to
-train, which need review, and which deserve priority attention before training. Every
-recommendation must be grounded in deterministic analysis, measurable evidence,
-and explainable findings.
+It is for LoRA dataset builders who want evidence-backed answers to three
+questions:
 
-**v0.15.0-alpha is analysis only.** It reads your dataset. It does not touch your images.
-`dataset-forge inspect` writes additive Recommendation Summary sidecars,
-optionally renders static visual review outputs, and creates a
-`review_decisions_template.json` starter file when one does not already exist.
-If `review_decisions.json` exists, Dataset Forge reads it and annotates
-Markdown/HTML review outputs with already-reviewed or pending status.
-`dataset-forge review <inspect_output>` starts an optional localhost-only
-review surface that writes only `review_decisions.json`.
-`dataset-forge compare <before_inspect_output> <after_inspect_output>` compares
-existing sidecars and writes `comparison_summary.json` and
-`comparison_summary.md`.
-There is still no public recommendation command, cleanup, repair, export, web
-app, cloud service, plugins, or new analyzer family in this release.
+- Which images are ready for training?
+- Which images need human review?
+- Which images deserve priority attention before training?
+
+Every recommendation is grounded in deterministic analysis, measurable
+evidence, and explainable findings.
+
+```text
+Raw Dataset
+-> Inspect
+-> Recommendations
+-> Review
+-> Human Decisions
+-> Compare
+-> Train
+```
+
+**v0.16.0-alpha is read-only decision support.** Dataset Forge reads your
+dataset and writes reports beside it. It never modifies source images. There is
+still no cleanup, repair, export, hosted web app, cloud service, plugins, or
+new analyzer family in this release.
 
 ---
 
-## What it does
+## 60-Second Quick Start
+
+Install:
+
+```text
+git clone https://github.com/surrealbydesign/dataset-forge.git
+cd dataset-forge
+uv sync
+```
+
+Inspect a dataset:
+
+```text
+uv run dataset-forge inspect my_dataset/
+```
+
+Open the main human-facing summary first:
+
+```text
+my_dataset/inspect_output/recommendation_summary.md
+```
+
+Expected outputs:
+
+| Output | What to do with it |
+|---|---|
+| `recommendation_summary.md` | Start here. Review Priority Review, then Needs Review. |
+| `inspection_report.txt` | Read detailed findings in plain text. |
+| `inspection_report.json` | Machine-readable evidence and findings. |
+| `recommendation_summary.json` | Machine-readable Ready / Needs Review / Priority Review sidecar. |
+| `review_decisions_template.json` | Optional starter file for human review decisions. |
+| `review_gallery.html` | Optional visual review page from `--review-gallery`. |
+| `priority_review_contact_sheet.png` | Optional visual sheet from `--contact-sheets`. |
+| `needs_review_contact_sheet.png` | Optional visual sheet from `--contact-sheets`. |
+
+Optional visual review outputs:
+
+```text
+uv run dataset-forge inspect my_dataset/ --review-gallery --contact-sheets
+```
+
+Optional local review decisions:
+
+```text
+uv run dataset-forge review my_dataset/inspect_output/
+```
+
+Optional comparison after a second inspect run:
+
+```text
+uv run dataset-forge compare old_run/inspect_output/ new_run/inspect_output/ --output comparison/
+```
+
+---
+
+## What It Does
 
 Dataset Forge builds a statistical picture of your dataset, then runs
 independent analyzers that compare each image against that baseline. Current
 reports separate images with no findings from images that deserve human review.
-The v1 direction is to turn this evidence into clear Ready / Review /
-Exclude-from-training guidance.
+
+The normal workflow is:
+
+1. Run `dataset-forge inspect my_dataset/`.
+2. Open `recommendation_summary.md`.
+3. Review Priority Review images first.
+4. Review Needs Review images if useful.
+5. Record decisions with `dataset-forge review my_dataset/inspect_output/`.
+6. Re-run inspect after dataset changes or a later review pass.
+7. Compare runs with `dataset-forge compare ...`.
+8. Train with the images you decide belong in the dataset.
 
 A healthy dataset can legitimately produce zero findings. That is a valid
 and correct result, not a failure.
 
-**Analyzers in v0.15.0-alpha:**
+**Analyzers in v0.16.0-alpha:**
 
 | Analyzer | What it detects | Status |
 |---|---|---|
@@ -50,10 +120,9 @@ against labeled ground truth is complete. The oversharpening/halo analyzer is
 read-only, uses synthetic benchmark fixtures to validate its USM-residual signal
 shape, and remains uncalibrated for real-world precision/recall. The isolated
 high-frequency analyzer is also read-only and synthetic-fixture-backed only.
-Treat findings as candidates for human review, not automated decisions. In
-v0.15 keeps the recommendation rules, JSON, inspection schema, gallery behavior,
-contact sheet behavior, and review-decision behavior unchanged while adding
-sidecar-only comparison between inspect outputs.
+Treat findings as candidates for human review, not automated decisions. v0.16
+does not change analyzer behavior, recommendation rules, JSON schemas, gallery
+behavior, contact sheets, review decisions, or comparison behavior.
 
 ---
 
@@ -74,7 +143,7 @@ edge halos.
 
 ---
 
-## Current limitations (v0.15.0-alpha)
+## Current limitations (v0.16.0-alpha)
 
 - **Analyzers are not calibrated to published ground truth.** Thresholds were
   derived from an initial labeled review of one private dataset. Precision and
@@ -86,11 +155,11 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.15.0-alpha exposes `inspect`,
+- **No public recommendation command yet.** v0.16.0-alpha exposes `inspect`,
   optional local `review`, and sidecar-only `compare`. There is no separate
   `dataset-forge recommend` command.
 
-- **No cleanup, repair planning, repair, or export.** v0.15.0-alpha is read-only.
+- **No cleanup, repair planning, repair, or export.** v0.16.0-alpha is read-only.
   Cleanup, repair, and export are future-only possibilities, not assumed next
   steps. See [ROADMAP.md](ROADMAP.md). Code for future phases exists in the
   repository but is not active or supported in the public CLI.
@@ -114,12 +183,31 @@ edge halos.
 
 ---
 
+## What To Read First
+
+New users should read these first:
+
+- `README.md` -- install, inspect, outputs, and normal workflow.
+- `recommendation_summary.md` from your first run -- the main review report.
+- `inspection_report.txt` from your first run -- detailed plain-text findings.
+- `benchmarks/README.md` -- what the public benchmark suite proves.
+
+You can ignore these until later:
+
+- `ARCHITECTURE.md` -- useful when changing internals.
+- `PROJECT_BIBLE.md` -- useful before major product or architecture changes.
+- `ROADMAP.md` and `CURRENT_STATUS.md` -- useful when joining development.
+- `CLI_OUTPUT.md` -- acceptance notes for command/report wording.
+- `scripts/research/` -- internal analyzer research probes.
+
+---
+
 ## Requirements
 
 - Python 3.11 or newer
-- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- [uv](https://docs.astral.sh/uv/) recommended, or pip
 
-**Runtime dependencies** (installed automatically):
+Runtime dependencies are installed automatically:
 
 - Pillow >= 10.0
 - opencv-python >= 4.10
@@ -128,7 +216,9 @@ edge halos.
 
 ## Install
 
-```
+Recommended:
+
+```text
 git clone https://github.com/surrealbydesign/dataset-forge.git
 cd dataset-forge
 uv sync
@@ -136,33 +226,34 @@ uv sync
 
 Or with pip:
 
-```
+```text
 pip install -e .
 ```
 
 ---
 
-## First run
+## Inspect A Dataset
 
-Point it at a folder of images:
+Copy and paste:
 
-```
-uv run dataset-forge inspect path/to/your/dataset/
-```
-
-With an explicit output directory:
-
-```
-uv run dataset-forge inspect path/to/your/dataset/ --output path/to/report/
+```text
+uv run dataset-forge inspect my_dataset/
 ```
 
-Terminal output:
+Use an explicit output folder when you do not want reports inside
+`my_dataset/inspect_output/`:
 
+```text
+uv run dataset-forge inspect my_dataset/ --output my_report/
 ```
+
+Example terminal output:
+
+```text
 Dataset Forge Inspect
 =====================
-Dataset:  path/to/your/dataset/
-Output:   path/to/your/dataset/inspect_output
+Dataset:  my_dataset/
+Output:   my_dataset/inspect_output
 
 Images:   100
 Analyzed: 100
@@ -191,10 +282,10 @@ Recommendations are advisory and based only on existing findings.
 Source images were not modified.
 
 Report written:
-  path/to/your/dataset/inspect_output/inspection_report.json
-  path/to/your/dataset/inspect_output/inspection_report.txt
-  path/to/your/dataset/inspect_output/recommendation_summary.json
-  path/to/your/dataset/inspect_output/recommendation_summary.md
+  my_dataset/inspect_output/inspection_report.json
+  my_dataset/inspect_output/inspection_report.txt
+  my_dataset/inspect_output/recommendation_summary.json
+  my_dataset/inspect_output/recommendation_summary.md
 ```
 
 Reports are written to the output directory (default: a folder named
@@ -293,7 +384,7 @@ Recommendation Summary order.
 
 ### Internal: calibration evidence
 
-v0.15.0-alpha includes internal Calibration Evidence: comparing an existing
+v0.16.0-alpha includes internal Calibration Evidence: comparing an existing
 `inspection_report.json` with a small ground-truth label file to compute
 per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and
 false-positive rate.
@@ -304,7 +395,7 @@ behavior.
 
 ### Internal: review decisions
 
-v0.15.0-alpha includes persistent Review Decisions: schema-versioned JSON files
+v0.16.0-alpha includes persistent Review Decisions: schema-versioned JSON files
 that record human intent for images or finding categories after inspection and
 calibration review.
 
@@ -319,7 +410,7 @@ behavior.
 
 ### Internal: validation dossiers
 
-v0.15.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
+v0.16.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
 that combine an existing `inspection_report.json`, calibration labels, and
 optional Review Decisions to assess analyzer reliability.
 
@@ -332,7 +423,7 @@ thresholds, modify images, plan repair, export datasets, or change the public
 
 ### Internal: real-world validation corpus
 
-v0.15.0-alpha includes the Real-World Validation Corpus framework under
+v0.16.0-alpha includes the Real-World Validation Corpus framework under
 `benchmarks/real_world/`. It defines how labeled real-world LoRA/image datasets
 should be organized for future reliability validation.
 
@@ -346,7 +437,7 @@ images, plan repair, export datasets, or change the public `inspect` behavior.
 
 ### Recommendation summary
 
-v0.15.0-alpha writes Recommendation Summary sidecars from `dataset-forge inspect`
+v0.16.0-alpha writes Recommendation Summary sidecars from `dataset-forge inspect`
 with schema
 `dataset-forge/recommendation-summary/v1`.
 
@@ -436,9 +527,8 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.15.0-alpha.** There is no public flag or command that plans, modifies,
-  repairs, exports, rejects, or
-  regenerates images. This is by design.
+  v0.16.0-alpha.** There is no public flag or command that plans, modifies,
+  repairs, exports, rejects, or regenerates images. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,
   a human-readable explanation, and a recommendation. No black-box scores.
 - **Healthy images stay quiet.** Images with no findings are listed as Ready for
@@ -500,7 +590,7 @@ MIT. See [LICENSE](LICENSE).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Inspect pipeline structure, Finding schema, artifact family model |
 | [WHY.md](WHY.md) | Reasoning behind major design decisions |
 | [DIRECTION.md](DIRECTION.md) | Current milestone and scope |
-| [ROADMAP.md](ROADMAP.md) | v0.15.0-alpha status and future milestone plan |
+| [ROADMAP.md](ROADMAP.md) | v0.16.0-alpha status and future milestone plan |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Implementation status; resume from here |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Acceptance criteria for terminal and report output |
 | [benchmarks/README.md](benchmarks/README.md) | Benchmark manifests and fixture inventory |
