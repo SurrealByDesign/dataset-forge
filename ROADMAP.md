@@ -215,7 +215,34 @@ Constraints:
 
 ---
 
-## v0.10: Recommendation Validation
+### v0.10.0-alpha: Static Review Gallery
+
+**Status:** Released.
+
+v0.10 adds an optional static visual review surface:
+
+- `dataset-forge inspect <dataset> --review-gallery`
+- `review_gallery.html`
+
+The gallery consumes existing sidecars only:
+
+- `inspection_report.json`
+- `recommendation_summary.json`
+- source image paths referenced by those reports
+
+Constraints:
+
+- No analyzer reruns.
+- No recommendation recomputation.
+- No recommendation rule changes.
+- No `inspection_report.json` schema changes.
+- No buttons, checkboxes, forms, review decisions, server, or web app.
+- No deletion, repair, cleanup, export, regeneration, or image modification.
+- Plain deterministic HTML with embedded CSS and no external assets.
+
+---
+
+## v0.11: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
 

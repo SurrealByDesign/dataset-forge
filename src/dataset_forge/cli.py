@@ -79,8 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.9.0-alpha: inspect image datasets and write "
-            "evidence-backed, read-only reports."
+            "Dataset Forge v0.10.0-alpha: inspect image datasets and write "
+            "evidence-backed, read-only reports and optional review galleries."
         ),
     )
     parser.add_argument(
@@ -110,6 +110,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--gallery", action="store_true", default=False,
         help="Generate inspection_gallery.png for visual review of findings.",
     )
+    inspect_parser.add_argument(
+        "--review-gallery", action="store_true", default=False,
+        help="Generate review_gallery.html from inspection and recommendation sidecars.",
+    )
     return parser
 
 
@@ -136,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.9.0-alpha CLI. "
+            "Error: this command is not part of the public v0.10.0-alpha CLI. "
             "Use 'dataset-forge inspect', '--help', or '--version'.",
             file=sys.stderr,
         )
@@ -377,9 +381,10 @@ def _pipeline_main(argv: list[str]) -> int:
 def _inspect_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="dataset-forge inspect",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.9.0-alpha is analysis only: recommendations are advisory review priorities.\n"
+            "v0.10.0-alpha is analysis only: recommendations are advisory review priorities.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )
@@ -399,6 +404,10 @@ def _inspect_main(argv: list[str]) -> int:
     parser.add_argument(
         "--gallery", action="store_true", default=False,
         help="Generate inspection_gallery.png for visual review of findings.",
+    )
+    parser.add_argument(
+        "--review-gallery", action="store_true", default=False,
+        help="Generate review_gallery.html from inspection and recommendation sidecars.",
     )
     args = parser.parse_args(argv[1:])
 
@@ -422,6 +431,7 @@ def _inspect_main(argv: list[str]) -> int:
             recursive=args.recursive,
             limit=args.limit,
             gallery=args.gallery,
+            review_gallery=args.review_gallery,
         )
     except ValueError as exc:
         print(f"Error: {exc}")
@@ -469,6 +479,8 @@ def _inspect_main(argv: list[str]) -> int:
     print(f"  {result.txt_report}")
     print(f"  {result.recommendation_json}")
     print(f"  {result.recommendation_markdown}")
+    if result.review_gallery_path:
+        print(f"  {result.review_gallery_path}")
     if result.gallery_path:
         print(f"  {result.gallery_path}")
     return 0

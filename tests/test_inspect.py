@@ -106,6 +106,22 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertTrue(result.recommendation_json.exists())
         self.assertTrue(result.recommendation_markdown.exists())
 
+    def test_review_gallery_not_written_by_default(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+
+        self.assertIsNone(result.review_gallery_path)
+        self.assertFalse((self.output / "review_gallery.html").exists())
+
+    def test_review_gallery_written_when_requested(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output, review_gallery=True)
+
+        self.assertIsNotNone(result.review_gallery_path)
+        assert result.review_gallery_path is not None
+        self.assertTrue(result.review_gallery_path.exists())
+        self.assertEqual(result.review_gallery_path.name, "review_gallery.html")
+
     def test_json_report_valid(self):
         _write_smooth(self.dataset, n=2)
         result = run_inspect(self.dataset, self.output)
@@ -148,6 +164,7 @@ class TestRunInspectBasic(unittest.TestCase):
 
         self.assertEqual(data["schema"], "dataset-forge/inspection/v1")
         self.assertNotIn("recommendation_summary", data)
+        self.assertNotIn("review_gallery", data)
 
     def test_inspect_uses_analyzer_registry(self):
         class RecordingAnalyzer:

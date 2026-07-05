@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.10.0-alpha
+
+- Added optional `dataset-forge inspect --review-gallery` output.
+- Added `review_gallery.html`, a static read-only visual review surface over
+  existing `inspection_report.json` and `recommendation_summary.json` sidecars.
+- Kept recommendation rules, `recommendation_summary.json`, inspect schema,
+  analyzer behavior, public CLI command surface, review-decision coupling,
+  validation coupling, cleanup, repair, export, plugins, UI frameworks, and
+  analyzer set unchanged.
+
 ## v0.9.0-alpha
 
 - Polished `recommendation_summary.md` into a human-facing review report.

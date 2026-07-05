@@ -63,6 +63,7 @@ Report written:
   inspection_report.txt
   recommendation_summary.json
   recommendation_summary.md
+  review_gallery.html  # only with --review-gallery
 ```
 
 ---
@@ -189,6 +190,28 @@ Report written:
 The sidecar must not contain numeric quality scores or serialized priority
 fields. Ready for Training means Dataset Forge emitted no current findings
 requiring review. It does not guarantee the image is artifact-free.
+
+---
+
+## Static Review Gallery
+
+When `dataset-forge inspect path/to/dataset/ --review-gallery` is used, inspect
+writes `review_gallery.html` alongside the existing inspection and
+recommendation sidecars.
+
+The static gallery:
+
+- is generated from `inspection_report.json` and `recommendation_summary.json`
+- shows Recommendation Summary counts
+- shows Priority Review and Needs Review image cards
+- summarizes Ready for Training images without listing every image
+- includes advisory wording that recommendations are review priorities, source
+  images were not modified, and Ready for Training is not a guarantee of
+  artifact-free images
+- does not add buttons, checkboxes, forms, scripts, review decisions, cleanup,
+  repair, export, or server behavior
+
+The JSON sidecars remain the source of truth.
 
 ---
 

@@ -26,6 +26,7 @@ from dataset_forge.recommendation_summary import (
     write_recommendation_summary_files,
 )
 from dataset_forge.report import write_inspection_report
+from dataset_forge.static_review_gallery import write_static_review_gallery
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +52,7 @@ class InspectResult:
     needs_review_count: int
     priority_review_count: int
     gallery_path: Path | None = None
+    review_gallery_path: Path | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +87,7 @@ def run_inspect(
     recursive: bool = False,
     limit: int | None = None,
     gallery: bool = False,
+    review_gallery: bool = False,
 ) -> InspectResult:
     """Run the full v1 inspect pipeline on a dataset folder.
 
@@ -134,7 +137,16 @@ def run_inspect(
         output_dir,
     )
 
-    # 6. Optionally write gallery PNG
+    # 6. Optionally write static review gallery from sidecar JSON files
+    review_gallery_path: Path | None = None
+    if review_gallery:
+        review_gallery_path = write_static_review_gallery(
+            json_path,
+            recommendation_json,
+            output_dir / "review_gallery.html",
+        )
+
+    # 7. Optionally write gallery PNG
     gallery_path: Path | None = None
     if gallery and image_scores:
         gallery_path = write_inspection_gallery(
@@ -143,7 +155,7 @@ def run_inspect(
             image_scores,
         )
 
-    # 7. Summarize
+    # 8. Summarize
     affected = {str(f.image_path) for f in findings}
     sev_counts: dict[str, int] = {}
     for f in findings:
@@ -167,4 +179,5 @@ def run_inspect(
         needs_review_count=recommendation_summary.needs_review_count,
         priority_review_count=recommendation_summary.priority_review_count,
         gallery_path=gallery_path,
+        review_gallery_path=review_gallery_path,
     )
