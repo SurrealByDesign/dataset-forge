@@ -187,7 +187,35 @@ Constraints:
 
 ---
 
-## v0.9: Recommendation Validation
+### v0.9.0-alpha: Recommendation Markdown Presentation
+
+**Status:** Released.
+
+v0.9 polishes `recommendation_summary.md` into a human-facing review report
+without changing recommendation logic or JSON output.
+
+It adds:
+
+- summary counts at the top of the Markdown report
+- Priority Review first, then Needs Review
+- grouping by artifact family
+- filename, recommendation, primary reason, and finding references per review item
+- Ready for Training summarized without listing every ready image
+- Important Notes and Next Step sections
+
+Constraints:
+
+- No recommendation rule changes.
+- No `recommendation_summary.json` schema changes.
+- No inspect schema changes.
+- No CLI surface changes.
+- No analyzer changes.
+- No gallery, UI, export, repair, or cleanup.
+- No validation, calibration, or Review Decisions coupling.
+
+---
+
+## v0.10: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
 

@@ -1,16 +1,16 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-04. Reflects v0.8.0-alpha.*
+*Last updated: 2026-07-05. Reflects v0.9.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.8.0-alpha** implements the inspect-only foundation for a
+**Dataset Forge v0.9.0-alpha** implements the inspect-only foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
-sidecars from `dataset-forge inspect`. The product direction is to help users
-decide which images are ready to train, which need review, and which deserve
-priority review before training.
+sidecars from `dataset-forge inspect`. v0.9 polishes
+`recommendation_summary.md` as a human-facing review-order report without
+changing recommendation rules or JSON output.
 
 Current public behavior remains inspect-only:
 
@@ -18,7 +18,7 @@ Current public behavior remains inspect-only:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.8.0-alpha:
+Supported in v0.9.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Recommendation Summary sidecars (`recommendation_summary.json`,
@@ -44,6 +44,9 @@ Supported in v0.8.0-alpha:
 - Recommendation Summary layer over existing findings only
 - Emit schema-versioned Ready for Training / Needs Review / Priority Review
   sidecars from `inspect`
+- Present `recommendation_summary.md` as a human-facing review report:
+  Priority Review first, then Needs Review, with Ready for Training summarized
+  instead of listed image-by-image
 - Print concise aggregate recommendation counts after inspect
 - No public recommendation command
 - No embedding Recommendation Summary into `inspection_report.json`
@@ -52,7 +55,7 @@ Supported in v0.8.0-alpha:
 - No public CLI expansion
 - No cleanup, repair planning, repair, export, UI, plugins, or new analyzers
 
-Not supported in v0.8.0-alpha (planned for later releases):
+Not supported in v0.9.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Repair (future)
@@ -66,7 +69,7 @@ Not supported in v0.8.0-alpha (planned for later releases):
 
 ## Test suite
 
-**871 tests passing, 1 skipped.**
+**878 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.
@@ -157,7 +160,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.8.0-alpha):
+**Public tools** (documented, supported in v0.9.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -213,6 +216,9 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
   consume Review Decisions, Calibration Evidence, or Validation Dossiers.
   Ready for Training means no current findings requiring review were emitted;
   it does not guarantee an image is artifact-free.
+- v0.9 changes Markdown presentation only. `recommendation_summary.json`,
+  recommendation rules, inspect schema, analyzer behavior, and CLI surface are
+  unchanged.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement
@@ -227,7 +233,7 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 ## Next recommended tasks
 
 1. **Validate Recommendation Summary usefulness on labeled datasets** -- keep
-   the v0.8 four-rule behavior unless validation supports stronger guidance.
+   the v0.9 four-rule behavior unless validation supports stronger guidance.
 
 2. **Populate the Real-World Validation Corpus with legally safe labeled data** --
    add public-domain/CC0 or otherwise redistributable real-world examples, labels,

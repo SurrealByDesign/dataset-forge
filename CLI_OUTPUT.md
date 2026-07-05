@@ -192,6 +192,67 @@ requiring review. It does not guarantee the image is artifact-free.
 
 ---
 
+## Recommendation Markdown Structure
+
+`recommendation_summary.md` is a plain Markdown review report:
+
+```
+# Dataset Recommendation Summary
+
+- Images inspected: 100
+- Ready for Training: 81
+- Needs Review: 16
+- Priority Review: 3
+
+# Recommended Review Order
+
+## Priority Review
+
+### artifact.high_frequency_isolated
+
+- Filename: `image_023.png`
+  - Recommendation: Priority Review
+  - Primary reason: High-severity finding detected.
+  - Finding references: artifact.high_frequency_isolated from high_frequency_isolated_artifact_analyzer/v1 (HIGH)
+
+## Needs Review
+
+### artifact.oversharpening_halo
+
+- Filename: `image_041.png`
+  - Recommendation: Needs Review
+  - Primary reason: Measurable finding detected.
+  - Finding references: artifact.oversharpening_halo from oversharpening_halo_analyzer/v1 (MEDIUM)
+
+# Ready for Training
+
+81 images emitted no current findings requiring review.
+
+# Important Notes
+
+Ready for Training means Dataset Forge emitted no current findings requiring
+review.
+
+It does not guarantee the image is artifact-free.
+
+Recommendations are advisory.
+
+Dataset Forge never modifies source images.
+
+# Next Step
+
+Review Priority Review images first.
+
+Then review Needs Review images if appropriate.
+
+After review, decide whether each image belongs in your training dataset.
+```
+
+The Markdown report does not list every Ready for Training image. It is a review
+order document, not a gallery or an action system.
+
+---
+
 ## TXT Report Structure
 
 ```

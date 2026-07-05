@@ -198,27 +198,56 @@ def render_recommendation_summary_markdown(summary: RecommendationSummary) -> st
     """Render a plain Markdown review-priority summary."""
 
     lines = [
-        "# Dataset Forge Recommendation Summary",
+        "# Dataset Recommendation Summary",
         "",
-        "Recommendations are advisory and based only on existing findings.",
-        "Source images were not modified.",
-        "",
-        "Ready for Training means Dataset Forge emitted no current findings "
-        "requiring review. It does not guarantee the image is artifact-free.",
-        "",
-        "## Counts",
-        "",
+        f"- Images inspected: {summary.image_count}",
         f"- Ready for Training: {summary.ready_for_training_count}",
         f"- Needs Review: {summary.needs_review_count}",
         f"- Priority Review: {summary.priority_review_count}",
         "",
+        "# Recommended Review Order",
+        "",
     ]
-    for recommendation in (PRIORITY_REVIEW, NEEDS_REVIEW, READY_FOR_TRAINING):
-        lines.extend(_markdown_group(summary, recommendation))
+    lines.extend(_markdown_review_group(summary, PRIORITY_REVIEW))
+    lines.extend(_markdown_review_group(summary, NEEDS_REVIEW))
+    lines.extend([
+        "# Ready for Training",
+        "",
+        (
+            f"{summary.ready_for_training_count} "
+            f"{_image_word(summary.ready_for_training_count)} emitted no current "
+            "findings requiring review."
+        ),
+        "",
+        "# Important Notes",
+        "",
+        (
+            "Ready for Training means Dataset Forge emitted no current findings "
+            "requiring review."
+        ),
+        "",
+        "It does not guarantee the image is artifact-free.",
+        "",
+        "Recommendations are advisory.",
+        "",
+        "Dataset Forge never modifies source images.",
+        "",
+        "# Next Step",
+        "",
+        "Review Priority Review images first.",
+        "",
+        "Then review Needs Review images if appropriate.",
+        "",
+        (
+            "After review, decide whether each image belongs in your training "
+            "dataset."
+        ),
+        "",
+    ])
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _markdown_group(
+def _markdown_review_group(
     summary: RecommendationSummary,
     recommendation: str,
 ) -> list[str]:
@@ -231,17 +260,50 @@ def _markdown_group(
         lines.extend(["No images in this group.", ""])
         return lines
 
-    for item in items:
-        lines.append(f"- `{Path(item.image_path).name}` - {item.primary_reason}")
-        if item.finding_refs:
-            refs = ", ".join(
-                f"{ref.category} ({ref.severity})"
-                for ref in item.finding_refs
-            )
-            lines.append(f"  - Findings: {refs}")
-        lines.append(f"  - Guidance: {item.guidance}")
+    for family, family_items in _group_by_artifact_family(items):
+        lines.extend([f"### {family}", ""])
+        for item in family_items:
+            lines.append(f"- Filename: `{Path(item.image_path).name}`")
+            lines.append(f"  - Recommendation: {item.display_label}")
+            lines.append(f"  - Primary reason: {item.primary_reason}")
+            if item.finding_refs:
+                refs = "; ".join(
+                    f"{ref.category} from {ref.analyzer} ({ref.severity})"
+                    for ref in item.finding_refs
+                )
+                lines.append(f"  - Finding references: {refs}")
+            else:
+                lines.append("  - Finding references: none")
+        lines.append("")
     lines.append("")
     return lines
+
+
+def _group_by_artifact_family(
+    items: list[ImageRecommendation],
+) -> list[tuple[str, list[ImageRecommendation]]]:
+    groups: dict[str, list[ImageRecommendation]] = {}
+    for item in items:
+        groups.setdefault(_artifact_family_label(item), []).append(item)
+    return [
+        (family, groups[family])
+        for family in sorted(groups)
+    ]
+
+
+def _artifact_family_label(item: ImageRecommendation) -> str:
+    categories = sorted({ref.category for ref in item.finding_refs})
+    if not categories:
+        return "No finding family"
+    if any(category.endswith(".error") for category in categories):
+        return "Analyzer errors"
+    if len(categories) > 1:
+        return "Multiple artifact families"
+    return categories[0]
+
+
+def _image_word(count: int) -> str:
+    return "image" if count == 1 else "images"
 
 
 def _finding_from_report(item: Mapping[str, Any]) -> Finding:

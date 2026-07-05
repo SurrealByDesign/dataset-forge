@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.0-alpha
+
+- Polished `recommendation_summary.md` into a human-facing review report.
+- Added Markdown sections for dataset counts, recommended review order,
+  artifact-family grouping, important notes, and next steps.
+- Summarized Ready for Training images instead of listing every ready image.
+- Kept recommendation rules, `recommendation_summary.json`, inspect schema,
+  CLI surface, analyzer behavior, validation coupling, review-decision
+  coupling, repair, cleanup, export, plugins, UI, and analyzer set unchanged.
+
 ## v0.8.0-alpha
 
 - Made Recommendation Summary user-visible from `dataset-forge inspect` via

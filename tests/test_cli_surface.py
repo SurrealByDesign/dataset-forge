@@ -23,7 +23,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Dataset Forge v0.8.0-alpha", stdout)
+        self.assertIn("Dataset Forge v0.9.0-alpha", stdout)
         self.assertIn("inspect", stdout)
         self.assertIn("--help", stdout)
         self.assertIn("--version", stdout)
@@ -57,7 +57,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 0.8.0a0")
+        self.assertEqual(stdout.strip(), "dataset-forge 0.9.0a0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -76,7 +76,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
                 self.assertEqual(exit_code, 2)
                 self.assertEqual(stdout, "")
-                self.assertIn("not part of the public v0.8.0-alpha CLI", stderr)
+                self.assertIn("not part of the public v0.9.0-alpha CLI", stderr)
 
     def test_inspect_prints_recommendation_summary_counts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

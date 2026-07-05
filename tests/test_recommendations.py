@@ -287,7 +287,7 @@ class RecommendationContractTests(unittest.TestCase):
         self.assertIn("advisory", item["confidence_note"])
         self.assertNotIn("validated", item["confidence_note"].lower())
 
-    def test_markdown_contains_counts_and_grouped_guidance(self) -> None:
+    def test_markdown_uses_human_review_report_structure(self) -> None:
         summary = build_recommendation_summary(
             [
                 _finding("img_0.png", severity=Severity.HIGH),
@@ -298,20 +298,135 @@ class RecommendationContractTests(unittest.TestCase):
 
         markdown = render_recommendation_summary_markdown(summary)
 
-        self.assertIn("## Counts", markdown)
+        self.assertIn("# Dataset Recommendation Summary", markdown)
+        self.assertIn("- Images inspected: 4", markdown)
         self.assertIn("- Ready for Training: 2", markdown)
         self.assertIn("- Needs Review: 1", markdown)
         self.assertIn("- Priority Review: 1", markdown)
+        self.assertIn("# Recommended Review Order", markdown)
         self.assertLess(
             markdown.index("## Priority Review"),
             markdown.index("## Needs Review"),
         )
         self.assertLess(
             markdown.index("## Needs Review"),
-            markdown.index("## Ready for Training"),
+            markdown.index("# Ready for Training"),
         )
-        self.assertIn("Guidance:", markdown)
+        self.assertIn("# Important Notes", markdown)
+        self.assertIn("# Next Step", markdown)
         self.assertIn("does not guarantee the image is artifact-free", markdown)
+
+    def test_markdown_groups_review_images_by_artifact_family(self) -> None:
+        summary = build_recommendation_summary(
+            [
+                _finding(
+                    "img_0.png",
+                    category="texture.error",
+                    analyzer="texture_analyzer/v1",
+                ),
+                _finding(
+                    "img_1.png",
+                    severity=Severity.HIGH,
+                    category="artifact.high_frequency_isolated",
+                    analyzer="high_frequency_isolated_artifact_analyzer/v1",
+                ),
+                _finding(
+                    "img_2.png",
+                    severity=Severity.LOW,
+                    category="artifact.oversharpening_halo",
+                    analyzer="oversharpening_halo_analyzer/v1",
+                ),
+            ],
+            _context(),
+        )
+
+        markdown = render_recommendation_summary_markdown(summary)
+
+        self.assertIn("### Analyzer errors", markdown)
+        self.assertIn("### artifact.high_frequency_isolated", markdown)
+        self.assertIn("### artifact.oversharpening_halo", markdown)
+        self.assertIn("- Filename: `img_0.png`", markdown)
+        self.assertIn("  - Recommendation: Priority Review", markdown)
+        self.assertIn("  - Primary reason: Dataset Forge could not inspect", markdown)
+        self.assertIn("  - Finding references: texture.error from texture_analyzer/v1", markdown)
+
+    def test_markdown_uses_stable_group_and_image_ordering(self) -> None:
+        summary = build_recommendation_summary(
+            [
+                _finding(
+                    "img_2.png",
+                    severity=Severity.HIGH,
+                    category="artifact.oversharpening_halo",
+                    analyzer="oversharpening_halo_analyzer/v1",
+                ),
+                _finding(
+                    "img_0.png",
+                    severity=Severity.HIGH,
+                    category="artifact.high_frequency_isolated",
+                    analyzer="high_frequency_isolated_artifact_analyzer/v1",
+                ),
+                _finding(
+                    "img_1.png",
+                    severity=Severity.MEDIUM,
+                    category="texture.high_microtexture",
+                    analyzer="texture_analyzer/v1",
+                ),
+            ],
+            _context(),
+        )
+
+        markdown = render_recommendation_summary_markdown(summary)
+
+        self.assertLess(
+            markdown.index("### artifact.high_frequency_isolated"),
+            markdown.index("### artifact.oversharpening_halo"),
+        )
+        self.assertLess(
+            markdown.index("## Priority Review"),
+            markdown.index("## Needs Review"),
+        )
+        self.assertLess(
+            markdown.index("- Filename: `img_0.png`"),
+            markdown.index("- Filename: `img_2.png`"),
+        )
+
+    def test_markdown_summarizes_ready_images_without_listing_each_one(self) -> None:
+        summary = build_recommendation_summary([], _context())
+
+        markdown = render_recommendation_summary_markdown(summary)
+
+        self.assertIn(
+            "4 images emitted no current findings requiring review.",
+            markdown,
+        )
+        self.assertNotIn("- Filename: `img_0.png`", markdown)
+        self.assertNotIn("- Filename: `img_1.png`", markdown)
+
+    def test_markdown_uses_singular_image_word_for_one_ready_image(self) -> None:
+        summary = build_recommendation_summary(
+            [_finding("img_0.png", severity=Severity.HIGH)],
+            _context(image_count=2),
+        )
+
+        markdown = render_recommendation_summary_markdown(summary)
+
+        self.assertIn(
+            "1 image emitted no current findings requiring review.",
+            markdown,
+        )
+        self.assertNotIn("1 images emitted", markdown)
+
+    def test_markdown_contains_required_next_step_text(self) -> None:
+        summary = build_recommendation_summary([], _context())
+
+        markdown = render_recommendation_summary_markdown(summary)
+
+        self.assertIn("Review Priority Review images first.", markdown)
+        self.assertIn("Then review Needs Review images if appropriate.", markdown)
+        self.assertIn(
+            "After review, decide whether each image belongs in your training dataset.",
+            markdown,
+        )
 
     def test_markdown_does_not_use_exclude_reject_remove_or_delete_language(self) -> None:
         summary = build_recommendation_summary(
@@ -324,6 +439,28 @@ class RecommendationContractTests(unittest.TestCase):
         self.assertNotIn("reject", text)
         self.assertNotIn("remove", text)
         self.assertNotIn("delete", text)
+
+    def test_markdown_does_not_include_confidence_percentages(self) -> None:
+        summary = build_recommendation_summary(
+            [_finding("img_0.png", severity=Severity.HIGH)],
+            _context(),
+        )
+
+        markdown = render_recommendation_summary_markdown(summary)
+
+        self.assertNotIn("%", markdown)
+        self.assertNotIn("confidence", markdown.lower())
+
+    def test_rendering_markdown_does_not_change_recommendation_json(self) -> None:
+        summary = build_recommendation_summary(
+            [_finding("img_0.png", severity=Severity.HIGH)],
+            _context(),
+        )
+        before = summary.to_dict()
+
+        render_recommendation_summary_markdown(summary)
+
+        self.assertEqual(summary.to_dict(), before)
 
     def test_summary_files_are_written(self) -> None:
         summary = build_recommendation_summary([], _context())
