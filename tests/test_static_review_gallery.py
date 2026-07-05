@@ -110,12 +110,17 @@ class StaticReviewGalleryTests(unittest.TestCase):
             )
 
         self.assertIn("<h1>Dataset Forge Review Gallery</h1>", html)
+        self.assertIn("<h2>Dataset Summary</h2>", html)
         self.assertIn("<h2>Priority Review</h2>", html)
         self.assertIn("<h2>Needs Review</h2>", html)
-        self.assertIn("Recommendations are review priorities.", html)
-        self.assertIn("Source images were not modified.", html)
         self.assertIn(
-            "Ready for Training is not a guarantee of artifact-free images.",
+            "Recommendations are based only on current deterministic findings.",
+            html,
+        )
+        self.assertIn("Ready for Training means no current findings were emitted.", html)
+        self.assertIn("Dataset Forge never modifies source images.", html)
+        self.assertIn(
+            "It does not guarantee the image is artifact-free.",
             html,
         )
 
@@ -142,6 +147,9 @@ class StaticReviewGalleryTests(unittest.TestCase):
         self.assertIn("artifact.texture", html)
         self.assertIn("HIGH", html)
         self.assertIn("texture_analyzer/v1", html)
+        self.assertIn("<strong>Finding categories:</strong>", html)
+        self.assertIn("<strong>Finding count:</strong> 1", html)
+        self.assertIn("<strong>Analyzer:</strong>", html)
 
     def test_contains_no_action_or_app_controls(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -153,6 +161,9 @@ class StaticReviewGalleryTests(unittest.TestCase):
 
         for forbidden in ("delete", "remove", "exclude", "repair", "export"):
             self.assertNotIn(forbidden, lowered)
+        self.assertNotIn("reject", lowered)
+        self.assertNotIn("confidence", lowered)
+        self.assertNotIn("%", lowered)
         for forbidden in ("<button", "checkbox", "<form", "<script"):
             self.assertNotIn(forbidden, lowered)
         for forbidden in ("react", "vue", "svelte", "cdn.", "http://", "https://"):

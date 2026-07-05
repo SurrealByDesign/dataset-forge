@@ -205,8 +205,11 @@ The static gallery:
 
 - is generated from `inspection_report.json` and `recommendation_summary.json`
 - shows Recommendation Summary counts
+- shows most common finding categories
 - shows Priority Review and Needs Review image cards
 - summarizes Ready for Training images without listing every image
+- explains each review card with recommendation label, primary reason, finding
+  categories, severity, analyzer names, and finding count
 - includes advisory wording that recommendations are review priorities, source
   images were not modified, and Ready for Training is not a guarantee of
   artifact-free images
@@ -252,10 +255,14 @@ The JSON sidecars remain the source of truth.
 ```
 # Dataset Recommendation Summary
 
+## Dataset Summary
+
 - Images inspected: 100
 - Ready for Training: 81
 - Needs Review: 16
 - Priority Review: 3
+- Most common finding categories:
+  - artifact.high_frequency_isolated: 6
 
 # Recommended Review Order
 
@@ -263,19 +270,53 @@ The JSON sidecars remain the source of truth.
 
 ### artifact.high_frequency_isolated
 
-- Filename: `image_023.png`
-  - Recommendation: Priority Review
-  - Primary reason: High-severity finding detected.
-  - Finding references: artifact.high_frequency_isolated from high_frequency_isolated_artifact_analyzer/v1 (HIGH)
+---
+
+#### image_023.png
+
+Recommendation:
+Priority Review
+
+Primary reason:
+High-severity finding detected.
+
+Finding categories:
+- artifact.high_frequency_isolated
+
+Analyzer:
+- high_frequency_isolated_artifact_analyzer/v1
+
+Severity:
+HIGH
+
+Finding count:
+1
 
 ## Needs Review
 
 ### artifact.oversharpening_halo
 
-- Filename: `image_041.png`
-  - Recommendation: Needs Review
-  - Primary reason: Measurable finding detected.
-  - Finding references: artifact.oversharpening_halo from oversharpening_halo_analyzer/v1 (MEDIUM)
+---
+
+#### image_041.png
+
+Recommendation:
+Needs Review
+
+Primary reason:
+Measurable finding detected.
+
+Finding categories:
+- artifact.oversharpening_halo
+
+Analyzer:
+- oversharpening_halo_analyzer/v1
+
+Severity:
+MEDIUM
+
+Finding count:
+1
 
 # Ready for Training
 
@@ -285,6 +326,8 @@ The JSON sidecars remain the source of truth.
 
 Ready for Training means Dataset Forge emitted no current findings requiring
 review.
+
+Recommendations are based only on current deterministic findings.
 
 It does not guarantee the image is artifact-free.
 
@@ -303,6 +346,11 @@ After review, decide whether each image belongs in your training dataset.
 
 The Markdown report does not list every Ready for Training image. It is a review
 order document, not a gallery or an action system.
+
+Each Priority Review and Needs Review item explains why it appears in the
+review order using existing finding references only: primary reason, finding
+categories, severity, analyzer names, and finding count. It does not add
+scores, confidence tiers, validation coupling, or new recommendation logic.
 
 ---
 

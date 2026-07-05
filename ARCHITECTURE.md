@@ -5,7 +5,7 @@
 
 ---
 
-## v0.11.0-alpha Inspect Pipeline
+## v0.12.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -20,7 +20,7 @@ current report stage also includes additive post-inspection sections:
 Aggregation, Dataset Summary, Review Queue, Recommendation Summary sidecars,
 an optional static review gallery, and optional recommendation contact sheets.
 Cleanup, repair, regeneration, export, interactive UI, and plugins are future
-work and are not part of v0.11.0-alpha.
+work and are not part of v0.12.0-alpha.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
 should help users decide which images are ready to train, which need review,
@@ -134,7 +134,7 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.11.0-alpha outputs:
+v0.12.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `recommendation_summary.json`  --  machine-readable advisory review priorities
@@ -407,6 +407,13 @@ Training images do not get contact sheets by default. The sheets use fixed
 thumbnail sizing, Recommendation Summary ordering, and at most the first 100
 images per sheet.
 
+v0.12 improves explainability in `recommendation_summary.md` and
+`review_gallery.html` only. Each Priority Review and Needs Review item shows
+the existing recommendation label, primary reason, finding categories, severity,
+analyzer names, and finding count. It does not add new analysis, confidence
+tiers, scores, schemas, review state, validation coupling, or recommendation
+rules.
+
 ---
 
 ## Why Dataset Forge does not repair images yet
@@ -422,25 +429,25 @@ decision layer must be trustworthy first.
 
 ---
 
-## Future-Only / Not Implemented in v0.11.0-alpha
+## Future-Only / Not Implemented in v0.12.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.11.0-alpha inspect release. They should not be modified, expanded, or
+v0.12.0-alpha inspect release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.11.0-alpha |
-| `plugins/` | Future only; not public in v0.11.0-alpha |
-| `execution/` | Future only; not public in v0.11.0-alpha |
-| `transforms/` | Future only; not public in v0.11.0-alpha |
-| `exporters/` | Future only; not public in v0.11.0-alpha |
-| `review/` | Future only; not public in v0.11.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.11.0-alpha |
+| `cleanup/` | Future only; not public in v0.12.0-alpha |
+| `plugins/` | Future only; not public in v0.12.0-alpha |
+| `execution/` | Future only; not public in v0.12.0-alpha |
+| `transforms/` | Future only; not public in v0.12.0-alpha |
+| `exporters/` | Future only; not public in v0.12.0-alpha |
+| `review/` | Future only; not public in v0.12.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.12.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.11.0-alpha CLI or report behavior.
+v0.12.0-alpha CLI or report behavior.
 
 ---
 
@@ -629,7 +636,7 @@ When an analyzer is uncalibrated:
 ### Archived Future Repair Research (not current roadmap)
 
 > This section is an archived design note, not the current roadmap. Dataset
-> Forge v0.11.0-alpha does not expose cleanup, repair planning, repair,
+> Forge v0.12.0-alpha does not expose cleanup, repair planning, repair,
 > regeneration, or export commands. Repair, cleanup, and export should not be
 > reconsidered until decision guidance is reliable on labeled real-world data.
 
@@ -695,7 +702,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Archived Batch Exclusion and Export Research (future only)
 
 > This section describes a possible non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.11.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.12.0-alpha should be designed around
 > it or expose it through the public CLI. Export is not an assumed next step.
 
 ---

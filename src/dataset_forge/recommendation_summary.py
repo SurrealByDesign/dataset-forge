@@ -200,14 +200,20 @@ def render_recommendation_summary_markdown(summary: RecommendationSummary) -> st
     lines = [
         "# Dataset Recommendation Summary",
         "",
+        "## Dataset Summary",
+        "",
         f"- Images inspected: {summary.image_count}",
         f"- Ready for Training: {summary.ready_for_training_count}",
         f"- Needs Review: {summary.needs_review_count}",
         f"- Priority Review: {summary.priority_review_count}",
+        "- Most common finding categories:",
+    ]
+    lines.extend(_markdown_common_categories(summary))
+    lines.extend([
         "",
         "# Recommended Review Order",
         "",
-    ]
+    ])
     lines.extend(_markdown_review_group(summary, PRIORITY_REVIEW))
     lines.extend(_markdown_review_group(summary, NEEDS_REVIEW))
     lines.extend([
@@ -225,6 +231,8 @@ def render_recommendation_summary_markdown(summary: RecommendationSummary) -> st
             "Ready for Training means Dataset Forge emitted no current findings "
             "requiring review."
         ),
+        "",
+        "Recommendations are based only on current deterministic findings.",
         "",
         "It does not guarantee the image is artifact-free.",
         "",
@@ -263,19 +271,54 @@ def _markdown_review_group(
     for family, family_items in _group_by_artifact_family(items):
         lines.extend([f"### {family}", ""])
         for item in family_items:
-            lines.append(f"- Filename: `{Path(item.image_path).name}`")
-            lines.append(f"  - Recommendation: {item.display_label}")
-            lines.append(f"  - Primary reason: {item.primary_reason}")
-            if item.finding_refs:
-                refs = "; ".join(
-                    f"{ref.category} from {ref.analyzer} ({ref.severity})"
-                    for ref in item.finding_refs
-                )
-                lines.append(f"  - Finding references: {refs}")
-            else:
-                lines.append("  - Finding references: none")
+            lines.extend(_markdown_explanation_item(item))
         lines.append("")
     lines.append("")
+    return lines
+
+
+def _markdown_common_categories(summary: RecommendationSummary) -> list[str]:
+    counts = _category_counts(summary)
+    if not counts:
+        return ["  - none"]
+    return [
+        f"  - {category}: {count}"
+        for category, count in counts[:5]
+    ]
+
+
+def _markdown_explanation_item(item: ImageRecommendation) -> list[str]:
+    categories = _ref_values(item, "category")
+    analyzers = _ref_values(item, "analyzer")
+    severities = _ref_values(item, "severity")
+    lines = [
+        "---",
+        "",
+        f"#### {Path(item.image_path).name}",
+        "",
+        "Recommendation:",
+        f"{item.display_label}",
+        "",
+        "Primary reason:",
+        f"{item.primary_reason}",
+        "",
+        "Finding categories:",
+    ]
+    lines.extend(f"- {category}" for category in categories)
+    lines.extend([
+        "",
+        "Analyzer:",
+    ])
+    lines.extend(f"- {analyzer}" for analyzer in analyzers)
+    lines.extend([
+        "",
+        "Severity:",
+        "; ".join(severities),
+        "",
+        "Finding count:",
+        str(len(item.finding_refs)),
+        "",
+    ])
     return lines
 
 
@@ -300,6 +343,23 @@ def _artifact_family_label(item: ImageRecommendation) -> str:
     if len(categories) > 1:
         return "Multiple artifact families"
     return categories[0]
+
+
+def _category_counts(summary: RecommendationSummary) -> list[tuple[str, int]]:
+    counts: dict[str, int] = {}
+    for item in summary.recommendations:
+        for ref in item.finding_refs:
+            counts[ref.category] = counts.get(ref.category, 0) + 1
+    return sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))
+
+
+def _ref_values(item: ImageRecommendation, field: str) -> list[str]:
+    values: list[str] = []
+    for ref in item.finding_refs:
+        value = getattr(ref, field)
+        if value not in values:
+            values.append(value)
+    return values or ["none"]
 
 
 def _image_word(count: int) -> str:

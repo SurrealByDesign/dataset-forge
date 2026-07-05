@@ -272,7 +272,38 @@ Constraints:
 
 ---
 
-## v0.12: Recommendation Validation
+### v0.12.0-alpha: Explainable Recommendations
+
+**Status:** Released.
+
+v0.12 improves presentation only for existing recommendation outputs:
+
+- `recommendation_summary.md`
+- `review_gallery.html`
+
+It makes each Priority Review and Needs Review item answer "why is this image
+here?" using existing recommendation and finding references:
+
+- recommendation
+- primary reason
+- finding categories
+- severity
+- analyzer names
+- finding count
+
+Constraints:
+
+- No recommendation rule changes.
+- No `recommendation_summary.json` schema changes.
+- No `inspection_report.json` schema changes.
+- No analyzer behavior changes.
+- No contact sheet behavior changes.
+- No review decisions, validation coupling, cleanup, repair, export, web app,
+  browser state, confidence tiers, quality scores, or new commands.
+
+---
+
+## v0.13: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
 

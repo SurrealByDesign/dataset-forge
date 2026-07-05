@@ -57,18 +57,26 @@ def render_static_review_gallery(
     if dataset_path:
         lines.append(f"<p>Dataset: <code>{escape(dataset_path)}</code></p>")
     lines.extend([
-        '<section class="counts" aria-label="Recommendation counts">',
+        '<section class="dataset-summary" aria-label="Dataset Summary">',
+        "<h2>Dataset Summary</h2>",
+        '<div class="counts">',
         _count("Ready for Training", ready_count),
         _count("Needs Review", int(summary.get("needs_review_count", 0))),
         _count("Priority Review", int(summary.get("priority_review_count", 0))),
+        _count("Images inspected", int(summary.get("image_count", 0))),
+        "</div>",
+        "<h3>Most common finding categories</h3>",
+        "<ul>",
+        *_common_category_lines(recommendations),
+        "</ul>",
         "</section>",
         '<section class="note">',
-        "<p>Recommendations are review priorities.</p>",
-        "<p>Source images were not modified.</p>",
+        "<p>Recommendations are based only on current deterministic findings.</p>",
+        "<p>Ready for Training means no current findings were emitted.</p>",
         (
-            "<p>Ready for Training is not a guarantee of artifact-free "
-            "images.</p>"
+            "<p>It does not guarantee the image is artifact-free.</p>"
         ),
+        "<p>Dataset Forge never modifies source images.</p>",
         "</section>",
         "</header>",
     ])
@@ -114,9 +122,11 @@ def _section(
 def _card(item: Mapping[str, Any]) -> list[str]:
     image_path = str(item.get("image_path", ""))
     refs = list(item.get("finding_refs", []))
-    primary_ref = refs[0] if refs else {}
     filename = Path(image_path).name or image_path
     image_src = _image_src(image_path)
+    categories = _ref_values(refs, "category")
+    analyzers = _ref_values(refs, "analyzer")
+    severities = _ref_values(refs, "severity")
     return [
         '<article class="card">',
         f'<img src="{escape(image_src)}" alt="{escape(filename)}">',
@@ -125,11 +135,12 @@ def _card(item: Mapping[str, Any]) -> list[str]:
         f"<p><strong>Recommendation:</strong> {escape(str(item.get('display_label', '')))}</p>",
         f"<p><strong>Primary reason:</strong> {escape(str(item.get('primary_reason', '')))}</p>",
         (
-            "<p><strong>Finding category:</strong> "
-            f"{escape(str(primary_ref.get('category', 'none')))}</p>"
+            "<p><strong>Finding categories:</strong> "
+            f"{escape('; '.join(categories))}</p>"
         ),
-        f"<p><strong>Severity:</strong> {escape(str(primary_ref.get('severity', 'none')))}</p>",
-        f"<p><strong>Analyzer:</strong> {escape(str(primary_ref.get('analyzer', 'none')))}</p>",
+        f"<p><strong>Severity:</strong> {escape('; '.join(severities))}</p>",
+        f"<p><strong>Analyzer:</strong> {escape('; '.join(analyzers))}</p>",
+        f"<p><strong>Finding count:</strong> {len(refs)}</p>",
         "</div>",
         "</article>",
     ]
@@ -152,6 +163,30 @@ def _image_src(image_path: str) -> str:
 
 def _image_word(count: int) -> str:
     return "image" if count == 1 else "images"
+
+
+def _common_category_lines(recommendations: list[Mapping[str, Any]]) -> list[str]:
+    counts: dict[str, int] = {}
+    for item in recommendations:
+        for ref in item.get("finding_refs", []):
+            category = str(ref.get("category", ""))
+            if category:
+                counts[category] = counts.get(category, 0) + 1
+    if not counts:
+        return ["<li>none</li>"]
+    return [
+        f"<li>{escape(category)}: {count}</li>"
+        for category, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))[:5]
+    ]
+
+
+def _ref_values(refs: list[Mapping[str, Any]], field: str) -> list[str]:
+    values: list[str] = []
+    for ref in refs:
+        value = str(ref.get(field, ""))
+        if value and value not in values:
+            values.append(value)
+    return values or ["none"]
 
 
 def _css() -> str:
@@ -204,6 +239,7 @@ code {
 .count,
 .note,
 .card,
+.dataset-summary,
 .ready-summary {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -222,10 +258,12 @@ code {
   margin-top: 6px;
 }
 .note,
+.dataset-summary,
 .ready-summary {
   padding: 16px;
 }
 .note p:last-child,
+.dataset-summary ul,
 .ready-summary p:last-child,
 .card p:last-child {
   margin-bottom: 0;
@@ -263,7 +301,7 @@ code {
     grid-template-columns: 1fr;
   }
   .card img {
-    width: 100%;
+    width: auto;
     height: auto;
     max-height: 240px;
   }

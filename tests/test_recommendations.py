@@ -299,10 +299,12 @@ class RecommendationContractTests(unittest.TestCase):
         markdown = render_recommendation_summary_markdown(summary)
 
         self.assertIn("# Dataset Recommendation Summary", markdown)
+        self.assertIn("## Dataset Summary", markdown)
         self.assertIn("- Images inspected: 4", markdown)
         self.assertIn("- Ready for Training: 2", markdown)
         self.assertIn("- Needs Review: 1", markdown)
         self.assertIn("- Priority Review: 1", markdown)
+        self.assertIn("- Most common finding categories:", markdown)
         self.assertIn("# Recommended Review Order", markdown)
         self.assertLess(
             markdown.index("## Priority Review"),
@@ -314,6 +316,10 @@ class RecommendationContractTests(unittest.TestCase):
         )
         self.assertIn("# Important Notes", markdown)
         self.assertIn("# Next Step", markdown)
+        self.assertIn(
+            "Recommendations are based only on current deterministic findings.",
+            markdown,
+        )
         self.assertIn("does not guarantee the image is artifact-free", markdown)
 
     def test_markdown_groups_review_images_by_artifact_family(self) -> None:
@@ -345,10 +351,13 @@ class RecommendationContractTests(unittest.TestCase):
         self.assertIn("### Analyzer errors", markdown)
         self.assertIn("### artifact.high_frequency_isolated", markdown)
         self.assertIn("### artifact.oversharpening_halo", markdown)
-        self.assertIn("- Filename: `img_0.png`", markdown)
-        self.assertIn("  - Recommendation: Priority Review", markdown)
-        self.assertIn("  - Primary reason: Dataset Forge could not inspect", markdown)
-        self.assertIn("  - Finding references: texture.error from texture_analyzer/v1", markdown)
+        self.assertIn("#### img_0.png", markdown)
+        self.assertIn("Recommendation:\nPriority Review", markdown)
+        self.assertIn("Primary reason:\nDataset Forge could not inspect", markdown)
+        self.assertIn("Finding categories:\n- texture.error", markdown)
+        self.assertIn("Analyzer:\n- texture_analyzer/v1", markdown)
+        self.assertIn("Severity:\nLOW", markdown)
+        self.assertIn("Finding count:\n1", markdown)
 
     def test_markdown_uses_stable_group_and_image_ordering(self) -> None:
         summary = build_recommendation_summary(
@@ -386,8 +395,8 @@ class RecommendationContractTests(unittest.TestCase):
             markdown.index("## Needs Review"),
         )
         self.assertLess(
-            markdown.index("- Filename: `img_0.png`"),
-            markdown.index("- Filename: `img_2.png`"),
+            markdown.index("#### img_0.png"),
+            markdown.index("#### img_2.png"),
         )
 
     def test_markdown_summarizes_ready_images_without_listing_each_one(self) -> None:
@@ -399,8 +408,8 @@ class RecommendationContractTests(unittest.TestCase):
             "4 images emitted no current findings requiring review.",
             markdown,
         )
-        self.assertNotIn("- Filename: `img_0.png`", markdown)
-        self.assertNotIn("- Filename: `img_1.png`", markdown)
+        self.assertNotIn("#### img_0.png", markdown)
+        self.assertNotIn("#### img_1.png", markdown)
 
     def test_markdown_uses_singular_image_word_for_one_ready_image(self) -> None:
         summary = build_recommendation_summary(
@@ -461,6 +470,66 @@ class RecommendationContractTests(unittest.TestCase):
         render_recommendation_summary_markdown(summary)
 
         self.assertEqual(summary.to_dict(), before)
+
+    def test_rendering_markdown_preserves_json_bytes(self) -> None:
+        summary = build_recommendation_summary(
+            [_finding("img_0.png", severity=Severity.HIGH)],
+            _context(),
+        )
+        before = json.dumps(summary.to_dict(), indent=2, ensure_ascii=False)
+
+        render_recommendation_summary_markdown(summary)
+
+        after = json.dumps(summary.to_dict(), indent=2, ensure_ascii=False)
+        self.assertEqual(after, before)
+
+    def test_recommendation_engine_outputs_same_v011_recommendations(self) -> None:
+        summary = build_recommendation_summary(
+            [
+                _finding("img_0.png", category="texture.error"),
+                _finding("img_1.png", severity=Severity.HIGH),
+                _finding("img_2.png", severity=Severity.MEDIUM),
+            ],
+            _context(),
+        ).to_dict()
+
+        self.assertEqual(
+            [
+                (
+                    Path(item["image_path"]).name,
+                    item["recommendation"],
+                    item["primary_reason"],
+                    item["reason_codes"],
+                )
+                for item in summary["recommendations"]
+            ],
+            [
+                (
+                    "img_0.png",
+                    PRIORITY_REVIEW,
+                    "Dataset Forge could not inspect this image reliably.",
+                    ["analyzer_error"],
+                ),
+                (
+                    "img_1.png",
+                    PRIORITY_REVIEW,
+                    "High-severity finding detected.",
+                    ["finding.high_severity"],
+                ),
+                (
+                    "img_2.png",
+                    NEEDS_REVIEW,
+                    "Measurable finding detected.",
+                    ["finding.present"],
+                ),
+                (
+                    "img_3.png",
+                    READY_FOR_TRAINING,
+                    "No findings were emitted for this image.",
+                    ["no_findings"],
+                ),
+            ],
+        )
 
     def test_summary_files_are_written(self) -> None:
         summary = build_recommendation_summary([], _context())

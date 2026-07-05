@@ -1,18 +1,20 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-05. Reflects v0.11.0-alpha.*
+*Last updated: 2026-07-05. Reflects v0.12.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.11.0-alpha** implements the inspect-only foundation for a
+**Dataset Forge v0.12.0-alpha** implements the inspect-only foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
 changing recommendation rules or JSON output. v0.10 adds an optional static
 `review_gallery.html` generated from existing sidecars. v0.11 adds optional
-recommendation contact sheets generated from the same sidecars.
+recommendation contact sheets generated from the same sidecars. v0.12 improves
+Markdown and HTML recommendation explainability without changing rules or
+schemas.
 
 Current public behavior remains inspect-only:
 
@@ -20,7 +22,7 @@ Current public behavior remains inspect-only:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.11.0-alpha:
+Supported in v0.12.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Recommendation Summary sidecars (`recommendation_summary.json`,
@@ -54,6 +56,8 @@ Supported in v0.11.0-alpha:
 - Present `recommendation_summary.md` as a human-facing review report:
   Priority Review first, then Needs Review, with Ready for Training summarized
   instead of listed image-by-image
+- Show explanation fields in Markdown and HTML review outputs: primary reason,
+  finding categories, severity, analyzer names, and finding count
 - Print concise aggregate recommendation counts after inspect
 - No public recommendation command
 - No embedding Recommendation Summary into `inspection_report.json`
@@ -62,7 +66,7 @@ Supported in v0.11.0-alpha:
 - No public CLI command expansion
 - No cleanup, repair planning, repair, export, web app, plugins, or new analyzers
 
-Not supported in v0.11.0-alpha (planned for later releases):
+Not supported in v0.12.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Repair (future)
@@ -77,7 +81,7 @@ Not supported in v0.11.0-alpha (planned for later releases):
 
 ## Test suite
 
-**897 tests passing, 1 skipped.**
+**899 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.
@@ -170,7 +174,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.11.0-alpha):
+**Public tools** (documented, supported in v0.12.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -231,6 +235,11 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
   for Training sheets by default, and do not change recommendation rules,
   `recommendation_summary.json`, inspect schema, analyzer behavior, or CLI
   command surface.
+- v0.12 changes presentation only. Recommendation Markdown and Static Review
+  Gallery now expose the existing primary reason, finding categories, severity,
+  analyzer names, and finding count more clearly. Recommendation rules,
+  recommendation JSON, inspect schema, analyzer behavior, contact sheets,
+  validation, and review decisions are unchanged.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement

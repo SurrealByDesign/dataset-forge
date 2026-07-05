@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.12.0-alpha
+
+- Improved `recommendation_summary.md` and `review_gallery.html` explainability.
+- Added visible recommendation explanations using existing finding references:
+  primary reason, finding categories, severity, analyzer names, and finding
+  count.
+- Added Dataset Summary blocks with counts and most common finding categories.
+- Kept recommendation rules, `recommendation_summary.json`,
+  `inspection_report.json`, analyzer behavior, validation, review decisions,
+  contact sheets, cleanup, repair, export, schemas, and public CLI command
+  surface unchanged.
+
 ## v0.11.0-alpha
 
 - Added optional `dataset-forge inspect --contact-sheets` output.
