@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.7.0-alpha
+
+- Added an internal Recommendation Summary layer with schema
+  `dataset-forge/recommendation-summary/v1`.
+- Added the deliberately small four-rule engine for Ready for Training,
+  Needs Review, and Priority Review guidance over existing findings only.
+- Kept CLI behavior, inspect output, analyzer behavior, confidence handling,
+  validation coupling, review-decision coupling, repair, cleanup, export,
+  plugins, UI, and analyzer set unchanged.
+
 ## v0.6.0-alpha
 
 - Added the internal Real-World Validation Corpus framework for organizing

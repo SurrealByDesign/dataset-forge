@@ -1,15 +1,15 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-04. Reflects v0.6.0-alpha.*
+*Last updated: 2026-07-04. Reflects v0.7.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.6.0-alpha** implements the inspect-only foundation for a
+**Dataset Forge v0.7.0-alpha** implements the inspect-only foundation for a
 LoRA Dataset Decision Engine. The product direction is to help users decide
-which images are ready to train, which need review, and which should be
-excluded from training.
+which images are ready to train, which need review, and which deserve priority
+review before training.
 
 Current public behavior remains inspect-only:
 
@@ -17,7 +17,7 @@ Current public behavior remains inspect-only:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.6.0-alpha:
+Supported in v0.7.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Optional gallery PNG (`--gallery`)
@@ -38,12 +38,17 @@ Supported in v0.6.0-alpha:
   validation datasets
 - Validate corpus manifests, label compatibility, committed fixture paths, and
   optional private/local fixture skipping
-- No public Ready / Review / Exclude-from-training recommendation layer yet
+- Internal Recommendation Summary layer over existing findings only
+- Emit schema-versioned Ready for Training / Needs Review / Priority Review
+  summaries for internal consumers
+- No public recommendation command
+- No inspect report wiring for Recommendation Summary
+- No validation, calibration, or Review Decisions coupling for Recommendation Summary
 - No analyzer threshold changes
 - No public CLI expansion
 - No cleanup, repair planning, repair, export, UI, plugins, or new analyzers
 
-Not supported in v0.6.0-alpha (planned for later releases):
+Not supported in v0.7.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Repair (future)
@@ -57,7 +62,7 @@ Not supported in v0.6.0-alpha (planned for later releases):
 
 ## Test suite
 
-**844 tests passing, 1 skipped.**
+**861 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.
@@ -65,7 +70,8 @@ review-decision/validation/corpus helpers.
 Covers: Finding, DatasetContext, Analyzer contracts, report writers, CLI,
 inspect runner, gallery, benchmark framework, committed fixtures,
 post-inspection review guidance, calibration evidence, review decisions, and
-validation dossiers, real-world corpus validation, and public CLI surface.
+validation dossiers, real-world corpus validation, internal recommendation
+summaries, and public CLI surface.
 
 ```
 uv run pytest tests/
@@ -86,6 +92,7 @@ uv run pytest tests/
 | Review Decisions | `src/dataset_forge/review_decisions.py` | Internal human-intent model over images/findings |
 | Validation Dossiers | `src/dataset_forge/validation_dossier.py` | Internal reliability summaries over reports, labels, and review decisions |
 | Real-World Validation Corpus | `src/dataset_forge/real_world_corpus.py`; `benchmarks/real_world/` | Internal corpus methodology and manifest validation |
+| Recommendation Summary | `src/dataset_forge/recommendation_summary.py` | Internal/additive four-rule guidance over existing findings |
 | `Finding` dataclass | `src/dataset_forge/finding.py` | Done |
 | `DatasetContext` dataclass | `src/dataset_forge/context.py` | Done |
 | `Analyzer` base class | `src/dataset_forge/analyzers/base.py` | Done |
@@ -146,7 +153,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.6.0-alpha):
+**Public tools** (documented, supported in v0.7.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -194,8 +201,13 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 - Dataset Summary and Review Queue are advisory only. They organize existing
   findings for human review; they do not reject, regenerate, repair, export, or
   modify images.
-- Public recommendations are not implemented yet. v0.6 does not emit formal
-  Ready / Needs Review / Exclude-from-training decisions.
+- Public recommendations are not implemented yet. v0.7 includes an internal
+  Recommendation Summary helper, but `inspect` does not write recommendation
+  output and no public recommendation command exists.
+- Recommendation Summary deliberately uses only four rules: analyzer error,
+  HIGH/CRITICAL severity, multiple categories, and any other finding. It does
+  not read images, run analyzers, generate evidence, use numeric scores, or
+  consume Review Decisions, Calibration Evidence, or Validation Dossiers.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement
@@ -209,9 +221,8 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-1. **Design and implement the v0.7 decision/recommendation UX** -- turn existing
-   findings, Dataset Summary, and Review Queue into advisory Ready / Needs
-   Review / Priority Review or Exclude-from-training-candidate guidance.
+1. **Decide whether and how to expose Recommendation Summary publicly** -- keep
+   the v0.7 four-rule behavior unless validation supports stronger guidance.
 
 2. **Populate the Real-World Validation Corpus with legally safe labeled data** --
    add public-domain/CC0 or otherwise redistributable real-world examples, labels,

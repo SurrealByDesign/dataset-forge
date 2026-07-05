@@ -11,7 +11,7 @@ train, which need review, and which should be excluded from training. Every
 recommendation must be grounded in deterministic analysis, measurable evidence,
 and explainable findings.
 
-Everything after v0.6 should improve one of:
+Everything after v0.7 should improve one of:
 
 - decision quality
 - confidence communication
@@ -127,30 +127,32 @@ implement recommendations, or expand the public CLI.
 
 ---
 
-## v0.7: Recommendation / Decision Summary Layer
+### v0.7.0-alpha: Internal Recommendation Summary
 
-**Goal:** Turn existing findings, Dataset Summary, and Review Queue into
-advisory training-set guidance.
+**Status:** Released.
 
-Proposed decision language:
+Recommendation Summary adds an internal, additive
+`dataset-forge/recommendation-summary/v1` schema over existing findings and
+DatasetContext image paths.
 
-- **Ready to train** -- no concerning findings.
-- **Needs review** -- evidence suggests a human should inspect before training.
-- **Priority review / exclude-from-training candidate** -- stronger or multiple
-  findings suggest the image may not belong in the training set unless the
-  artifact is intentional.
+It uses exactly four deterministic rules:
+
+- analyzer error -> **Priority Review**
+- HIGH or CRITICAL finding -> **Priority Review**
+- findings from multiple categories -> **Priority Review**
+- any other finding -> **Needs Review**
+- no findings -> **Ready for Training**
 
 Constraints:
 
-- No deletion.
-- No repair.
-- No cleanup.
-- No export.
-- No image modification.
-- Exclusion is not deletion.
-- Recommendations must cite underlying findings and evidence.
-- Uncalibrated signals must be labeled clearly.
-- Existing report fields remain backward-compatible.
+- Internal/additive only.
+- No public recommendation command.
+- No inspect report wiring.
+- No deletion, repair, cleanup, export, or image modification.
+- No validation, calibration, or Review Decisions coupling.
+- No numeric quality scores or serialized priority fields.
+- Recommendations cite existing findings only.
+- Existing report fields remain unchanged.
 
 ---
 
