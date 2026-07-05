@@ -111,19 +111,31 @@ class ReviewDecisionSet:
         self,
         image_path: str | Path,
         category: str | None = None,
+        analyzer: str | None = None,
     ) -> ReviewDecision | None:
         image = _normalize_path(str(image_path))
         by_scope = _decisions_by_scope(self.decisions)
         if category is not None:
-            exact = by_scope.get((image, category))
+            exact = by_scope.get((image, category, analyzer))
             if exact is not None:
                 return exact
-        return by_scope.get((image, None))
+            if analyzer is None:
+                category_matches = [
+                    decision for decision in self.decisions
+                    if decision.image_path == image and decision.category == category
+                ]
+                if category_matches:
+                    return sorted(category_matches, key=_decision_sort_key)[0]
+            exact_without_analyzer = by_scope.get((image, category, None))
+            if exact_without_analyzer is not None:
+                return exact_without_analyzer
+        return by_scope.get((image, None, None))
 
     def decision_for_finding(self, finding: Any) -> ReviewDecision | None:
         image_path = _value_from_finding(finding, "image_path")
         category = _value_from_finding(finding, "category")
-        return self.decision_for(image_path, category)
+        analyzer = _optional_value_from_finding(finding, "analyzer")
+        return self.decision_for(image_path, category, analyzer)
 
     def is_image_locked(self, image_path: str | Path) -> bool:
         image = _normalize_path(str(image_path))
@@ -186,20 +198,20 @@ def parse_review_decisions(data: dict[str, Any]) -> ReviewDecisionSet:
     if not isinstance(raw_decisions, list):
         raise ValueError("review decisions must contain a 'decisions' list")
 
-    seen: set[tuple[str, str | None]] = set()
+    seen: set[tuple[str, str | None, str | None]] = set()
     decisions: list[ReviewDecision] = []
     for raw in raw_decisions:
         if not isinstance(raw, dict):
             raise ValueError("each review decision must be an object")
         _reject_unknown_fields(raw, _DECISION_FIELDS, "review decision")
         decision = _parse_decision(raw)
-        scope = (decision.image_path, decision.category)
+        scope = (decision.image_path, decision.category, decision.analyzer)
         if scope in seen:
             if decision.category is None:
                 raise ValueError(f"duplicate review decision for image: {decision.image_path}")
             raise ValueError(
-                "duplicate review decision for image/category: "
-                f"{decision.image_path} / {decision.category}"
+                "duplicate review decision for image/category/analyzer: "
+                f"{decision.image_path} / {decision.category} / {decision.analyzer}"
             )
         seen.add(scope)
         decisions.append(decision)
@@ -290,9 +302,9 @@ def _parse_decision(raw: dict[str, Any]) -> ReviewDecision:
 
 def _decisions_by_scope(
     decisions: tuple[ReviewDecision, ...],
-) -> dict[tuple[str, str | None], ReviewDecision]:
+) -> dict[tuple[str, str | None, str | None], ReviewDecision]:
     return {
-        (decision.image_path, decision.category): decision
+        (decision.image_path, decision.category, decision.analyzer): decision
         for decision in decisions
     }
 
@@ -326,6 +338,20 @@ def _value_from_finding(finding: Any, field: str) -> str:
         value = finding.get(field)
     else:
         value = getattr(finding, field)
+    if isinstance(value, Path):
+        return str(value)
+    if not isinstance(value, str):
+        raise ValueError(f"finding {field} must be a string")
+    return value
+
+
+def _optional_value_from_finding(finding: Any, field: str) -> str | None:
+    if isinstance(finding, dict):
+        value = finding.get(field)
+    else:
+        value = getattr(finding, field, None)
+    if value is None:
+        return None
     if isinstance(value, Path):
         return str(value)
     if not isinstance(value, str):

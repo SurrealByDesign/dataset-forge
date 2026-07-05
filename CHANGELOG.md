@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.14.0-alpha
+
+- Added optional `dataset-forge review <inspect_output>`.
+- Added a local-only review decision server bound to `127.0.0.1`.
+- The review server reads existing inspect sidecars and writes only
+  `review_decisions.json` using the existing
+  `dataset-forge/review-decisions/v1` schema.
+- Existing review decisions are loaded, same image/category/analyzer scopes are
+  updated, unrelated decisions are preserved, and duplicate scopes are rejected.
+- Kept recommendation rules, `recommendation_summary.json`,
+  `inspection_report.json`, analyzer behavior, contact sheets, static gallery,
+  cleanup, repair, export, schemas, and source images unchanged.
+
 ## v0.13.0-alpha
 
 - Added persistent human review-decision sidecars to inspect runs.

@@ -328,7 +328,33 @@ Constraints:
 
 ---
 
-## v0.14 Candidate: Recommendation Validation
+### v0.14.0-alpha: Local Review Decision Server
+
+**Status:** Released.
+
+v0.14 makes review decisions usable without hand-editing JSON:
+
+- `dataset-forge review <inspect_output>`
+- Localhost-only server bound to `127.0.0.1`
+- Reads existing `inspection_report.json`, `recommendation_summary.json`, and
+  optional `review_decisions.json`
+- Writes only `review_decisions.json`
+- Uses the existing `dataset-forge/review-decisions/v1` schema and decision
+  values
+
+Constraints:
+
+- No recommendation rule changes.
+- No `recommendation_summary.json` schema changes.
+- No `inspection_report.json` schema changes.
+- No analyzer behavior changes.
+- No contact sheet or static gallery behavior changes.
+- No cleanup, repair, export, source image mutation, database, login, cloud,
+  frontend framework, build step, or hidden browser state.
+
+---
+
+## v0.15 Candidate: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
 

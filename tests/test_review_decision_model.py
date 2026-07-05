@@ -113,11 +113,33 @@ class ReviewDecisionParsingTests(unittest.TestCase):
         raw["decisions"].append({
             "image_path": "a.png",
             "category": "texture.high_microtexture",
+            "analyzer": "texture_analyzer/v1",
             "decision": "ACCEPTABLE_STYLE",
         })
 
         with self.assertRaises(ValueError):
             parse_review_decisions(raw)
+
+    def test_allows_same_image_category_with_different_analyzer_scope(self) -> None:
+        decisions = parse_review_decisions({
+            "schema": REVIEW_DECISIONS_SCHEMA,
+            "decisions": [
+                {
+                    "image_path": "a.png",
+                    "category": "artifact.shared",
+                    "analyzer": "first_analyzer/v1",
+                    "decision": "CONFIRMED_ARTIFACT",
+                },
+                {
+                    "image_path": "a.png",
+                    "category": "artifact.shared",
+                    "analyzer": "second_analyzer/v1",
+                    "decision": "FALSE_POSITIVE",
+                },
+            ],
+        })
+
+        self.assertEqual(len(decisions.decisions), 2)
 
 
 class ReviewDecisionHelperTests(unittest.TestCase):

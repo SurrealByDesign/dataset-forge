@@ -71,6 +71,36 @@ Report written:
 
 ---
 
+## Review Command
+
+```
+dataset-forge review path/to/dataset/inspect_output/
+```
+
+Expected terminal output:
+
+```
+Dataset Forge Review
+====================
+Inspect output: path/to/dataset/inspect_output
+Serving:        http://127.0.0.1:8765
+Writes only:    review_decisions.json
+Source images and reports will not be modified.
+Press Ctrl+C to stop.
+```
+
+The local review server:
+
+- binds only to `127.0.0.1`
+- reads `inspection_report.json`, `recommendation_summary.json`, and optional
+  `review_decisions.json`
+- writes only `review_decisions.json`
+- does not modify source images, inspection reports, recommendation summaries,
+  static galleries, or contact sheets
+- does not change recommendation rules or analyzer behavior
+
+---
+
 ## JSON Report Structure
 
 ```json

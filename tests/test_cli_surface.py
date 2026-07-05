@@ -23,8 +23,9 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Dataset Forge v0.13.0-alpha", stdout)
+        self.assertIn("Dataset Forge v0.14.0-alpha", stdout)
         self.assertIn("inspect", stdout)
+        self.assertIn("review", stdout)
         self.assertIn("--help", stdout)
         self.assertIn("--version", stdout)
         for hidden in (
@@ -59,7 +60,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 0.13.0a0")
+        self.assertEqual(stdout.strip(), "dataset-forge 0.14.0a0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -78,7 +79,26 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
                 self.assertEqual(exit_code, 2)
                 self.assertEqual(stdout, "")
-                self.assertIn("not part of the public v0.13.0-alpha CLI", stderr)
+                self.assertIn("not part of the public v0.14.0-alpha CLI", stderr)
+
+    def test_review_help_is_local_only_help(self) -> None:
+        exit_code, stdout, stderr = self._run(["review", "--help"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("dataset-forge review", stdout)
+        self.assertIn("review_decisions.json", stdout)
+        self.assertIn("Source images and reports are not modified", stdout)
+        self.assertNotIn("cleanup", stdout.lower())
+        self.assertNotIn("export", stdout.lower())
+
+    def test_review_requires_inspection_sidecars(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            exit_code, stdout, stderr = self._run(["review", tmp, "--port", "0"])
+
+        self.assertEqual(exit_code, 2)
+        self.assertIn("Dataset Forge Review", stdout)
+        self.assertIn("Missing required sidecar", stderr)
 
     def test_inspect_prints_recommendation_summary_counts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

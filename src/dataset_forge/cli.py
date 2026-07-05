@@ -40,6 +40,12 @@ from dataset_forge.discovery import discover_images
 from dataset_forge.analysis.texture import generate_texture_report
 from dataset_forge.analysis.health import generate_health_report
 from dataset_forge.inspect import run_inspect
+from dataset_forge.review_server import (
+    DEFAULT_REVIEW_PORT,
+    LOCAL_REVIEW_HOST,
+    ReviewServerError,
+    serve_review_server,
+)
 
 
 _FUTURE_COMMANDS = {
@@ -79,8 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.13.0-alpha: inspect image datasets and preserve "
-            "read-only human review decisions."
+            "Dataset Forge v0.14.0-alpha: inspect image datasets and record "
+            "local-only human review decisions."
         ),
     )
     parser.add_argument(
@@ -118,6 +124,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--contact-sheets", action="store_true", default=False,
         help="Generate recommendation contact sheet PNGs from recommendation sidecars.",
     )
+    review_parser = commands.add_parser(
+        "review",
+        help="Open a local-only review decision server for an inspect output folder.",
+    )
+    review_parser.add_argument(
+        "inspect_output",
+        type=Path,
+        help="Inspect output folder containing inspection and recommendation sidecars.",
+    )
+    review_parser.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_REVIEW_PORT,
+        help=f"Localhost port to serve. Default: {DEFAULT_REVIEW_PORT}.",
+    )
     return parser
 
 
@@ -142,10 +163,15 @@ def main(argv: list[str] | None = None) -> int:
             return _inspect_main(arguments)
         except SystemExit as exc:
             return int(exc.code or 0)
+    if arguments[0] == "review":
+        try:
+            return _review_main(arguments)
+        except SystemExit as exc:
+            return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.13.0-alpha CLI. "
-            "Use 'dataset-forge inspect', '--help', or '--version'.",
+            "Error: this command is not part of the public v0.14.0-alpha CLI. "
+            "Use 'dataset-forge inspect', 'review', '--help', or '--version'.",
             file=sys.stderr,
         )
         return 2
@@ -388,7 +414,7 @@ def _inspect_main(argv: list[str]) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Read an image dataset and write evidence-backed inspection reports.\n"
-            "v0.13.0-alpha is analysis only: human review decisions are preserved as sidecars.\n"
+            "v0.14.0-alpha is analysis only: review decisions are local sidecars.\n"
             "Pipeline: Dataset -> DatasetContext -> Analyzer -> Finding -> Report"
         ),
     )
@@ -498,6 +524,47 @@ def _inspect_main(argv: list[str]) -> int:
         print(f"  {result.needs_review_contact_sheet}")
     if result.gallery_path:
         print(f"  {result.gallery_path}")
+    return 0
+
+
+def _review_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="dataset-forge review",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Serve a local-only review surface for an inspect output folder.\n"
+            "Writes only review_decisions.json. Source images and reports are not modified."
+        ),
+    )
+    parser.add_argument(
+        "inspect_output",
+        type=Path,
+        help="Inspect output folder containing inspection_report.json and recommendation_summary.json.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_REVIEW_PORT,
+        help=f"Localhost port to serve. Default: {DEFAULT_REVIEW_PORT}.",
+    )
+    args = parser.parse_args(argv[1:])
+
+    output_dir = args.inspect_output.expanduser().resolve()
+    try:
+        print("Dataset Forge Review")
+        print("====================")
+        print(f"Inspect output: {output_dir}")
+        print(f"Serving:        http://{LOCAL_REVIEW_HOST}:{args.port}")
+        print("Writes only:    review_decisions.json")
+        print("Source images and reports will not be modified.")
+        print("Press Ctrl+C to stop.")
+        serve_review_server(output_dir, port=args.port)
+    except KeyboardInterrupt:
+        print("\nReview server stopped.")
+        return 0
+    except (OSError, ReviewServerError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
     return 0
 
 
