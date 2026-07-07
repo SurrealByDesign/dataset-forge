@@ -44,7 +44,12 @@ def render_static_review_gallery(
     summary = recommendation_summary.get("summary", {})
     recommendations = list(recommendation_summary.get("recommendations", []))
     dataset_path = str(inspection_report.get("dataset_path", ""))
-    ready_count = int(summary.get("ready_for_training_count", 0))
+    no_findings_count = int(
+        summary.get(
+            "no_findings_emitted_count",
+            summary.get("ready_for_training_count", 0),
+        )
+    )
 
     lines = [
         "<!doctype html>",
@@ -68,7 +73,7 @@ def render_static_review_gallery(
         '<section class="dataset-summary" aria-label="Dataset Summary">',
         "<h2>Dataset Summary</h2>",
         '<div class="counts">',
-        _count("Ready for Training", ready_count),
+        _count("No Findings Emitted", no_findings_count),
         _count("Needs Review", int(summary.get("needs_review_count", 0))),
         _count("Priority Review", int(summary.get("priority_review_count", 0))),
         _count("Images inspected", int(summary.get("image_count", 0))),
@@ -80,10 +85,11 @@ def render_static_review_gallery(
         "</section>",
         '<section class="note">',
         "<p>Recommendations are based only on current deterministic findings.</p>",
-        "<p>Ready for Training means no current findings were emitted.</p>",
+        "<p>No Findings Emitted means no current review findings were emitted.</p>",
         (
-            "<p>It does not guarantee the image is artifact-free.</p>"
+            "<p>It does not guarantee the image is artifact-free or training-ready.</p>"
         ),
+        "<p>Execution, cleanup, export, and source-image modification are out of scope.</p>",
         "<p>Dataset Forge never modifies source images.</p>",
         "</section>",
         "</header>",
@@ -93,9 +99,9 @@ def render_static_review_gallery(
     lines.extend(_section("Needs Review", recommendations, "NEEDS_REVIEW", review_statuses))
     lines.extend([
         '<section class="ready-summary">',
-        "<h2>Ready for Training</h2>",
+        "<h2>No Findings Emitted</h2>",
         (
-            f"<p>{ready_count} {_image_word(ready_count)} emitted no current "
+            f"<p>{no_findings_count} {_image_word(no_findings_count)} emitted no current "
             "findings requiring review.</p>"
         ),
         "</section>",

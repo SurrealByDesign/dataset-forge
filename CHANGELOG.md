@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.19.0-alpha
+
+- Replaced user-facing `Ready for Training` language with
+  `No Findings Emitted`.
+- Added image-centered recommendation evidence: each recommendation now nests
+  finding evidence under the image while retaining stable finding references.
+- Added analyzer coverage summaries to `recommendation_summary.json` and
+  `recommendation_summary.md`.
+- Added image-level triage dossier sidecars:
+  `triage_dossiers.json` and `triage_dossiers.md`.
+- Clarified no-finding semantics: no finding means no current deterministic
+  analyzer emitted a review signal, not that an image is artifact-free or
+  guaranteed suitable for LoRA training.
+- Reworded Priority Review guidance as review ordering, not an instruction to
+  exclude, clean, export, or modify an image.
+- Reworded Improvement Plan suggested improvements for artifact families as
+  review-oriented labels.
+- Kept execution, cleanup, export, repair, source-image modification, and pixel
+  modification explicitly out of scope.
+
 ## v0.18.0-alpha
 
 - Added `dataset-forge preview <improvement_plan.json>`.

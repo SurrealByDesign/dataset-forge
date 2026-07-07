@@ -79,7 +79,7 @@ def _recommendation_summary(dataset: Path) -> dict:
             {
                 "image_path": str(dataset / "ready.png"),
                 "recommendation": "READY_FOR_TRAINING",
-                "display_label": "Ready for Training",
+                "display_label": "No Findings Emitted",
                 "primary_reason": "No findings were emitted for this image.",
                 "reason_codes": ["no_findings"],
                 "finding_refs": [],

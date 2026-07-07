@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -18,14 +18,16 @@ NEEDS_REVIEW = "NEEDS_REVIEW"
 PRIORITY_REVIEW = "PRIORITY_REVIEW"
 
 DISPLAY_LABELS = {
-    READY_FOR_TRAINING: "Ready for Training",
+    READY_FOR_TRAINING: "No Findings Emitted",
     NEEDS_REVIEW: "Needs Review",
     PRIORITY_REVIEW: "Priority Review",
 }
 
 CONFIDENCE_NOTE = (
     "Recommendations are advisory and based only on existing findings. "
-    "Uncalibrated analyzers are review signals, not final judgments."
+    "Uncalibrated analyzers are review signals, not final judgments. "
+    "No finding means no current analyzer emitted a review signal; it is not "
+    "a guarantee that the image is artifact-free or training-ready."
 )
 
 _ERROR_CATEGORIES = {
@@ -64,6 +66,32 @@ class FindingRef:
 
 
 @dataclass(frozen=True)
+class FindingEvidence:
+    analyzer: str
+    category: str
+    severity: str
+    confidence: float
+    false_positive_rate: float
+    benchmark_version: str
+    evidence: dict[str, Any]
+    explanation: str
+    recommendation: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "analyzer": self.analyzer,
+            "category": self.category,
+            "severity": self.severity,
+            "confidence": self.confidence,
+            "false_positive_rate": self.false_positive_rate,
+            "benchmark_version": self.benchmark_version,
+            "evidence": dict(self.evidence),
+            "explanation": self.explanation,
+            "recommendation": self.recommendation,
+        }
+
+
+@dataclass(frozen=True)
 class ImageRecommendation:
     image_path: str
     recommendation: str
@@ -71,6 +99,7 @@ class ImageRecommendation:
     primary_reason: str
     reason_codes: tuple[str, ...]
     finding_refs: tuple[FindingRef, ...]
+    findings: tuple[FindingEvidence, ...]
     guidance: str
     confidence_note: str
 
@@ -82,6 +111,7 @@ class ImageRecommendation:
             "primary_reason": self.primary_reason,
             "reason_codes": list(self.reason_codes),
             "finding_refs": [ref.to_dict() for ref in self.finding_refs],
+            "findings": [finding.to_dict() for finding in self.findings],
             "guidance": self.guidance,
             "confidence_note": self.confidence_note,
         }
@@ -96,6 +126,7 @@ class RecommendationSummary:
     needs_review_count: int
     priority_review_count: int
     analyzer_error_count: int
+    analyzer_coverage: dict[str, Any]
     recommendations: tuple[ImageRecommendation, ...]
 
     def to_dict(self) -> dict[str, Any]:
@@ -104,11 +135,13 @@ class RecommendationSummary:
             "source_report_schema": self.source_report_schema,
             "summary": {
                 "image_count": self.image_count,
+                "no_findings_emitted_count": self.ready_for_training_count,
                 "ready_for_training_count": self.ready_for_training_count,
                 "needs_review_count": self.needs_review_count,
                 "priority_review_count": self.priority_review_count,
                 "analyzer_error_count": self.analyzer_error_count,
             },
+            "analyzer_coverage": self.analyzer_coverage,
             "recommendations": [
                 recommendation.to_dict()
                 for recommendation in self.recommendations
@@ -149,6 +182,7 @@ def build_recommendation_summary(
             1 for item in recommendations if item.recommendation == PRIORITY_REVIEW
         ),
         analyzer_error_count=sum(1 for finding in findings if _is_analyzer_error(finding)),
+        analyzer_coverage=_analyzer_coverage(findings, context),
         recommendations=recommendations,
     )
 
@@ -169,7 +203,10 @@ def build_recommendation_summary_from_report(
         if finding.image_path not in image_paths:
             image_paths.append(finding.image_path)
 
-    context = DatasetContext.empty(image_paths=image_paths)
+    context = replace(
+        DatasetContext.empty(image_paths=image_paths),
+        analyzer_versions=_analyzer_versions_from_findings(findings),
+    )
     return build_recommendation_summary(
         findings,
         context,
@@ -215,12 +252,18 @@ def render_recommendation_summary_markdown(
         "## Dataset Summary",
         "",
         f"- Images inspected: {summary.image_count}",
-        f"- Ready for Training: {summary.ready_for_training_count}",
+        f"- No Findings Emitted: {summary.ready_for_training_count}",
         f"- Needs Review: {summary.needs_review_count}",
         f"- Priority Review: {summary.priority_review_count}",
         "- Most common finding categories:",
     ]
     lines.extend(_markdown_common_categories(summary))
+    lines.extend([
+        "",
+        "## Analyzer Coverage",
+        "",
+    ])
+    lines.extend(_markdown_analyzer_coverage(summary))
     lines.extend([
         "",
         "# Recommended Review Order",
@@ -229,7 +272,7 @@ def render_recommendation_summary_markdown(
     lines.extend(_markdown_review_group(summary, PRIORITY_REVIEW, review_statuses))
     lines.extend(_markdown_review_group(summary, NEEDS_REVIEW, review_statuses))
     lines.extend([
-        "# Ready for Training",
+        "# No Findings Emitted",
         "",
         (
             f"{summary.ready_for_training_count} "
@@ -240,17 +283,25 @@ def render_recommendation_summary_markdown(
         "# Important Notes",
         "",
         (
-            "Ready for Training means Dataset Forge emitted no current findings "
-            "requiring review."
+            "No Findings Emitted means Dataset Forge emitted no current "
+            "findings requiring review."
         ),
         "",
         "Recommendations are based only on current deterministic findings.",
         "",
-        "It does not guarantee the image is artifact-free.",
+        (
+            "It does not guarantee the image is artifact-free, caption-ready, "
+            "or suitable for LoRA training."
+        ),
         "",
         "Recommendations are advisory.",
         "",
         "Dataset Forge never modifies source images.",
+        "",
+        (
+            "Dataset Forge does not execute cleanup, export datasets, or modify "
+            "pixels in this workflow."
+        ),
         "",
         "# Next Step",
         "",
@@ -300,6 +351,32 @@ def _markdown_common_categories(summary: RecommendationSummary) -> list[str]:
     ]
 
 
+def _markdown_analyzer_coverage(summary: RecommendationSummary) -> list[str]:
+    analyzers = summary.analyzer_coverage.get("analyzers", [])
+    if not analyzers:
+        return ["- No analyzers were registered for this run."]
+    lines: list[str] = []
+    for item in analyzers:
+        name = str(item.get("analyzer", ""))
+        version = str(item.get("version", ""))
+        finding_count = int(item.get("finding_count", 0))
+        image_count = int(item.get("image_count", 0))
+        calibration = str(item.get("calibration_status", "unknown"))
+        categories = ", ".join(str(v) for v in item.get("categories", [])) or "none"
+        lines.append(
+            f"- {name}/{version}: {finding_count} findings on "
+            f"{image_count} images; calibration: {calibration}; "
+            f"categories: {categories}"
+        )
+    uncovered = summary.analyzer_coverage.get("currently_uncovered", [])
+    if uncovered:
+        lines.append(
+            "- Currently uncovered artifact families: "
+            + ", ".join(str(item) for item in uncovered)
+        )
+    return lines
+
+
 def _markdown_explanation_item(
     item: ImageRecommendation,
     review_statuses: Mapping[str, Any] | None,
@@ -340,6 +417,27 @@ def _markdown_explanation_item(
         "",
         "Finding count:",
         str(len(item.finding_refs)),
+        "",
+        "Suggested human action:",
+        item.guidance,
+        "",
+        "Finding evidence:",
+    ])
+    if item.findings:
+        for finding in item.findings:
+            lines.extend([
+                (
+                    f"- {finding.category} / {finding.analyzer} / "
+                    f"{finding.severity}"
+                ),
+                f"  - Benchmark: {finding.benchmark_version}",
+                f"  - Evidence: {_evidence_summary(finding.evidence)}",
+                f"  - Why: {finding.explanation}",
+                f"  - Human review note: {finding.recommendation}",
+            ])
+    else:
+        lines.append("- none")
+    lines.extend([
         "",
     ])
     return lines
@@ -405,6 +503,15 @@ def _image_word(count: int) -> str:
     return "image" if count == 1 else "images"
 
 
+def _evidence_summary(evidence: Mapping[str, Any]) -> str:
+    parts = [
+        f"{key}={value}"
+        for key, value in evidence.items()
+        if key != "calibrated" and not isinstance(value, dict | list)
+    ]
+    return ", ".join(parts) if parts else "none"
+
+
 def _finding_from_report(item: Mapping[str, Any]) -> Finding:
     return Finding(
         image_path=Path(str(item["image_path"])),
@@ -447,9 +554,9 @@ def _build_image_recommendation(
             reason_codes=("no_findings",),
             findings=(),
             guidance=(
-                "Dataset Forge found no current evidence that this image needs "
-                "review before training. This does not guarantee the image is "
-                "artifact-free."
+                "Dataset Forge emitted no current review finding for this "
+                "image. You may still review it for style fit, caption fit, "
+                "composition, licensing, duplicates, or training intent."
             ),
         )
 
@@ -470,7 +577,10 @@ def _build_image_recommendation(
             reason="High-severity finding detected.",
             reason_codes=("finding.high_severity",),
             findings=tuple(findings),
-            guidance="Review this image early before deciding whether to include it in training.",
+            guidance=(
+                "Review this image first. Priority Review is an ordering signal, "
+                "not an instruction to change, clean, export, or modify it."
+            ),
         )
 
     if len({finding.category for finding in findings}) >= 2:
@@ -480,7 +590,10 @@ def _build_image_recommendation(
             reason="Multiple artifact families detected.",
             reason_codes=("finding.multiple_categories",),
             findings=tuple(findings),
-            guidance="Review this image early before deciding whether to include it in training.",
+            guidance=(
+                "Review this image first because multiple analyzer families "
+                "emitted signals. This is not an instruction to execute cleanup."
+            ),
         )
 
     return _recommendation(
@@ -489,7 +602,10 @@ def _build_image_recommendation(
         reason="Measurable finding detected.",
         reason_codes=("finding.present",),
         findings=tuple(findings),
-        guidance="Inspect this image before deciding whether to include it in training.",
+        guidance=(
+            "Inspect this image before deciding whether the finding is a true "
+            "artifact, acceptable style, or irrelevant to your training goal."
+        ),
     )
 
 
@@ -516,9 +632,78 @@ def _recommendation(
             )
             for finding in sorted(findings, key=_finding_sort_key)
         ),
+        findings=tuple(
+            FindingEvidence(
+                analyzer=finding.analyzer,
+                category=finding.category,
+                severity=finding.severity.name,
+                confidence=finding.confidence,
+                false_positive_rate=finding.false_positive_rate,
+                benchmark_version=finding.benchmark_version,
+                evidence=dict(finding.evidence),
+                explanation=finding.explanation,
+                recommendation=finding.recommendation,
+            )
+            for finding in sorted(findings, key=_finding_sort_key)
+        ),
         guidance=guidance,
         confidence_note=CONFIDENCE_NOTE,
     )
+
+
+def _analyzer_coverage(
+    findings: list[Finding],
+    context: DatasetContext,
+) -> dict[str, Any]:
+    image_paths_by_analyzer: dict[str, set[str]] = {}
+    categories_by_analyzer: dict[str, set[str]] = {}
+    findings_by_analyzer: dict[str, int] = {}
+    for finding in findings:
+        analyzer_name = finding.analyzer.split("/", 1)[0]
+        image_paths_by_analyzer.setdefault(analyzer_name, set()).add(
+            str(finding.image_path)
+        )
+        categories_by_analyzer.setdefault(analyzer_name, set()).add(finding.category)
+        findings_by_analyzer[analyzer_name] = findings_by_analyzer.get(analyzer_name, 0) + 1
+
+    analyzers = []
+    for analyzer, version in sorted(context.analyzer_versions.items()):
+        categories = sorted(categories_by_analyzer.get(analyzer, set()))
+        analyzers.append({
+            "analyzer": analyzer,
+            "version": version,
+            "ran": True,
+            "finding_count": findings_by_analyzer.get(analyzer, 0),
+            "image_count": len(image_paths_by_analyzer.get(analyzer, set())),
+            "categories": categories,
+            "calibration_status": (
+                "uncalibrated" if categories or analyzer in context.analyzer_versions else "unknown"
+            ),
+        })
+
+    return {
+        "schema": "dataset-forge/analyzer-coverage/v1",
+        "analyzers": analyzers,
+        "currently_uncovered": [
+            "periodic_frequency_contamination",
+            "recursive_detail",
+        ],
+        "notes": [
+            "Analyzer coverage reports what ran and what emitted findings.",
+            "No finding from an analyzer is not proof that the artifact family is absent.",
+            "All current artifact analyzers remain advisory review signals.",
+        ],
+    }
+
+
+def _analyzer_versions_from_findings(findings: list[Finding]) -> dict[str, str]:
+    versions: dict[str, str] = {}
+    for finding in findings:
+        if "/" not in finding.analyzer:
+            continue
+        analyzer, version = finding.analyzer.split("/", 1)
+        versions.setdefault(analyzer, version)
+    return versions
 
 
 def _is_analyzer_error(finding: Finding) -> bool:
@@ -555,6 +740,7 @@ __all__ = [
     "READY_FOR_TRAINING",
     "RECOMMENDATION_SUMMARY_SCHEMA",
     "FindingRef",
+    "FindingEvidence",
     "ImageRecommendation",
     "RecommendationSummary",
     "build_recommendation_summary",

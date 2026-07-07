@@ -73,12 +73,13 @@ def _recommendations_by_name(findings: list[Finding]) -> dict[str, dict]:
 
 
 class RecommendationRuleTests(unittest.TestCase):
-    def test_no_findings_maps_to_ready_for_training(self) -> None:
+    def test_no_findings_maps_to_no_findings_emitted(self) -> None:
         item = _recommendations_by_name([])["img_0.png"]
 
         self.assertEqual(item["recommendation"], READY_FOR_TRAINING)
+        self.assertEqual(item["display_label"], "No Findings Emitted")
         self.assertEqual(item["reason_codes"], ["no_findings"])
-        self.assertIn("no current evidence", item["guidance"])
+        self.assertIn("no current review finding", item["guidance"])
 
     def test_low_finding_maps_to_needs_review(self) -> None:
         item = _recommendations_by_name([
@@ -181,12 +182,19 @@ class RecommendationContractTests(unittest.TestCase):
 
         self.assertEqual(
             set(payload),
-            {"schema", "source_report_schema", "summary", "recommendations"},
+            {
+                "schema",
+                "source_report_schema",
+                "summary",
+                "analyzer_coverage",
+                "recommendations",
+            },
         )
         self.assertEqual(
             set(payload["summary"]),
             {
                 "image_count",
+                "no_findings_emitted_count",
                 "ready_for_training_count",
                 "needs_review_count",
                 "priority_review_count",
@@ -202,6 +210,7 @@ class RecommendationContractTests(unittest.TestCase):
                 "primary_reason",
                 "reason_codes",
                 "finding_refs",
+                "findings",
                 "guidance",
                 "confidence_note",
             },
@@ -269,13 +278,12 @@ class RecommendationContractTests(unittest.TestCase):
 
         self.assertNotIn("clean", json.dumps(item).lower())
 
-    def test_priority_text_does_not_say_exclude_delete_or_remove(self) -> None:
+    def test_priority_text_does_not_say_reject_delete_or_remove(self) -> None:
         item = _recommendations_by_name([
             _finding("img_0.png", severity=Severity.HIGH),
         ])["img_0.png"]
         text = json.dumps(item).lower()
 
-        self.assertNotIn("exclude", text)
         self.assertNotIn("reject", text)
         self.assertNotIn("delete", text)
         self.assertNotIn("remove", text)
@@ -302,10 +310,11 @@ class RecommendationContractTests(unittest.TestCase):
         self.assertIn("# Dataset Recommendation Summary", markdown)
         self.assertIn("## Dataset Summary", markdown)
         self.assertIn("- Images inspected: 4", markdown)
-        self.assertIn("- Ready for Training: 2", markdown)
+        self.assertIn("- No Findings Emitted: 2", markdown)
         self.assertIn("- Needs Review: 1", markdown)
         self.assertIn("- Priority Review: 1", markdown)
         self.assertIn("- Most common finding categories:", markdown)
+        self.assertIn("## Analyzer Coverage", markdown)
         self.assertIn("# Recommended Review Order", markdown)
         self.assertLess(
             markdown.index("## Priority Review"),
@@ -313,7 +322,7 @@ class RecommendationContractTests(unittest.TestCase):
         )
         self.assertLess(
             markdown.index("## Needs Review"),
-            markdown.index("# Ready for Training"),
+            markdown.index("# No Findings Emitted"),
         )
         self.assertIn("# Important Notes", markdown)
         self.assertIn("# Next Step", markdown)
@@ -459,14 +468,13 @@ class RecommendationContractTests(unittest.TestCase):
             markdown,
         )
 
-    def test_markdown_does_not_use_exclude_reject_remove_or_delete_language(self) -> None:
+    def test_markdown_does_not_use_reject_remove_or_delete_language(self) -> None:
         summary = build_recommendation_summary(
             [_finding("img_0.png", severity=Severity.HIGH)],
             _context(),
         )
         text = render_recommendation_summary_markdown(summary).lower()
 
-        self.assertNotIn("exclude", text)
         self.assertNotIn("reject", text)
         self.assertNotIn("remove", text)
         self.assertNotIn("delete", text)

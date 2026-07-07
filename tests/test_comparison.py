@@ -44,7 +44,7 @@ def _recommendation(
     refs: list[dict[str, str]] | None = None,
 ) -> dict[str, object]:
     labels = {
-        "READY_FOR_TRAINING": "Ready for Training",
+        "READY_FOR_TRAINING": "No Findings Emitted",
         "NEEDS_REVIEW": "Needs Review",
         "PRIORITY_REVIEW": "Priority Review",
     }
@@ -82,6 +82,10 @@ def _write_output(
     )
     counts = {
         "image_count": len(recommendations),
+        "no_findings_emitted_count": sum(
+            1 for item in recommendations
+            if item["recommendation"] == "READY_FOR_TRAINING"
+        ),
         "ready_for_training_count": sum(
             1 for item in recommendations
             if item["recommendation"] == "READY_FOR_TRAINING"

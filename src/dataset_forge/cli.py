@@ -87,9 +87,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.18.0-alpha: decide which LoRA dataset images "
-            "are ready to train, need review, deserve priority attention, "
-            "or have evidence-backed Improvement Candidates and previews."
+            "Dataset Forge v0.19.0-alpha: decide which LoRA dataset images "
+            "have no current review findings, need review, deserve priority "
+            "attention, or have evidence-backed Improvement Candidates and "
+            "previews."
         ),
     )
     parser.add_argument(
@@ -232,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.18.0-alpha CLI. "
+            "Error: this command is not part of the public v0.19.0-alpha CLI. "
             "Use 'dataset-forge inspect', 'review', 'compare', 'plan', 'preview', "
             "'--help', or '--version'.",
             file=sys.stderr,
@@ -550,25 +551,29 @@ def _inspect_main(argv: list[str]) -> int:
         if count:
             print(f"  {sev} severity:  {count}")
     print()
-    print(f"Images with findings:  {result.images_with_findings} / {result.image_count}")
-    print(f"Images with no issues: {result.images_clean} / {result.image_count}")
+    print(f"Images with findings:        {result.images_with_findings} / {result.image_count}")
+    print(f"No Findings Emitted:         {result.images_clean} / {result.image_count}")
     print()
     if result.images_clean == result.image_count:
-        print("All images are within normal parameters. No action recommended.")
+        print(
+            "No current review findings were emitted. This does not guarantee "
+            "the images are artifact-free or training-ready."
+        )
     else:
         print(
-            f"{result.images_clean} images require no action.\n"
+            f"{result.images_clean} images emitted no current review findings.\n"
             f"{result.images_with_findings} images have findings. "
             "Review report for details."
         )
     print()
     print("Recommendation Summary")
     print("----------------------")
-    print(f"  Ready for Training: {result.ready_for_training_count}")
-    print(f"  Needs Review:       {result.needs_review_count}")
-    print(f"  Priority Review:    {result.priority_review_count}")
+    print(f"  No Findings Emitted: {result.ready_for_training_count}")
+    print(f"  Needs Review:        {result.needs_review_count}")
+    print(f"  Priority Review:     {result.priority_review_count}")
     print()
     print("Recommendations are advisory and based only on existing findings.")
+    print("Execution, cleanup, export, and source-image modification are out of scope.")
     print("Source images were not modified.")
     print()
     print("Report written:")
@@ -576,6 +581,8 @@ def _inspect_main(argv: list[str]) -> int:
     print(f"  {result.txt_report}")
     print(f"  {result.recommendation_json}")
     print(f"  {result.recommendation_markdown}")
+    print(f"  {result.triage_dossier_json}")
+    print(f"  {result.triage_dossier_markdown}")
     if result.review_decisions_template:
         print(f"  {result.review_decisions_template}")
     if result.review_gallery_path:

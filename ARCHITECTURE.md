@@ -176,11 +176,13 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.18.0-alpha outputs:
+v0.19.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `recommendation_summary.json`  --  machine-readable advisory review priorities
 - `recommendation_summary.md`  --  plain-language advisory review priorities
+- `triage_dossiers.json`  --  machine-readable image-level triage evidence
+- `triage_dossiers.md`  --  human-readable image-level triage dossiers
 - `review_decisions_template.json`  --  starter human review sidecar, written only when absent
 - `review_gallery.html`  --  optional static visual review surface
 - `priority_review_contact_sheet.png`  --  optional Priority Review contact sheet
@@ -564,12 +566,14 @@ The v0.9 engine is deliberately boring:
 - HIGH or CRITICAL finding -> `PRIORITY_REVIEW`
 - findings from multiple categories -> `PRIORITY_REVIEW`
 - any other finding -> `NEEDS_REVIEW`
-- no findings -> `READY_FOR_TRAINING`
+- no findings -> `READY_FOR_TRAINING` internally, displayed as `No Findings Emitted`
 
-The JSON output includes schema, source report schema, summary counts, one
-recommendation per image, display labels, primary reasons, reason codes,
-finding references, and an advisory confidence note. Finding references contain
-only analyzer, category, and severity.
+The JSON output includes schema, source report schema, summary counts, analyzer
+coverage, one recommendation per image, display labels, primary reasons, reason
+codes, finding references, nested finding evidence, guidance, and an advisory
+confidence note. Finding references contain analyzer, category, and severity;
+nested finding evidence carries measurements and explanations for image-level
+triage.
 
 It must not emit numeric quality scores or serialized priority fields. Sorting
 is deterministic, but ordering is not a score.
@@ -581,14 +585,20 @@ embedding into `inspection_report.json`, no cleanup, no repair, no export, and
 no validation coupling.
 
 The recommendation JSON and recommendation labels must be reproducible from
-`inspection_report.json` alone. `Ready for Training` means no current findings
-requiring review were emitted; it does not guarantee the image is artifact-free.
+`inspection_report.json` alone. `No Findings Emitted` means no current findings
+requiring review were emitted; it does not guarantee the image is
+artifact-free, caption-ready, or suitable for LoRA training.
 
-v0.9 changed Markdown presentation only. `recommendation_summary.md` is a
-human-facing review report: summary counts, Priority Review first, Needs Review
-second, Ready for Training summarized rather than listed image-by-image,
-important notes, and next steps. `recommendation_summary.json` remains
-unchanged.
+v0.19 makes the recommendation surface image-centered. `recommendation_summary.md`
+is a human-facing review report: summary counts, analyzer coverage, Priority
+Review first, Needs Review second, No Findings Emitted summarized rather than
+listed image-by-image, important notes, and next steps.
+
+v0.19 also writes `triage_dossiers.json` and `triage_dossiers.md`. Triage
+dossiers are image-level review artifacts with findings nested underneath each
+image, review status, suggested human action, analyzer coverage, and explicit
+read-only scope. They do not execute cleanup, export datasets, modify source
+images, or modify pixels.
 
 v0.10 adds `dataset-forge inspect --review-gallery`, which writes
 `review_gallery.html` from the existing `inspection_report.json` and

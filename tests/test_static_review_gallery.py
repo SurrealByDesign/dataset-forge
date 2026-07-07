@@ -26,6 +26,7 @@ def _recommendation_summary(dataset: Path) -> dict:
         "source_report_schema": "dataset-forge/inspection/v1",
         "summary": {
             "image_count": 3,
+            "no_findings_emitted_count": 1,
             "ready_for_training_count": 1,
             "needs_review_count": 1,
             "priority_review_count": 1,
@@ -67,7 +68,7 @@ def _recommendation_summary(dataset: Path) -> dict:
             {
                 "image_path": str(dataset / "ready.png"),
                 "recommendation": "READY_FOR_TRAINING",
-                "display_label": "Ready for Training",
+                "display_label": "No Findings Emitted",
                 "primary_reason": "No findings were emitted for this image.",
                 "reason_codes": ["no_findings"],
                 "finding_refs": [],
@@ -118,14 +119,15 @@ class StaticReviewGalleryTests(unittest.TestCase):
             "Recommendations are based only on current deterministic findings.",
             html,
         )
-        self.assertIn("Ready for Training means no current findings were emitted.", html)
+        self.assertIn("No Findings Emitted means no current review findings were emitted.", html)
         self.assertIn("Dataset Forge never modifies source images.", html)
+        self.assertIn("Execution, cleanup, export, and source-image modification are out of scope.", html)
         self.assertIn(
-            "It does not guarantee the image is artifact-free.",
+            "It does not guarantee the image is artifact-free or training-ready.",
             html,
         )
 
-    def test_ready_for_training_is_summarized_only(self) -> None:
+    def test_no_findings_emitted_is_summarized_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             html = render_static_review_gallery(
                 _inspection_report(Path(tmp)),
@@ -180,7 +182,7 @@ class StaticReviewGalleryTests(unittest.TestCase):
             )
         lowered = html.lower()
 
-        for forbidden in ("delete", "remove", "exclude", "repair", "export"):
+        for forbidden in ("delete", "remove", "exclude"):
             self.assertNotIn(forbidden, lowered)
         self.assertNotIn("reject", lowered)
         self.assertNotIn("confidence", lowered)

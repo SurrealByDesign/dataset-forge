@@ -667,7 +667,7 @@ def _generate_recommendations(
     if intervention_ratio < 0.30:
         recs.append(
             "The expected benefit of further cleanup is low. "
-            "The dataset is close to ready as-is."
+            "The dataset appears close to needing no intervention."
         )
 
     # 8. Export readiness

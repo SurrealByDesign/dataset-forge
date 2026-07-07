@@ -40,11 +40,11 @@ _SUPPRESSING_DECISIONS = {
     ReviewDecisionValue.IGNORE.value: "Human review chose to ignore this scope.",
 }
 _OPERATION_BY_CATEGORY = {
-    "texture.high_microtexture": "Texture Consistency Review",
+    "texture.high_microtexture": "High Microtexture Review",
     "artifact.texture": "Texture Consistency Review",
-    "artifact.crystalline_faceting": "Microtexture Normalization",
-    "artifact.oversharpening_halo": "Oversharpening Mitigation",
-    "artifact.high_frequency_isolated": "Speck Reduction",
+    "artifact.crystalline_faceting": "Crystalline Faceting Review",
+    "artifact.oversharpening_halo": "Oversharpening Review",
+    "artifact.high_frequency_isolated": "Isolated High-Frequency Artifact Review",
     "texture.error": "Texture Consistency Review",
     "artifact.crystalline_faceting.error": "Texture Consistency Review",
     "artifact.oversharpening_halo.error": "Edge Consistency Review",

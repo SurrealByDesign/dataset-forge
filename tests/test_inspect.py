@@ -98,6 +98,20 @@ class TestRunInspectBasic(unittest.TestCase):
         result = run_inspect(self.dataset, self.output)
         self.assertTrue(result.recommendation_markdown.exists())
 
+    def test_triage_dossiers_written(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+        data = json.loads(result.triage_dossier_json.read_text(encoding="utf-8"))
+
+        self.assertTrue(result.triage_dossier_json.exists())
+        self.assertTrue(result.triage_dossier_markdown.exists())
+        self.assertEqual(data["schema"], "dataset-forge/triage-dossiers/v1")
+        self.assertEqual(data["summary"]["no_findings_emitted_count"], 2)
+        self.assertEqual(data["scope"]["execution"], "out_of_scope")
+        self.assertEqual(data["scope"]["cleanup"], "out_of_scope")
+        self.assertEqual(data["scope"]["export"], "out_of_scope")
+        self.assertEqual(len(data["dossiers"]), 2)
+
     def test_review_decisions_template_written_when_absent(self):
         _write_smooth(self.dataset, n=2)
         run_inspect(self.dataset, self.output)

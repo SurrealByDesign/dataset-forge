@@ -35,6 +35,7 @@ from dataset_forge.review_persistence import (
     write_review_decisions_template_if_absent,
 )
 from dataset_forge.static_review_gallery import write_static_review_gallery
+from dataset_forge.triage_dossier import write_triage_dossier_files
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +50,8 @@ class InspectResult:
     txt_report: Path
     recommendation_json: Path
     recommendation_markdown: Path
+    triage_dossier_json: Path
+    triage_dossier_markdown: Path
     review_decisions_template: Path | None
     image_count: int
     analyzed_count: int
@@ -151,6 +154,12 @@ def run_inspect(
         output_dir,
         review_statuses=review_statuses,
     )
+    triage_dossier_json, triage_dossier_markdown = write_triage_dossier_files(
+        findings,
+        recommendation_summary,
+        output_dir,
+        review_statuses=review_statuses,
+    )
     review_decisions_template = write_review_decisions_template_if_absent(
         recommendation_summary,
         output_dir,
@@ -199,6 +208,8 @@ def run_inspect(
         txt_report=txt_path,
         recommendation_json=recommendation_json,
         recommendation_markdown=recommendation_markdown,
+        triage_dossier_json=triage_dossier_json,
+        triage_dossier_markdown=triage_dossier_markdown,
         review_decisions_template=review_decisions_template,
         image_count=context.image_count,
         analyzed_count=context.analyzed_count,

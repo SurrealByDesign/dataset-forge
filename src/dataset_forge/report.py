@@ -251,7 +251,10 @@ def _build_txt(
         lines += [
             f"{clean_count} image{'s' if clean_count != 1 else ''} produced no "
             "findings at any severity level.",
-            "These images are ready for training as-is.",
+            (
+                "These images emitted no current review findings. This does "
+                "not guarantee they are artifact-free or training-ready."
+            ),
         ]
     else:
         lines.append("All images produced at least one finding.")

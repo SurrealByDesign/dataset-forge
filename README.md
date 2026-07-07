@@ -1,13 +1,13 @@
 # Dataset Forge
 
-**v0.18.0-alpha** -- adds execution-free Improvement Preview to the LoRA Dataset Decision Engine.
+**v0.19.0-alpha** -- adds Real-World Triage Evidence to the LoRA Dataset Decision Engine.
 
 Dataset Forge helps you decide which images belong in your LoRA before you train.
 
 It is for LoRA dataset builders who want evidence-backed answers to three
 questions:
 
-- Which images are ready for training?
+- Which images emitted no current review findings?
 - Which images need human review?
 - Which images deserve priority attention before training?
 
@@ -26,11 +26,12 @@ Raw Dataset
 -> Train
 ```
 
-**v0.18.0-alpha is read-only decision support.** Dataset Forge reads your
+**v0.19.0-alpha is read-only decision support.** Dataset Forge reads your
 dataset and writes reports beside it. It never modifies source images. There is
 still no cleanup, repair, export, hosted web app, cloud service, plugins, or
-new analyzer family in this release. Improvement Planning is a proposal only;
-Improvement Preview explains the plan before any future execution exists.
+new analyzer family in this release. v0.19 adds image-level triage dossiers,
+image-centered recommendation evidence, analyzer coverage summaries, and
+clearer no-finding wording before any future execution exists.
 
 ---
 
@@ -63,7 +64,9 @@ Expected outputs:
 | `recommendation_summary.md` | Start here. Review Priority Review, then Needs Review. |
 | `inspection_report.txt` | Read detailed findings in plain text. |
 | `inspection_report.json` | Machine-readable evidence and findings. |
-| `recommendation_summary.json` | Machine-readable Ready / Needs Review / Priority Review sidecar. |
+| `recommendation_summary.json` | Machine-readable No Findings Emitted / Needs Review / Priority Review sidecar. |
+| `triage_dossiers.md` | Image-level triage dossiers with findings nested under each image. |
+| `triage_dossiers.json` | Machine-readable triage dossier sidecar. |
 | `review_decisions_template.json` | Optional starter file for human review decisions. |
 | `review_gallery.html` | Optional visual review page from `--review-gallery`. |
 | `priority_review_contact_sheet.png` | Optional visual sheet from `--contact-sheets`. |
@@ -129,7 +132,7 @@ The normal workflow is:
 A healthy dataset can legitimately produce zero findings. That is a valid
 and correct result, not a failure.
 
-**Analyzers in v0.18.0-alpha:**
+**Analyzers in v0.19.0-alpha:**
 
 | Analyzer | What it detects | Status |
 |---|---|---|
@@ -143,7 +146,7 @@ against labeled ground truth is complete. The oversharpening/halo analyzer is
 read-only, uses synthetic benchmark fixtures to validate its USM-residual signal
 shape, and remains uncalibrated for real-world precision/recall. The isolated
 high-frequency analyzer is also read-only and synthetic-fixture-backed only.
-Treat findings as candidates for human review, not automated decisions. v0.18
+Treat findings as candidates for human review, not automated decisions. v0.19
 does not change analyzer behavior, recommendation rules, JSON schemas, gallery
 behavior, contact sheets, review decisions, comparison behavior, Improvement
 Planning behavior, or source images.
@@ -167,7 +170,7 @@ edge halos.
 
 ---
 
-## Current limitations (v0.18.0-alpha)
+## Current limitations (v0.19.0-alpha)
 
 - **Analyzers are not calibrated to published ground truth.** Thresholds were
   derived from an initial labeled review of one private dataset. Precision and
@@ -179,12 +182,12 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.18.0-alpha exposes `inspect`,
+- **No public recommendation command yet.** v0.19.0-alpha exposes `inspect`,
   optional local `review`, sidecar-only `compare`, advisory `plan`, and
   execution-free `preview`. There is no separate `dataset-forge recommend`
   command.
 
-- **No cleanup, repair, execution, or export.** v0.18.0-alpha is read-only.
+- **No cleanup, repair, execution, or export.** v0.19.0-alpha is read-only.
   Improvement Planning writes `improvement_plan.json` and
   `improvement_plan.md` only. Improvement Preview writes
   `improvement_preview.json` and `improvement_preview.md` only. Cleanup,
@@ -211,16 +214,16 @@ edge halos.
 
 ---
 
-## Next Direction: v0.19 Real-World Triage Evidence
+## v0.19 Real-World Triage Evidence
 
-v0.19 should not implement deterministic execution. The next release direction
-is to improve real-image triage before any cleanup, export, repair, or pixel
-modification exists.
+v0.19 does not implement deterministic execution. The release improves
+real-image triage before any cleanup, export, repair, or pixel modification
+exists.
 
-Planned v0.19 focus:
+v0.19 focus:
 
-- Rename user-facing **Ready for Training** wording to **No Findings Emitted**
-  or **No Current Review Finding** until calibration supports stronger claims.
+- Renames user-facing ready wording to **No Findings Emitted** until
+  calibration supports stronger claims.
 - Add image-level triage dossiers with findings nested underneath each image.
 - Add analyzer coverage summaries so users know which analyzers ran, which
   emitted findings, and which artifact families remain uncovered or
@@ -320,19 +323,20 @@ Total findings:  19
   MEDIUM severity: 11
   LOW severity:   6
 
-Images with findings:  15 / 100
-Images with no issues: 85 / 100
+Images with findings:        15 / 100
+No Findings Emitted:         85 / 100
 
-85 images require no action.
+85 images emitted no current review findings.
 15 images have findings. Review report for details.
 
 Recommendation Summary
 ----------------------
-  Ready for Training: 85
-  Needs Review:       13
-  Priority Review:    2
+  No Findings Emitted: 85
+  Needs Review:        13
+  Priority Review:     2
 
 Recommendations are advisory and based only on existing findings.
+Execution, cleanup, export, and source-image modification are out of scope.
 Source images were not modified.
 
 Report written:
@@ -340,6 +344,8 @@ Report written:
   my_dataset/inspect_output/inspection_report.txt
   my_dataset/inspect_output/recommendation_summary.json
   my_dataset/inspect_output/recommendation_summary.md
+  my_dataset/inspect_output/triage_dossiers.json
+  my_dataset/inspect_output/triage_dossiers.md
 ```
 
 Reports are written to the output directory (default: a folder named
@@ -350,8 +356,11 @@ Reports also include additive post-inspection sections:
 
 - **Dataset Summary** -- counts what was found across the dataset.
 - **Review Queue** -- advisory ordering for which images deserve human attention first.
-- **Recommendation Summary sidecars** -- Ready for Training, Needs Review, and
-  Priority Review guidance derived from existing findings only.
+- **Recommendation Summary sidecars** -- No Findings Emitted, Needs Review,
+  and Priority Review guidance derived from existing findings only.
+- **Triage Dossiers** -- image-level evidence files with findings nested under
+  each image, analyzer coverage summaries, review status, and suggested human
+  action.
 - **Optional static review gallery** -- `review_gallery.html`, generated only
   with `--review-gallery`, for visual review of Priority Review and Needs
   Review images.
@@ -370,7 +379,8 @@ repair, reject, regenerate, or export images.
 In the product direction for v1, these sections become the evidence base for
 decision-oriented guidance:
 
-- **Ready to train** -- no concerning findings.
+- **No Findings Emitted** -- no current deterministic analyzer emitted a review
+  finding.
 - **Needs review** -- evidence suggests a human should inspect the image before training.
 - **Priority Review** -- stronger or multiple findings suggest the image should
   be reviewed before other images.
@@ -428,8 +438,8 @@ uv run dataset-forge inspect path/to/dataset/ --contact-sheets
 Writes `priority_review_contact_sheet.png` and
 `needs_review_contact_sheet.png`, read-only visual review aids over
 `inspection_report.json` and `recommendation_summary.json`. Empty groups produce
-small deterministic empty-state sheets. Ready for Training images do not get a
-contact sheet by default because healthy images should stay quiet.
+small deterministic empty-state sheets. No Findings Emitted images do not get a
+contact sheet by default because no-finding images should stay quiet.
 
 Contact sheets do not rerun analyzers, recompute recommendations, write
 thumbnails beside source images, record review decisions, modify images, or
@@ -438,7 +448,7 @@ Recommendation Summary order.
 
 ### Internal: calibration evidence
 
-v0.18.0-alpha includes internal Calibration Evidence: comparing an existing
+v0.19.0-alpha includes internal Calibration Evidence: comparing an existing
 `inspection_report.json` with a small ground-truth label file to compute
 per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and
 false-positive rate.
@@ -449,7 +459,7 @@ behavior.
 
 ### Internal: review decisions
 
-v0.18.0-alpha includes persistent Review Decisions: schema-versioned JSON files
+v0.19.0-alpha includes persistent Review Decisions: schema-versioned JSON files
 that record human intent for images or finding categories after inspection and
 calibration review.
 
@@ -464,7 +474,7 @@ behavior.
 
 ### Internal: validation dossiers
 
-v0.18.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
+v0.19.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
 that combine an existing `inspection_report.json`, calibration labels, and
 optional Review Decisions to assess analyzer reliability.
 
@@ -477,7 +487,7 @@ thresholds, modify images, plan repair, export datasets, or change the public
 
 ### Internal: real-world validation corpus
 
-v0.18.0-alpha includes the Real-World Validation Corpus framework under
+v0.19.0-alpha includes the Real-World Validation Corpus framework under
 `benchmarks/real_world/`. It defines how labeled real-world LoRA/image datasets
 should be organized for future reliability validation.
 
@@ -491,7 +501,7 @@ images, plan repair, export datasets, or change the public `inspect` behavior.
 
 ### Recommendation summary
 
-v0.18.0-alpha writes Recommendation Summary sidecars from `dataset-forge inspect`
+v0.19.0-alpha writes Recommendation Summary sidecars from `dataset-forge inspect`
 with schema
 `dataset-forge/recommendation-summary/v1`.
 
@@ -507,7 +517,7 @@ The deliberately boring four-rule engine is:
 - HIGH or CRITICAL finding -> Priority Review
 - findings from multiple categories -> Priority Review
 - any other finding -> Needs Review
-- no findings -> Ready for Training
+- no findings -> No Findings Emitted
 
 The output has no numeric quality score and no serialized priority field. It is
 additive and is not embedded into `inspection_report.json`. Recommendation
@@ -515,15 +525,16 @@ labels and `recommendation_summary.json` must be reproducible from the
 Inspection Report alone. There is no public `dataset-forge recommend` command.
 
 `recommendation_summary.md` is organized for human review: Dataset Summary,
-most common finding categories, Priority Review first, Needs Review second,
-Ready for Training summarized without listing every ready image, important
-notes, and next steps. Each Priority Review and Needs Review item explains why
-it appears there using the primary reason, finding categories, severity,
-analyzer names, and finding count already present in the recommendation
-sidecar.
+most common finding categories, analyzer coverage, Priority Review first,
+Needs Review second, No Findings Emitted summarized without listing every
+no-finding image, important notes, and next steps. Each Priority Review and
+Needs Review item explains why it appears there using the primary reason,
+finding categories, severity, analyzer names, finding count, and nested finding
+evidence already present in the recommendation sidecar.
 
-`Ready for Training` means Dataset Forge emitted no current findings requiring
-review. It does not guarantee the image is artifact-free.
+`No Findings Emitted` means Dataset Forge emitted no current findings requiring
+review. It does not guarantee the image is artifact-free, caption-ready, or
+suitable for LoRA training.
 
 ### Why Dataset Forge does not repair images yet
 
@@ -581,7 +592,7 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.18.0-alpha.** There is no public flag or command that modifies, repairs,
+  v0.19.0-alpha.** There is no public flag or command that modifies, repairs,
   exports, rejects, or regenerates images. `dataset-forge plan` writes advisory
   Improvement Candidates only. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,
@@ -645,7 +656,7 @@ MIT. See [LICENSE](LICENSE).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Inspect pipeline structure, Finding schema, artifact family model |
 | [WHY.md](WHY.md) | Reasoning behind major design decisions |
 | [DIRECTION.md](DIRECTION.md) | Current milestone and scope |
-| [ROADMAP.md](ROADMAP.md) | v0.18.0-alpha status and future milestone plan |
+| [ROADMAP.md](ROADMAP.md) | v0.19.0-alpha status and future milestone plan |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Implementation status; resume from here |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Acceptance criteria for terminal and report output |
 | [benchmarks/README.md](benchmarks/README.md) | Benchmark manifests and fixture inventory |

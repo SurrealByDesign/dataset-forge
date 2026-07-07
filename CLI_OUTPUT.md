@@ -53,18 +53,19 @@ Total findings:     23
   LOW severity:      6
 
 Images with findings:        19 / 100
-Images with no findings:     81 / 100
+No Findings Emitted:         81 / 100
 
-Recommendation: 81 images are Ready for Training.
+Recommendation: 81 images emitted no current review findings.
                 19 images deserve human review before training.
 
 Recommendation Summary
 ----------------------
-  Ready for Training: 81
-  Needs Review:       16
-  Priority Review:    3
+  No Findings Emitted: 81
+  Needs Review:        16
+  Priority Review:     3
 
 Recommendations are advisory and based only on existing findings.
+Execution, cleanup, export, and source-image modification are out of scope.
 Source images were not modified.
 
 Reports written:
@@ -72,6 +73,8 @@ Reports written:
   inspection_report.txt
   recommendation_summary.json
   recommendation_summary.md
+  triage_dossiers.json
+  triage_dossiers.md
   review_decisions_template.json
   review_gallery.html  # only with --review-gallery
   priority_review_contact_sheet.png  # only with --contact-sheets
@@ -326,6 +329,7 @@ The preview command:
   "source_report_schema": "dataset-forge/inspection/v1",
   "summary": {
     "image_count": 100,
+    "no_findings_emitted_count": 81,
     "ready_for_training_count": 81,
     "needs_review_count": 16,
     "priority_review_count": 3,
@@ -346,15 +350,16 @@ The preview command:
         }
       ],
       "guidance": "Review this image early before deciding whether to include it in training.",
-      "confidence_note": "Recommendations are advisory and based only on existing findings. Uncalibrated analyzers are review signals, not final judgments."
+      "confidence_note": "Recommendations are advisory and based only on existing findings. Uncalibrated analyzers are review signals, not final judgments. No finding means no current analyzer emitted a review signal; it is not a guarantee that the image is artifact-free or training-ready."
     }
   ]
 }
 ```
 
 The sidecar must not contain numeric quality scores or serialized priority
-fields. Ready for Training means Dataset Forge emitted no current findings
-requiring review. It does not guarantee the image is artifact-free.
+fields. No Findings Emitted means Dataset Forge emitted no current findings
+requiring review. It does not guarantee the image is artifact-free,
+caption-ready, or suitable for LoRA training.
 
 ---
 
@@ -370,12 +375,12 @@ The static gallery:
 - shows Recommendation Summary counts
 - shows most common finding categories
 - shows Priority Review and Needs Review image cards
-- summarizes Ready for Training images without listing every image
+- summarizes No Findings Emitted images without listing every image
 - explains each review card with recommendation label, primary reason, finding
   categories, severity, analyzer names, and finding count
 - includes advisory wording that recommendations are review priorities, source
-  images were not modified, and Ready for Training is not a guarantee of
-  artifact-free images
+  images were not modified, and No Findings Emitted is not a guarantee of
+  artifact-free or training-ready images
 - does not add buttons, checkboxes, forms, scripts, review-decision editing,
   cleanup, repair, export, or server behavior
 
@@ -401,13 +406,40 @@ The contact sheets:
 - use fixed thumbnail sizing and plain labels
 - write deterministic empty-state sheets when Priority Review or Needs Review
   groups are empty
-- do not create Ready for Training sheets by default
+- do not create No Findings Emitted sheets by default
 - show at most the first 100 images per sheet
 - do not rerun analyzers, recompute recommendations, write thumbnails beside
   source images, edit review decisions, cleanup, repair, export, web app, or
   server behavior
 
 The JSON sidecars remain the source of truth.
+
+---
+
+## Image-Level Triage Dossiers
+
+`dataset-forge inspect` writes:
+
+- `triage_dossiers.json`
+- `triage_dossiers.md`
+
+The triage dossiers are image-centered. Each image contains:
+
+- recommendation label
+- primary reason
+- review status and recorded decision, when available
+- suggested human action
+- confidence note
+- nested findings with analyzer, category, severity, benchmark version,
+  evidence values, explanation, and human review note
+
+The dossier also includes analyzer coverage: which analyzers ran, which emitted
+findings, which categories they emitted, and which artifact families remain
+uncovered.
+
+Triage dossiers are read-only, advisory, deterministic, and sidecar-based.
+Execution, cleanup, export, source-image modification, and pixel modification
+are out of scope.
 
 ---
 
@@ -421,7 +453,7 @@ The JSON sidecars remain the source of truth.
 ## Dataset Summary
 
 - Images inspected: 100
-- Ready for Training: 81
+- No Findings Emitted: 81
 - Needs Review: 16
 - Priority Review: 3
 - Most common finding categories:
@@ -493,22 +525,26 @@ MEDIUM
 Finding count:
 1
 
-# Ready for Training
+# No Findings Emitted
 
 81 images emitted no current findings requiring review.
 
 # Important Notes
 
-Ready for Training means Dataset Forge emitted no current findings requiring
+No Findings Emitted means Dataset Forge emitted no current findings requiring
 review.
 
 Recommendations are based only on current deterministic findings.
 
-It does not guarantee the image is artifact-free.
+It does not guarantee the image is artifact-free, caption-ready, or suitable
+for LoRA training.
 
 Recommendations are advisory.
 
 Dataset Forge never modifies source images.
+
+Dataset Forge does not execute cleanup, export datasets, or modify pixels in
+this workflow.
 
 # Next Step
 
@@ -519,8 +555,8 @@ Then review Needs Review images if appropriate.
 After review, decide whether each image belongs in your training dataset.
 ```
 
-The Markdown report does not list every Ready for Training image. It is a review
-order document, not a gallery or an action system.
+The Markdown report does not list every No Findings Emitted image. It is a
+review order document, not a gallery or an action system.
 
 Each Priority Review and Needs Review item explains why it appears in the
 review order using existing finding references only: primary reason, finding
@@ -557,7 +593,8 @@ image_041.png
 CLEAN IMAGES (no findings)
 --------------------------
 81 images produced no findings at any severity level.
-These images are ready for training as-is.
+These images emitted no current review findings. This does not guarantee they
+are artifact-free or training-ready.
 
 DATASET SUMMARY
 ---------------
@@ -599,5 +636,5 @@ Recommendation: Review findings before making any dataset changes.
 - Dataset Summary and Review Queue are additive report sections. They organize
   existing findings for human review and do not hide or replace findings.
 - Recommendation Summary sidecars are additive outputs. They organize existing
-  findings into Ready for Training, Needs Review, and Priority Review groups
+  findings into No Findings Emitted, Needs Review, and Priority Review groups
   without changing `inspection_report.json`.

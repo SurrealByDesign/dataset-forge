@@ -48,7 +48,7 @@ class ReviewPersistenceTests(unittest.TestCase):
 
         self.assertEqual(payload["schema"], REVIEW_DECISIONS_SCHEMA)
         self.assertEqual(len(payload["decisions"]), 2)
-        self.assertEqual(payload["decisions"][0]["recommendation"], "Ready for Training")
+        self.assertEqual(payload["decisions"][0]["recommendation"], "No Findings Emitted")
         self.assertIsNone(payload["decisions"][0]["decision"])
         self.assertIn("notes", payload["decisions"][0])
         parse_review_decisions(payload)
@@ -77,7 +77,7 @@ class ReviewPersistenceTests(unittest.TestCase):
                 {
                     "image_path": "img_1.png",
                     "decision": None,
-                    "recommendation": "Ready for Training",
+                    "recommendation": "No Findings Emitted",
                     "notes": "",
                 },
             ],

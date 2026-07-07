@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-07. Reflects v0.18.0-alpha.*
+*Last updated: 2026-07-07. Reflects v0.19.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.18.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.19.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -28,6 +28,10 @@ execute improvements.
 v0.18 adds execution-free Improvement Preview from `improvement_plan.json`. It
 writes `improvement_preview.json` and `improvement_preview.md` only and marks
 execution availability as Not Implemented.
+v0.19 adds Real-World Triage Evidence: user-facing No Findings Emitted
+language, image-centered recommendation evidence, analyzer coverage summaries,
+and image-level triage dossiers. It keeps execution, cleanup, export, repair,
+source-image modification, and pixel modification out of scope.
 
 Current public behavior remains inspect-first:
 
@@ -35,7 +39,7 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.18.0-alpha:
+Supported in v0.19.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- optional local-only review decision server
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
@@ -47,6 +51,8 @@ Supported in v0.18.0-alpha:
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Recommendation Summary sidecars (`recommendation_summary.json`,
   `recommendation_summary.md`)
+- Image-level Triage Dossier sidecars (`triage_dossiers.json`,
+  `triage_dossiers.md`)
 - Optional static review gallery (`review_gallery.html`) from
   `dataset-forge inspect --review-gallery`
 - Optional Recommendation Contact Sheets (`priority_review_contact_sheet.png`,
@@ -89,10 +95,10 @@ Supported in v0.18.0-alpha:
 - Validate corpus manifests, label compatibility, committed fixture paths, and
   optional private/local fixture skipping
 - Recommendation Summary layer over existing findings only
-- Emit schema-versioned Ready for Training / Needs Review / Priority Review
+- Emit schema-versioned No Findings Emitted / Needs Review / Priority Review
   sidecars from `inspect`
 - Present `recommendation_summary.md` as a human-facing review report:
-  Priority Review first, then Needs Review, with Ready for Training summarized
+  Priority Review first, then Needs Review, with No Findings Emitted summarized
   instead of listed image-by-image
 - Show explanation fields in Markdown and HTML review outputs: primary reason,
   finding categories, severity, analyzer names, and finding count
@@ -106,7 +112,7 @@ Supported in v0.18.0-alpha:
 - No analyzer threshold changes
 - No improvement execution, cleanup, repair, export, hosted web app, plugins, or new analyzers
 
-Not supported in v0.18.0-alpha (planned for later releases):
+Not supported in v0.19.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -220,7 +226,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.18.0-alpha):
+**Public tools** (documented, supported in v0.19.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -274,11 +280,12 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
   HIGH/CRITICAL severity, multiple categories, and any other finding. It does
   not read images, run analyzers, generate evidence, use numeric scores, or
   consume Review Decisions, Calibration Evidence, or Validation Dossiers.
-  Ready for Training means no current findings requiring review were emitted;
-  it does not guarantee an image is artifact-free.
+  No Findings Emitted means no current findings requiring review were emitted;
+  it does not guarantee an image is artifact-free, caption-ready, or suitable
+  for LoRA training.
 - v0.11 adds optional Recommendation Contact Sheets only. They consume existing
-  inspection and recommendation sidecars, record no state, do not create Ready
-  for Training sheets by default, and do not change recommendation rules,
+  inspection and recommendation sidecars, record no state, do not create No
+  Findings Emitted sheets by default, and do not change recommendation rules,
   `recommendation_summary.json`, inspect schema, analyzer behavior, or CLI
   command surface.
 - v0.12 changes presentation only. Recommendation Markdown and Static Review
@@ -332,9 +339,9 @@ treat real review friction as product evidence.
 
 Primary tasks:
 
-1. **Rename over-strong ready language** -- replace user-facing
-   `Ready for Training` wording with `No Findings Emitted` or
-   `No Current Review Finding` until calibration supports stronger claims.
+1. **Keep no-finding language evidence-honest** -- user-facing output now uses
+   `No Findings Emitted`; keep avoiding stronger ready/training claims until
+   calibration supports them.
 
 2. **Clarify no-finding semantics** -- explain that no finding means no current
    deterministic analyzer emitted a review signal. It does not certify that an

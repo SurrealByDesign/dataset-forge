@@ -27,10 +27,10 @@ _RECOMMENDATION_COUNT_KEYS = (
     "priority_review_count",
 )
 _RECOMMENDATION_LABELS = {
-    "READY_FOR_TRAINING": "Ready for Training",
+    "READY_FOR_TRAINING": "No Findings Emitted",
     "NEEDS_REVIEW": "Needs Review",
     "PRIORITY_REVIEW": "Priority Review",
-    "ready_for_training_count": "Ready for Training",
+    "ready_for_training_count": "No Findings Emitted",
     "needs_review_count": "Needs Review",
     "priority_review_count": "Priority Review",
 }
