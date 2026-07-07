@@ -39,6 +39,7 @@ from dataset_forge.comparison import ComparisonError, compare_inspect_outputs
 from dataset_forge.core.structured import load_structured_file
 from dataset_forge.discovery import discover_images
 from dataset_forge.improvement_plan import ImprovementPlanError, write_improvement_plan
+from dataset_forge.improvement_preview import ImprovementPreviewError, write_improvement_preview
 from dataset_forge.analysis.texture import generate_texture_report
 from dataset_forge.analysis.health import generate_health_report
 from dataset_forge.inspect import run_inspect
@@ -86,9 +87,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.17.0-alpha: decide which LoRA dataset images "
+            "Dataset Forge v0.18.0-alpha: decide which LoRA dataset images "
             "are ready to train, need review, deserve priority attention, "
-            "or have evidence-backed Improvement Candidates."
+            "or have evidence-backed Improvement Candidates and previews."
         ),
     )
     parser.add_argument(
@@ -176,6 +177,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Where to write improvement_plan.json and improvement_plan.md. Default: <inspect_output>.",
     )
+    preview_parser = commands.add_parser(
+        "preview",
+        help="Write an execution-free Improvement Preview from an Improvement Plan.",
+    )
+    preview_parser.add_argument(
+        "improvement_plan",
+        type=Path,
+        help="Path to improvement_plan.json.",
+    )
     return parser
 
 
@@ -215,10 +225,15 @@ def main(argv: list[str] | None = None) -> int:
             return _plan_main(arguments)
         except SystemExit as exc:
             return int(exc.code or 0)
+    if arguments[0] == "preview":
+        try:
+            return _preview_main(arguments)
+        except SystemExit as exc:
+            return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.17.0-alpha CLI. "
-            "Use 'dataset-forge inspect', 'review', 'compare', 'plan', "
+            "Error: this command is not part of the public v0.18.0-alpha CLI. "
+            "Use 'dataset-forge inspect', 'review', 'compare', 'plan', 'preview', "
             "'--help', or '--version'.",
             file=sys.stderr,
         )
@@ -712,6 +727,42 @@ def _plan_main(argv: list[str]) -> int:
     print(f"  {markdown_path}")
     print()
     print("Improvement Planning is advisory and planning-only.")
+    print("Source images and existing sidecars were not modified.")
+    return 0
+
+
+def _preview_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="dataset-forge preview",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Write an execution-free Improvement Preview from improvement_plan.json.\n"
+            "Preview is documentation only. Source images are not modified."
+        ),
+    )
+    parser.add_argument(
+        "improvement_plan",
+        type=Path,
+        help="Path to improvement_plan.json.",
+    )
+    args = parser.parse_args(argv[1:])
+
+    plan_path = args.improvement_plan.expanduser().resolve()
+    try:
+        json_path, markdown_path = write_improvement_preview(plan_path)
+    except (ImprovementPreviewError, OSError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
+    print("Dataset Forge Preview")
+    print("=====================")
+    print(f"Improvement plan: {plan_path}")
+    print()
+    print("Improvement Preview written:")
+    print(f"  {json_path}")
+    print(f"  {markdown_path}")
+    print()
+    print("Execution availability: Not Implemented.")
     print("Source images and existing sidecars were not modified.")
     return 0
 

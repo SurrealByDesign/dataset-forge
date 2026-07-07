@@ -474,6 +474,34 @@ Constraints:
 
 ---
 
+### v0.18.0-alpha: Improvement Preview
+
+**Status:** Released.
+
+v0.18 adds the final planning stage before any future deterministic execution:
+
+- Adds `dataset-forge preview <improvement_plan.json>`.
+- Consumes existing `improvement_plan.json`, optional `review_decisions.json`,
+  and optional `comparison_summary.json`.
+- Writes `improvement_preview.json` and `improvement_preview.md`.
+- Explains each Improvement Candidate with suggested improvement, evidence,
+  triggering findings, review decisions, planning status, execution
+  availability, and expected outcome.
+- Marks execution availability as `Not Implemented`.
+
+Constraints:
+
+- No image modification.
+- No image processing.
+- No analyzer execution.
+- No cleanup execution.
+- No repair.
+- No export.
+- No recommendation rule changes.
+- No report schema changes.
+
+---
+
 ## Future Candidate: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.

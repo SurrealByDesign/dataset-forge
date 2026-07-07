@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.18.0-alpha
+
+- Added `dataset-forge preview <improvement_plan.json>`.
+- Added execution-free Improvement Preview over existing `improvement_plan.json`
+  plus optional `review_decisions.json` and optional `comparison_summary.json`.
+- Added `improvement_preview.json` with schema
+  `dataset-forge/improvement-preview/v1`.
+- Added `improvement_preview.md` explaining each Improvement Candidate,
+  Suggested Improvement, evidence, triggering findings, review decision,
+  planning status, execution availability, and expected outcome.
+- Set execution availability to `Not Implemented`.
+- Kept analyzer behavior, recommendation behavior, planning behavior, existing
+  report schemas, source images, cleanup execution, repair, export, browser UI,
+  and image processing unchanged.
+
 ## v0.17.0-alpha
 
 - Added `dataset-forge plan <inspect_output>`.

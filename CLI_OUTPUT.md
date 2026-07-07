@@ -194,6 +194,45 @@ The plan command:
 
 ---
 
+## Preview Command
+
+```
+dataset-forge preview path/to/dataset/inspect_output/improvement_plan.json
+```
+
+Expected terminal output:
+
+```
+Dataset Forge Preview
+=====================
+Improvement plan: path/to/dataset/inspect_output/improvement_plan.json
+
+Improvement Preview written:
+  improvement_preview.json
+  improvement_preview.md
+
+Execution availability: Not Implemented.
+Source images and existing sidecars were not modified.
+```
+
+The preview command:
+
+- reads `improvement_plan.json`
+- optionally validates `review_decisions.json` and `comparison_summary.json`
+  from the same folder when present
+- writes only `improvement_preview.json` and `improvement_preview.md`
+- explains each Improvement Candidate, Suggested Improvement, triggering
+  finding, review decision, planning status, execution availability, and
+  expected outcome
+- does not inspect images, process pixels, rerun analyzers, change
+  recommendations, modify plans, modify reports, execute improvements, export
+  datasets, or modify source images
+
+`improvement_preview.json` uses schema
+`dataset-forge/improvement-preview/v1`.
+
+---
+
 ## JSON Report Structure
 
 ```json

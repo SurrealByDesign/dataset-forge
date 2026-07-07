@@ -23,11 +23,12 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Dataset Forge v0.17.0-alpha", stdout)
+        self.assertIn("Dataset Forge v0.18.0-alpha", stdout)
         self.assertIn("inspect", stdout)
         self.assertIn("review", stdout)
         self.assertIn("compare", stdout)
         self.assertIn("plan", stdout)
+        self.assertIn("preview", stdout)
         self.assertIn("--help", stdout)
         self.assertIn("--version", stdout)
         for hidden in (
@@ -62,7 +63,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 0.17.0a0")
+        self.assertEqual(stdout.strip(), "dataset-forge 0.18.0a0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -80,7 +81,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
                 self.assertEqual(exit_code, 2)
                 self.assertEqual(stdout, "")
-                self.assertIn("not part of the public v0.17.0-alpha CLI", stderr)
+                self.assertIn("not part of the public v0.18.0-alpha CLI", stderr)
 
     def test_review_help_is_local_only_help(self) -> None:
         exit_code, stdout, stderr = self._run(["review", "--help"])
@@ -151,6 +152,26 @@ class PublicCliSurfaceTests(unittest.TestCase):
         self.assertEqual(exit_code, 2)
         self.assertEqual(stdout, "")
         self.assertIn("Missing inspection report", stderr)
+
+    def test_preview_help_is_execution_free_help(self) -> None:
+        exit_code, stdout, stderr = self._run(["preview", "--help"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("dataset-forge preview", stdout)
+        self.assertIn("Improvement Preview", stdout)
+        self.assertIn("Source images are not modified", stdout)
+        self.assertNotIn("cleanup", stdout.lower())
+        self.assertNotIn("export", stdout.lower())
+
+    def test_preview_requires_improvement_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "improvement_plan.json"
+            exit_code, stdout, stderr = self._run(["preview", str(missing)])
+
+        self.assertEqual(exit_code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("Missing improvement plan", stderr)
 
     def test_inspect_prints_recommendation_summary_counts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

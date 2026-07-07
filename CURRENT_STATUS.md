@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-05. Reflects v0.17.0-alpha.*
+*Last updated: 2026-07-07. Reflects v0.18.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.17.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.18.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -25,6 +25,9 @@ actionable sidecar error messages without changing behavior or schemas.
 v0.17 adds explicit, advisory Improvement Planning from existing sidecars. It
 writes `improvement_plan.json` and `improvement_plan.md` only and does not
 execute improvements.
+v0.18 adds execution-free Improvement Preview from `improvement_plan.json`. It
+writes `improvement_preview.json` and `improvement_preview.md` only and marks
+execution availability as Not Implemented.
 
 Current public behavior remains inspect-first:
 
@@ -32,13 +35,15 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.17.0-alpha:
+Supported in v0.18.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- optional local-only review decision server
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
   --output <comparison_output>` -- sidecar-only comparison between inspect runs
 - `dataset-forge plan <inspect_output>` -- advisory Improvement Planning from
   existing sidecars
+- `dataset-forge preview <improvement_plan.json>` -- execution-free
+  Improvement Preview from an existing plan
 - JSON and plain-text reports (`inspection_report.json`, `inspection_report.txt`)
 - Recommendation Summary sidecars (`recommendation_summary.json`,
   `recommendation_summary.md`)
@@ -61,6 +66,10 @@ Supported in v0.17.0-alpha:
   consumes existing `inspection_report.json`, `recommendation_summary.json`,
   optional `review_decisions.json`, and optional `comparison_summary.json`;
   writes `improvement_plan.json` and `improvement_plan.md`
+- Improvement Preview:
+  consumes `improvement_plan.json`, optional `review_decisions.json`, and
+  optional `comparison_summary.json`; writes `improvement_preview.json` and
+  `improvement_preview.md`
 - Optional gallery PNG (`--gallery`)
 - Additive Dataset Summary and Review Queue report sections
 - Public benchmark suite (committed fixture expectations pass from fresh clone;
@@ -97,7 +106,7 @@ Supported in v0.17.0-alpha:
 - No analyzer threshold changes
 - No improvement execution, cleanup, repair, export, hosted web app, plugins, or new analyzers
 
-Not supported in v0.17.0-alpha (planned for later releases):
+Not supported in v0.18.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -115,7 +124,7 @@ Not supported in v0.17.0-alpha (planned for later releases):
 
 ## Test suite
 
-**954 tests passing, 1 skipped.**
+**962 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.
@@ -211,7 +220,7 @@ skipped automatically when absent.
 
 ## Scripts
 
-**Public tools** (documented, supported in v0.17.0-alpha):
+**Public tools** (documented, supported in v0.18.0-alpha):
 
 | Script | Purpose |
 |---|---|
@@ -296,6 +305,9 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 - v0.17 adds advisory Improvement Planning only. It does not inspect images,
   rerun analyzers, change recommendations, modify reports, execute
   improvements, clean up, repair, export, or mutate source images.
+- v0.18 adds execution-free Improvement Preview only. It does not inspect
+  images, process pixels, rerun analyzers, change plans, execute improvements,
+  clean up, repair, export, or mutate source images.
 - Review Decisions record human intent only. They do not implement cleanup,
   repair, export, rejection, regeneration, or image modification.
 - Validation Dossiers assess analyzer reliability only. They do not implement

@@ -5,7 +5,7 @@
 
 ---
 
-## v0.17.0-alpha Inspect Pipeline
+## v0.18.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -23,8 +23,9 @@ optional persistent human review-decision sidecars.
 v0.14 also includes an optional local review decision server over those
 sidecars. v0.15 adds deterministic comparison between two existing inspect
 output folders. v0.17 adds explicit Improvement Planning from existing
-sidecars. Cleanup execution, repair, regeneration, export, hosted UI, and
-plugins are future work and are not part of v0.17.0-alpha.
+sidecars. v0.18 adds execution-free Improvement Preview from an existing
+Improvement Plan. Cleanup execution, repair, regeneration, export, hosted UI,
+and plugins are future work and are not part of v0.18.0-alpha.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
 should help users decide which images are ready to train, which need review,
@@ -44,6 +45,7 @@ Inspect
 -> Persistent Decisions
 -> Dataset Comparison
 -> Improvement Planning
+-> Improvement Preview
 -> Optional Cleanup Execution
 ```
 
@@ -54,7 +56,7 @@ Inspect
 -> Automatically Clean
 ```
 
-This is a future boundary, not current product scope. v0.17 remains a LoRA
+This is a future boundary, not current product scope. v0.18 remains a LoRA
 Dataset Decision Engine.
 
 ---
@@ -163,7 +165,7 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.17.0-alpha outputs:
+v0.18.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `recommendation_summary.json`  --  machine-readable advisory review priorities
@@ -177,6 +179,8 @@ v0.17.0-alpha outputs:
 - `comparison_summary.md`  --  optional human-readable comparison summary
 - `improvement_plan.json`  --  optional advisory Improvement Plan over existing sidecars
 - `improvement_plan.md`  --  optional human-readable Improvement Plan
+- `improvement_preview.json`  --  optional execution-free Improvement Preview
+- `improvement_preview.md`  --  optional human-readable Improvement Preview
 
 Reports must not re-run analysis, modify images, or make cleanup/repair/export
 decisions. They present findings and advisory review organization.
@@ -425,6 +429,46 @@ datasets, create browser UI, or execute improvements.
 
 ---
 
+## Improvement Preview
+
+Improvement Preview is the v0.18 traceability layer after Improvement Planning
+and before any future deterministic execution. It consumes an existing
+`improvement_plan.json` and explains what would be considered later, without
+performing any operation.
+
+Public command:
+
+```text
+dataset-forge preview <improvement_plan.json>
+```
+
+Required input:
+- `improvement_plan.json` with schema `dataset-forge/improvement-plan/v1`
+
+Optional inputs in the same folder:
+- `review_decisions.json` with schema `dataset-forge/review-decisions/v1`
+- `comparison_summary.json` with schema `dataset-forge/comparison-summary/v1`
+
+Outputs:
+- `improvement_preview.json` with schema `dataset-forge/improvement-preview/v1`
+- `improvement_preview.md`
+
+Each preview entry explains:
+- the Improvement Candidate
+- the Suggested Improvement
+- existing evidence and triggering findings
+- review decision state
+- planning status
+- execution availability
+- expected outcome
+
+Execution availability is always `Not Implemented` in v0.18. Improvement
+Preview must not inspect images, process pixels, rerun analyzers, modify plans,
+modify source images, modify reports, modify review decisions, export datasets,
+or execute improvements.
+
+---
+
 ## Validation Dossiers
 
 Validation Dossiers are the v0.5 reliability gate before stronger public
@@ -594,25 +638,25 @@ optional. The direct path from Inspect to Automatically Clean is forbidden.
 
 ---
 
-## Future-Only / Not Implemented in v0.17.0-alpha
+## Future-Only / Not Implemented in v0.18.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.17.0-alpha release. They should not be modified, expanded, or
+v0.18.0-alpha release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.17.0-alpha |
-| `plugins/` | Future only; not public in v0.17.0-alpha |
-| `execution/` | Future only; not public in v0.17.0-alpha |
-| `transforms/` | Future only; not public in v0.17.0-alpha |
-| `exporters/` | Future only; not public in v0.17.0-alpha |
-| `review/` | Future only; not public in v0.17.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.17.0-alpha |
+| `cleanup/` | Future only; not public in v0.18.0-alpha |
+| `plugins/` | Future only; not public in v0.18.0-alpha |
+| `execution/` | Future only; not public in v0.18.0-alpha |
+| `transforms/` | Future only; not public in v0.18.0-alpha |
+| `exporters/` | Future only; not public in v0.18.0-alpha |
+| `review/` | Future only; not public in v0.18.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.18.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.17.0-alpha CLI or report behavior.
+v0.18.0-alpha CLI or report behavior.
 
 ---
 
@@ -801,7 +845,7 @@ When an analyzer is uncalibrated:
 ### Archived Future Repair Research (not current roadmap)
 
 > This section is an archived design note, not the current roadmap. Dataset
-> Forge v0.17.0-alpha does not expose cleanup, repair planning, repair,
+> Forge v0.18.0-alpha does not expose cleanup, repair planning, repair,
 > regeneration, or export commands. Repair, cleanup, and export should not be
 > reconsidered until decision guidance is reliable on labeled real-world data.
 
@@ -887,7 +931,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Archived Batch Exclusion and Export Research (future only)
 
 > This section describes a possible non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.17.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.18.0-alpha should be designed around
 > it or expose it through the public CLI. Export is not an assumed next step.
 
 ---
