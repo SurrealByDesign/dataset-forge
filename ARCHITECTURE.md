@@ -5,7 +5,7 @@
 
 ---
 
-## v0.16.0-alpha Inspect Pipeline
+## v0.17.0-alpha Inspect Pipeline
 
 ```
 Dataset
@@ -22,10 +22,9 @@ an optional static review gallery, optional recommendation contact sheets, and
 optional persistent human review-decision sidecars.
 v0.14 also includes an optional local review decision server over those
 sidecars. v0.15 adds deterministic comparison between two existing inspect
-output folders. Cleanup, repair, regeneration, export, hosted UI, and plugins
-are future work and are not part of v0.16.0-alpha. v0.16 is a documentation
-and UX refinement release; it does not change the pipeline, schemas, analyzers,
-recommendations, comparison behavior, or supported commands.
+output folders. v0.17 adds explicit Improvement Planning from existing
+sidecars. Cleanup execution, repair, regeneration, export, hosted UI, and
+plugins are future work and are not part of v0.17.0-alpha.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
 should help users decide which images are ready to train, which need review,
@@ -44,7 +43,7 @@ Inspect
 -> Human Review
 -> Persistent Decisions
 -> Dataset Comparison
--> Cleanup Planning
+-> Improvement Planning
 -> Optional Cleanup Execution
 ```
 
@@ -55,7 +54,7 @@ Inspect
 -> Automatically Clean
 ```
 
-This is a future boundary, not current product scope. v0.15 remains a LoRA
+This is a future boundary, not current product scope. v0.17 remains a LoRA
 Dataset Decision Engine.
 
 ---
@@ -164,7 +163,7 @@ Analyzers must not:
 The report layer consumes Findings plus additive post-inspection sections and
 produces human-readable output.
 
-v0.16.0-alpha outputs:
+v0.17.0-alpha outputs:
 - `inspection_report.json`  --  machine-readable, complete findings
 - `inspection_report.txt`  --  human-readable summary
 - `recommendation_summary.json`  --  machine-readable advisory review priorities
@@ -176,6 +175,8 @@ v0.16.0-alpha outputs:
 - `inspection_gallery.png`  --  optional visual review contact sheet
 - `comparison_summary.json`  --  optional sidecar-only comparison between inspect outputs
 - `comparison_summary.md`  --  optional human-readable comparison summary
+- `improvement_plan.json`  --  optional advisory Improvement Plan over existing sidecars
+- `improvement_plan.md`  --  optional human-readable Improvement Plan
 
 Reports must not re-run analysis, modify images, or make cleanup/repair/export
 decisions. They present findings and advisory review organization.
@@ -376,6 +377,54 @@ charts, or create browser UI.
 
 ---
 
+## Improvement Planning
+
+Improvement Planning is the v0.17 sidecar planning layer. It consumes existing
+inspection evidence and review intent to answer: "If I chose to improve this
+dataset later, what abstract operations would be worth considering, and why?"
+
+Public command:
+
+```text
+dataset-forge plan <inspect_output>
+```
+
+Required inputs:
+- `inspection_report.json` with schema `dataset-forge/inspection/v1`
+- `recommendation_summary.json` with schema `dataset-forge/recommendation-summary/v1`
+
+Optional inputs:
+- `review_decisions.json` with schema `dataset-forge/review-decisions/v1`
+- `comparison_summary.json` with schema `dataset-forge/comparison-summary/v1`
+
+Outputs:
+- `improvement_plan.json` with schema `dataset-forge/improvement-plan/v1`
+- `improvement_plan.md`
+
+Improvement Planning emits:
+- Improvement Candidates
+- Deferred Improvement Candidates
+- Suppressed Improvement Candidates
+- Suggested Improvements summary
+
+Suggested Improvements are abstract planning concepts only, such as
+Microtexture Normalization, Oversharpening Mitigation, Speck Reduction, Noise
+Consistency Review, Texture Consistency Review, and Edge Consistency Review.
+They are not algorithms and are not executed.
+
+Review decisions control planning:
+- `CONFIRMED_ARTIFACT` remains eligible for planning.
+- `FALSE_POSITIVE`, `ACCEPTABLE_STYLE`, and `IGNORE` suppress planning.
+- `LOCKED` prevents an Improvement Candidate.
+- `NEEDS_REVIEW` defers planning.
+
+Improvement Planning must not inspect images, rerun analyzers, generate new
+evidence, modify source images, modify reports, modify recommendations, modify
+review decisions, copy files, move files, rename files, delete files, export
+datasets, create browser UI, or execute improvements.
+
+---
+
 ## Validation Dossiers
 
 Validation Dossiers are the v0.5 reliability gate before stronger public
@@ -545,25 +594,25 @@ optional. The direct path from Inspect to Automatically Clean is forbidden.
 
 ---
 
-## Future-Only / Not Implemented in v0.16.0-alpha
+## Future-Only / Not Implemented in v0.17.0-alpha
 
 The following exist in the codebase but are out of scope for the public
-v0.16.0-alpha release. They should not be modified, expanded, or
+v0.17.0-alpha release. They should not be modified, expanded, or
 depended on by inspect code.
 
 | Module | Status |
 |---|---|
-| `cleanup/` | Future only; not public in v0.16.0-alpha |
-| `plugins/` | Future only; not public in v0.16.0-alpha |
-| `execution/` | Future only; not public in v0.16.0-alpha |
-| `transforms/` | Future only; not public in v0.16.0-alpha |
-| `exporters/` | Future only; not public in v0.16.0-alpha |
-| `review/` | Future only; not public in v0.16.0-alpha |
-| `recommendations/engine.py` | Future only; not public in v0.16.0-alpha |
+| `cleanup/` | Future only; not public in v0.17.0-alpha |
+| `plugins/` | Future only; not public in v0.17.0-alpha |
+| `execution/` | Future only; not public in v0.17.0-alpha |
+| `transforms/` | Future only; not public in v0.17.0-alpha |
+| `exporters/` | Future only; not public in v0.17.0-alpha |
+| `review/` | Future only; not public in v0.17.0-alpha |
+| `recommendations/engine.py` | Future only; not public in v0.17.0-alpha |
 
 These modules represent future phases. They are preserved, not deleted,
 because they may be valuable later. They are not part of the public
-v0.16.0-alpha CLI or report behavior.
+v0.17.0-alpha CLI or report behavior.
 
 ---
 
@@ -752,7 +801,7 @@ When an analyzer is uncalibrated:
 ### Archived Future Repair Research (not current roadmap)
 
 > This section is an archived design note, not the current roadmap. Dataset
-> Forge v0.16.0-alpha does not expose cleanup, repair planning, repair,
+> Forge v0.17.0-alpha does not expose cleanup, repair planning, repair,
 > regeneration, or export commands. Repair, cleanup, and export should not be
 > reconsidered until decision guidance is reliable on labeled real-world data.
 
@@ -775,8 +824,8 @@ characteristics. The correspondence is:
 | Oversharpening / Halos | Unsharp-mask reversal; edge deconvolution |
 
 Cleanup families inherit their scope from the corresponding Finding. An image
-with a future `artifact.high_frequency_isolated` cleanup candidate would receive
-isolated-component cleanup, not microtexture cleanup.
+with a future `artifact.high_frequency_isolated` improvement candidate would
+receive isolated-component cleanup, not microtexture cleanup.
 
 **Possible cleanup routing flow if repair is ever justified:**
 
@@ -838,7 +887,7 @@ Silent or automatic modification would corrupt it with no recovery path.
 ## Archived Batch Exclusion and Export Research (future only)
 
 > This section describes a possible non-destructive export mechanism.
-> It is not yet implemented. Nothing in v0.16.0-alpha should be designed around
+> It is not yet implemented. Nothing in v0.17.0-alpha should be designed around
 > it or expose it through the public CLI. Export is not an assumed next step.
 
 ---

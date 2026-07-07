@@ -75,7 +75,7 @@ Inspect
 -> Human Review
 -> Persistent Decisions
 -> Dataset Comparison
--> Cleanup Planning
+-> Improvement Planning
 -> Optional Cleanup Execution
 ```
 
@@ -338,7 +338,7 @@ If the answer to (5) is yes, the amendment should be strongly questioned.
 Dataset Forge should become the trusted evidence engine for AI training datasets.
 
 The long-term product may grow from evidence-backed decisions into
-evidence-backed dataset improvement, including cleanup planning and optional
+evidence-backed dataset improvement, including Improvement Planning and optional
 cleanup execution. That future must preserve the same rule: source images are
 sacred, human intent is explicit, and automatic cleanup after inspection alone
 is never acceptable.

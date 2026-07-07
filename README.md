@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.16.0-alpha** -- first-time user experience polish for the LoRA Dataset Decision Engine.
+**v0.17.0-alpha** -- adds advisory Improvement Planning to the LoRA Dataset Decision Engine.
 
 Dataset Forge helps you decide which images belong in your LoRA before you train.
 
@@ -21,13 +21,15 @@ Raw Dataset
 -> Review
 -> Human Decisions
 -> Compare
+-> Improvement Planning
 -> Train
 ```
 
-**v0.16.0-alpha is read-only decision support.** Dataset Forge reads your
+**v0.17.0-alpha is read-only decision support.** Dataset Forge reads your
 dataset and writes reports beside it. It never modifies source images. There is
 still no cleanup, repair, export, hosted web app, cloud service, plugins, or
-new analyzer family in this release.
+new analyzer family in this release. Improvement Planning is a proposal only;
+it never executes changes.
 
 ---
 
@@ -65,6 +67,8 @@ Expected outputs:
 | `review_gallery.html` | Optional visual review page from `--review-gallery`. |
 | `priority_review_contact_sheet.png` | Optional visual sheet from `--contact-sheets`. |
 | `needs_review_contact_sheet.png` | Optional visual sheet from `--contact-sheets`. |
+| `improvement_plan.md` | Optional advisory plan from `dataset-forge plan`. |
+| `improvement_plan.json` | Machine-readable Improvement Plan sidecar. |
 
 Optional visual review outputs:
 
@@ -84,6 +88,12 @@ Optional comparison after a second inspect run:
 uv run dataset-forge compare old_run/inspect_output/ new_run/inspect_output/ --output comparison/
 ```
 
+Optional Improvement Plan:
+
+```text
+uv run dataset-forge plan my_dataset/inspect_output/
+```
+
 ---
 
 ## What It Does
@@ -101,12 +111,14 @@ The normal workflow is:
 5. Record decisions with `dataset-forge review my_dataset/inspect_output/`.
 6. Re-run inspect after dataset changes or a later review pass.
 7. Compare runs with `dataset-forge compare ...`.
-8. Train with the images you decide belong in the dataset.
+8. Generate an advisory Improvement Plan with `dataset-forge plan ...` if you
+   want evidence-backed Improvement Candidates for future work.
+9. Train with the images you decide belong in the dataset.
 
 A healthy dataset can legitimately produce zero findings. That is a valid
 and correct result, not a failure.
 
-**Analyzers in v0.16.0-alpha:**
+**Analyzers in v0.17.0-alpha:**
 
 | Analyzer | What it detects | Status |
 |---|---|---|
@@ -120,9 +132,10 @@ against labeled ground truth is complete. The oversharpening/halo analyzer is
 read-only, uses synthetic benchmark fixtures to validate its USM-residual signal
 shape, and remains uncalibrated for real-world precision/recall. The isolated
 high-frequency analyzer is also read-only and synthetic-fixture-backed only.
-Treat findings as candidates for human review, not automated decisions. v0.16
+Treat findings as candidates for human review, not automated decisions. v0.17
 does not change analyzer behavior, recommendation rules, JSON schemas, gallery
-behavior, contact sheets, review decisions, or comparison behavior.
+behavior, contact sheets, review decisions, comparison behavior, or source
+images.
 
 ---
 
@@ -143,7 +156,7 @@ edge halos.
 
 ---
 
-## Current limitations (v0.16.0-alpha)
+## Current limitations (v0.17.0-alpha)
 
 - **Analyzers are not calibrated to published ground truth.** Thresholds were
   derived from an initial labeled review of one private dataset. Precision and
@@ -155,14 +168,16 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.16.0-alpha exposes `inspect`,
-  optional local `review`, and sidecar-only `compare`. There is no separate
-  `dataset-forge recommend` command.
+- **No public recommendation command yet.** v0.17.0-alpha exposes `inspect`,
+  optional local `review`, sidecar-only `compare`, and advisory `plan`. There
+  is no separate `dataset-forge recommend` command.
 
-- **No cleanup, repair planning, repair, or export.** v0.16.0-alpha is read-only.
-  Cleanup, repair, and export are future-only possibilities, not assumed next
-  steps. See [ROADMAP.md](ROADMAP.md). Code for future phases exists in the
-  repository but is not active or supported in the public CLI.
+- **No cleanup, repair, execution, or export.** v0.17.0-alpha is read-only.
+  Improvement Planning writes `improvement_plan.json` and
+  `improvement_plan.md` only. Cleanup, repair, execution, and export are
+  future-only possibilities, not assumed next steps. See [ROADMAP.md](ROADMAP.md).
+  Code for future phases exists in the repository but is not active or
+  supported in the public CLI.
 
 - **No hosted web app.** Dataset Forge is a CLI tool. Reports are JSON, plain text,
   Markdown, optional static HTML, and optional PNG contact sheets. These visual
@@ -384,7 +399,7 @@ Recommendation Summary order.
 
 ### Internal: calibration evidence
 
-v0.16.0-alpha includes internal Calibration Evidence: comparing an existing
+v0.17.0-alpha includes internal Calibration Evidence: comparing an existing
 `inspection_report.json` with a small ground-truth label file to compute
 per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and
 false-positive rate.
@@ -395,7 +410,7 @@ behavior.
 
 ### Internal: review decisions
 
-v0.16.0-alpha includes persistent Review Decisions: schema-versioned JSON files
+v0.17.0-alpha includes persistent Review Decisions: schema-versioned JSON files
 that record human intent for images or finding categories after inspection and
 calibration review.
 
@@ -410,7 +425,7 @@ behavior.
 
 ### Internal: validation dossiers
 
-v0.16.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
+v0.17.0-alpha includes internal Validation Dossiers: deterministic JSON summaries
 that combine an existing `inspection_report.json`, calibration labels, and
 optional Review Decisions to assess analyzer reliability.
 
@@ -423,7 +438,7 @@ thresholds, modify images, plan repair, export datasets, or change the public
 
 ### Internal: real-world validation corpus
 
-v0.16.0-alpha includes the Real-World Validation Corpus framework under
+v0.17.0-alpha includes the Real-World Validation Corpus framework under
 `benchmarks/real_world/`. It defines how labeled real-world LoRA/image datasets
 should be organized for future reliability validation.
 
@@ -437,7 +452,7 @@ images, plan repair, export datasets, or change the public `inspect` behavior.
 
 ### Recommendation summary
 
-v0.16.0-alpha writes Recommendation Summary sidecars from `dataset-forge inspect`
+v0.17.0-alpha writes Recommendation Summary sidecars from `dataset-forge inspect`
 with schema
 `dataset-forge/recommendation-summary/v1`.
 
@@ -527,8 +542,9 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.16.0-alpha.** There is no public flag or command that plans, modifies,
-  repairs, exports, rejects, or regenerates images. This is by design.
+  v0.17.0-alpha.** There is no public flag or command that modifies, repairs,
+  exports, rejects, or regenerates images. `dataset-forge plan` writes advisory
+  Improvement Candidates only. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,
   a human-readable explanation, and a recommendation. No black-box scores.
 - **Healthy images stay quiet.** Images with no findings are listed as Ready for
@@ -590,7 +606,7 @@ MIT. See [LICENSE](LICENSE).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Inspect pipeline structure, Finding schema, artifact family model |
 | [WHY.md](WHY.md) | Reasoning behind major design decisions |
 | [DIRECTION.md](DIRECTION.md) | Current milestone and scope |
-| [ROADMAP.md](ROADMAP.md) | v0.16.0-alpha status and future milestone plan |
+| [ROADMAP.md](ROADMAP.md) | v0.17.0-alpha status and future milestone plan |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Implementation status; resume from here |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Acceptance criteria for terminal and report output |
 | [benchmarks/README.md](benchmarks/README.md) | Benchmark manifests and fixture inventory |

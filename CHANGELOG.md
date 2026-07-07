@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.17.0-alpha
+
+- Added `dataset-forge plan <inspect_output>`.
+- Added advisory Improvement Planning over existing sidecars:
+  `inspection_report.json`, `recommendation_summary.json`, optional
+  `review_decisions.json`, and optional `comparison_summary.json`.
+- Added `improvement_plan.json` with schema
+  `dataset-forge/improvement-plan/v1`.
+- Added `improvement_plan.md` with Improvement Candidates, Deferred
+  Improvement Candidates, Suppressed Improvement Candidates, and Suggested
+  Improvements.
+- Integrated existing review decisions into planning: confirmed artifacts
+  remain eligible, false positives/acceptable style/ignored scopes suppress
+  planning, locked images prevent candidates, and unresolved review defers
+  planning.
+- Kept analyzer behavior, recommendation rules, comparison behavior, inspect
+  output schemas, review server behavior, source images, cleanup execution,
+  repair, export, browser UI, and image processing unchanged.
+
 ## v0.16.0-alpha
 
 - Improved first-time user onboarding for the LoRA Dataset Decision Engine.

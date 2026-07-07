@@ -38,6 +38,7 @@ from dataset_forge.cleanup.io import load_cleanup_plan, write_cleanup_plan
 from dataset_forge.comparison import ComparisonError, compare_inspect_outputs
 from dataset_forge.core.structured import load_structured_file
 from dataset_forge.discovery import discover_images
+from dataset_forge.improvement_plan import ImprovementPlanError, write_improvement_plan
 from dataset_forge.analysis.texture import generate_texture_report
 from dataset_forge.analysis.health import generate_health_report
 from dataset_forge.inspect import run_inspect
@@ -56,7 +57,6 @@ _FUTURE_COMMANDS = {
     "plugins",
     "texture-report",
     "health-report",
-    "plan",
     "summarize-plan",
     "explain",
     "override",
@@ -86,8 +86,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.16.0-alpha: decide which LoRA dataset images "
-            "are ready to train, need review, or deserve priority attention."
+            "Dataset Forge v0.17.0-alpha: decide which LoRA dataset images "
+            "are ready to train, need review, deserve priority attention, "
+            "or have evidence-backed Improvement Candidates."
         ),
     )
     parser.add_argument(
@@ -160,6 +161,21 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Where to write comparison_summary.json and comparison_summary.md.",
     )
+    plan_parser = commands.add_parser(
+        "plan",
+        help="Write an advisory Improvement Plan from existing sidecars.",
+    )
+    plan_parser.add_argument(
+        "inspect_output",
+        type=Path,
+        help="Folder produced by dataset-forge inspect.",
+    )
+    plan_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Where to write improvement_plan.json and improvement_plan.md. Default: <inspect_output>.",
+    )
     return parser
 
 
@@ -194,11 +210,16 @@ def main(argv: list[str] | None = None) -> int:
             return _compare_main(arguments)
         except SystemExit as exc:
             return int(exc.code or 0)
+    if arguments[0] == "plan":
+        try:
+            return _plan_main(arguments)
+        except SystemExit as exc:
+            return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.16.0-alpha CLI. "
-            "Use 'dataset-forge inspect', 'review', 'compare', '--help', "
-            "or '--version'.",
+            "Error: this command is not part of the public v0.17.0-alpha CLI. "
+            "Use 'dataset-forge inspect', 'review', 'compare', 'plan', "
+            "'--help', or '--version'.",
             file=sys.stderr,
         )
         return 2
@@ -645,6 +666,53 @@ def _compare_main(argv: list[str]) -> int:
     print("Comparison written:")
     print(f"  {json_path}")
     print(f"  {markdown_path}")
+    return 0
+
+
+def _plan_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="dataset-forge plan",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Write an advisory Improvement Plan from existing inspect sidecars.\n"
+            "Planning is explicit and sidecar-only. Source images are not modified."
+        ),
+    )
+    parser.add_argument(
+        "inspect_output",
+        type=Path,
+        help="Folder produced by dataset-forge inspect.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Where to write improvement_plan.json and improvement_plan.md. Default: <inspect_output>.",
+    )
+    args = parser.parse_args(argv[1:])
+
+    inspect_output = args.inspect_output.expanduser().resolve()
+    output_dir = args.output.expanduser().resolve() if args.output else inspect_output
+    try:
+        json_path, markdown_path = write_improvement_plan(
+            inspect_output,
+            output_dir=output_dir,
+        )
+    except (ImprovementPlanError, OSError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
+    print("Dataset Forge Plan")
+    print("==================")
+    print(f"Inspect output: {inspect_output}")
+    print(f"Output:         {output_dir}")
+    print()
+    print("Improvement Plan written:")
+    print(f"  {json_path}")
+    print(f"  {markdown_path}")
+    print()
+    print("Improvement Planning is advisory and planning-only.")
+    print("Source images and existing sidecars were not modified.")
     return 0
 
 

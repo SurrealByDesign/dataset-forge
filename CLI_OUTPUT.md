@@ -155,6 +155,45 @@ The comparison command:
 
 ---
 
+## Plan Command
+
+```
+dataset-forge plan path/to/dataset/inspect_output/
+```
+
+Expected terminal output:
+
+```
+Dataset Forge Plan
+==================
+Inspect output: path/to/dataset/inspect_output
+Output:         path/to/dataset/inspect_output
+
+Improvement Plan written:
+  improvement_plan.json
+  improvement_plan.md
+
+Improvement Planning is advisory and planning-only.
+Source images and existing sidecars were not modified.
+```
+
+The plan command:
+
+- reads `inspection_report.json`, `recommendation_summary.json`, optional
+  `review_decisions.json`, and optional `comparison_summary.json`
+- writes only `improvement_plan.json` and `improvement_plan.md`
+- validates sidecar schemas before planning
+- maps existing findings to abstract Suggested Improvements only
+- respects human review decisions
+- does not inspect images, rerun analyzers, modify reports, modify
+  recommendations, modify review decisions, execute improvements, or modify
+  source images
+
+`improvement_plan.json` uses schema
+`dataset-forge/improvement-plan/v1`.
+
+---
+
 ## JSON Report Structure
 
 ```json

@@ -19,11 +19,11 @@ Everything after v0.8 should improve one of:
 - review efficiency
 - benchmark and corpus evidence
 
-Repair, cleanup, and export remain future-only possibilities, not assumed next
-steps.
+Repair, cleanup execution, and export remain future-only possibilities, not
+assumed next steps.
 
 The long-term direction is deterministic, evidence-backed dataset improvement.
-Dataset Forge may later support cleanup planning and optional cleanup execution,
+Dataset Forge may later support Improvement Planning and optional cleanup execution,
 but only after the decision path is trustworthy:
 
 ```
@@ -33,7 +33,7 @@ Inspect
 -> Human Review
 -> Persistent Decisions
 -> Dataset Comparison
--> Cleanup Planning
+-> Improvement Planning
 -> Optional Cleanup Execution
 ```
 
@@ -442,6 +442,38 @@ Constraints:
 
 ---
 
+### v0.17.0-alpha: Improvement Planning
+
+**Status:** Released.
+
+v0.17 adds the first evidence-backed planning stage:
+
+- Adds `dataset-forge plan <inspect_output>`.
+- Consumes existing `inspection_report.json`, `recommendation_summary.json`,
+  optional `review_decisions.json`, and optional `comparison_summary.json`.
+- Writes `improvement_plan.json` and `improvement_plan.md`.
+- Uses Improvement Candidate terminology for the new planning output.
+- Maps existing findings and recommendations to abstract Suggested
+  Improvements only.
+- Respects human review decisions:
+  `CONFIRMED_ARTIFACT` remains eligible, `FALSE_POSITIVE`,
+  `ACCEPTABLE_STYLE`, and `IGNORE` suppress planning, `LOCKED` prevents
+  candidates, and `NEEDS_REVIEW` defers planning.
+
+Constraints:
+
+- No image modification.
+- No copied, moved, renamed, deleted, or exported source files.
+- No cleanup execution.
+- No repair algorithms.
+- No analyzer changes.
+- No recommendation rule changes.
+- No comparison behavior changes.
+- No report schema changes.
+- No browser UI, buttons, execution state, or hidden automation.
+
+---
+
 ## Future Candidate: Recommendation Validation
 
 **Goal:** Measure whether decision guidance matches labels and review decisions.
@@ -523,9 +555,9 @@ The following may become valuable only after decision guidance is reliable:
 
 - Non-destructive export of human-approved training sets.
 - Repair planning.
-- Evidence-backed cleanup planning.
+- Evidence-backed Improvement Planning.
 - Optional cleanup execution after explicit human decisions.
-- Deterministic repair candidates.
+- Deterministic future intervention concepts.
 - Additional analyzers.
 - Dataset comparison.
 - Lightweight review UI.
@@ -536,7 +568,7 @@ reliably identify images that deserve intervention.
 
 Any future cleanup work must follow the evidence-backed path:
 Inspect -> Recommend -> Explain -> Human Review -> Persistent Decisions ->
-Dataset Comparison -> Cleanup Planning -> Optional Cleanup Execution. Automatic
+Dataset Comparison -> Improvement Planning -> Optional Cleanup Execution. Automatic
 cleanup directly after inspect is not allowed.
 
 ---
