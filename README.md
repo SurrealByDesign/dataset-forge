@@ -211,6 +211,32 @@ edge halos.
 
 ---
 
+## Next Direction: v0.19 Real-World Triage Evidence
+
+v0.19 should not implement deterministic execution. The next release direction
+is to improve real-image triage before any cleanup, export, repair, or pixel
+modification exists.
+
+Planned v0.19 focus:
+
+- Rename user-facing **Ready for Training** wording to **No Findings Emitted**
+  or **No Current Review Finding** until calibration supports stronger claims.
+- Add image-level triage dossiers with findings nested underneath each image.
+- Add analyzer coverage summaries so users know which analyzers ran, which
+  emitted findings, and which artifact families remain uncovered or
+  uncalibrated.
+- Clarify that no finding is not proof that an image is artifact-free or
+  guaranteed suitable for LoRA training.
+- Improve wording around crystalline faceting, high microtexture, Priority
+  Review, and accepted/acceptable style.
+- Validate the full read-only workflow against the anthropomorphic LoRA
+  dataset.
+
+Execution, cleanup, export, repair, source-image modification, and pixel
+modification remain explicitly out of scope.
+
+---
+
 ## What To Read First
 
 New users should read these first:

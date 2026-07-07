@@ -321,29 +321,75 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-1. **Validate Recommendation Summary usefulness on labeled datasets** -- keep
-   the v0.9 four-rule behavior unless validation supports stronger guidance.
+### v0.19.0-alpha Direction: Real-World Triage Evidence
 
-2. **Populate the Real-World Validation Corpus with legally safe labeled data** --
-   add public-domain/CC0 or otherwise redistributable real-world examples, labels,
-   and expected validation outputs before claiming real-world reliability.
+Do not implement deterministic execution yet.
 
-3. **Use Validation Dossiers on labeled real-world datasets** -- combine
-   precision/recall/F1, false-positive/false-negative examples, and review
-   decisions before changing analyzer thresholds or strengthening recommendation
-   language.
+v0.19 should make Dataset Forge better at helping a human decide what to do
+with real images before any cleanup, export, or pixel modification exists. The
+release should be validated against the anthropomorphic LoRA dataset and should
+treat real review friction as product evidence.
 
-4. **Collect Review Decisions from human audit passes** -- use the v0.14 local
-   review server to record confirmed artifacts, false positives,
-   acceptable style, ignored, locked, and needs-review outcomes before public
-   recommendation validation.
+Primary tasks:
 
-5. **TextureAnalyzer calibration** -- z-score thresholds are uncalibrated.
-   11 UNSURE images from the anthropomorph review need a dedicated pass.
+1. **Rename over-strong ready language** -- replace user-facing
+   `Ready for Training` wording with `No Findings Emitted` or
+   `No Current Review Finding` until calibration supports stronger claims.
 
-6. **Fourth discriminating signal for crystalline** -- grain 45-55 TP/FP
-   interleaving cannot be resolved by threshold adjustment alone. Candidates:
-   spatial coherence, directional frequency energy, micro-edge profile.
+2. **Clarify no-finding semantics** -- explain that no finding means no current
+   deterministic analyzer emitted a review signal. It does not certify that an
+   image is artifact-free, optimal, caption-ready, or guaranteed suitable for
+   LoRA training.
+
+3. **Add image-level triage dossiers** -- center each output item on an image,
+   with findings, evidence values, analyzer names, severity, confidence notes,
+   review status, and suggested human action nested underneath.
+
+4. **Make recommendations image-centered** -- avoid making finding-level
+   planning entries feel like separate image-level work items unless the output
+   explicitly explains that they are supporting evidence for one image.
+
+5. **Add analyzer coverage summaries** -- report which analyzers ran, which
+   emitted findings, which emitted none, which remain uncalibrated, and which
+   artifact families are currently uncovered.
+
+6. **Improve artifact-family wording** -- crystalline faceting should not read
+   as generic microtexture or as an automatic cleanup instruction; high
+   microtexture should read as a dataset-relative review signal, not proof of
+   defect.
+
+7. **Improve review-state wording** -- Priority Review means review first, not
+   exclude or execute; accepted/acceptable style means intentional style was
+   acknowledged by a human, not that the analyzer failed.
+
+8. **Validate the full workflow on the anthropomorphic dataset** -- inspect,
+   recommendation summary, review gallery, human review decisions, comparison,
+   improvement planning, and preview should be checked as one read-only user
+   workflow.
+
+Supporting validation tasks:
+
+- Populate the Real-World Validation Corpus with legally safe labeled data
+  before claiming real-world reliability.
+- Use Validation Dossiers on labeled real-world datasets before changing
+  analyzer thresholds or strengthening recommendation language.
+- Collect Review Decisions from human audit passes: confirmed artifacts, false
+  positives, acceptable style, ignored, locked, and needs-review outcomes.
+- TextureAnalyzer calibration remains pending; z-score thresholds are
+  uncalibrated.
+- Crystalline grain 45-55 TP/FP interleaving still needs a fourth
+  discriminating signal. Candidates: spatial coherence, directional frequency
+  energy, micro-edge profile.
+
+Explicitly out of scope for v0.19:
+
+- deterministic execution
+- cleanup execution
+- export
+- repair
+- source-image modification
+- pixel modification
+- automatic exclude/delete/move/rename decisions
 
 ---
 

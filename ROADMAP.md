@@ -502,20 +502,75 @@ Constraints:
 
 ---
 
-## Future Candidate: Recommendation Validation
+## v0.19.0-alpha: Real-World Triage Evidence
 
-**Goal:** Measure whether decision guidance matches labels and review decisions.
+**Status:** Planned.
 
-This future phase should use Calibration Evidence, Review Decisions,
-Validation Dossiers, and the Real-World Validation Corpus to answer:
+**Goal:** Make Dataset Forge better at helping a human decide what to do with
+real images before any cleanup, export, or deterministic execution exists.
+
+v0.19 should be validated against the anthropomorphic LoRA dataset, not only
+against unit tests or synthetic fixtures. The release should treat real review
+friction as product evidence: confusing labels, weak confidence wording,
+missing analyzer coverage context, overly broad improvement language, and any
+place where a human cannot tell why one image appears before another.
+
+Primary changes:
+
+- Rename user-facing **Ready for Training** language to **No Findings Emitted**
+  or **No Current Review Finding** until calibration supports stronger wording.
+- Clarify that no finding means no current deterministic analyzer emitted a
+  review signal. It does not certify that an image is artifact-free, optimal,
+  complete, caption-ready, or guaranteed suitable for LoRA training.
+- Add image-level triage dossiers that place each image at the center and nest
+  findings, evidence values, analyzer names, severity, confidence notes, review
+  status, and suggested next human action underneath.
+- Make recommendation outputs image-centered, with finding-level evidence as
+  supporting detail rather than separate competing work items.
+- Add analyzer coverage summaries: which analyzers ran, which emitted findings,
+  which emitted none, which remain uncalibrated, and which artifact families are
+  not currently covered.
+- Improve wording around crystalline faceting so it is not presented as generic
+  microtexture or automatically mapped to microtexture cleanup language.
+- Improve wording around high microtexture so users understand when it is a
+  dataset-relative review signal rather than proof of a defect.
+- Improve Priority Review wording so it means "review first" rather than
+  "exclude" or "execute an improvement."
+- Improve accepted-style / acceptable-style language so human review can record
+  intentional texture without treating it as analyzer failure.
+- Validate the full inspect -> recommendation summary -> review gallery ->
+  human review decisions -> comparison -> improvement planning -> preview
+  workflow against the anthropomorphic dataset.
+
+v0.19 should use Calibration Evidence, Review Decisions, Validation Dossiers,
+and the Real-World Validation Corpus where useful, but the release is not only
+a validation metrics release. It is a real-image triage-quality release.
+
+Questions v0.19 should answer:
 
 - How often are review recommendations useful?
 - How often are Priority Review recommendations false positives?
 - Which artifact families are trustworthy enough for stronger wording?
 - Which confidence messages reduce overtrust?
+- Do the reports and galleries give enough evidence for a human to make the
+  next decision without opening unrelated files?
+- Does the Improvement Plan overstate execution readiness or inflate work by
+  treating each finding as a separate image-level action?
 
 No analyzer thresholds should change until validation evidence supports the
 change.
+
+Constraints:
+
+- No deterministic execution.
+- No cleanup execution.
+- No export.
+- No repair.
+- No source-image modification.
+- No pixel modification.
+- No automatic exclude/delete/move/rename decisions.
+- No public command that implies Dataset Forge can execute improvements.
+- Behavior remains deterministic, read-only, advisory, and sidecar-based.
 
 ---
 
@@ -526,6 +581,7 @@ every LoRA.
 
 Focus areas:
 
+- Carry forward the v0.19 image-level triage dossier model.
 - Decision-oriented gallery sections.
 - Evidence summaries that are useful at thumbnail and full-image scale.
 - Clear confidence wording.
@@ -545,7 +601,8 @@ v1.0 should include:
 
 - Stable `inspect` behavior.
 - Stable decision guidance.
-- Evidence-backed Ready / Review / Exclude-from-training candidate language.
+- Evidence-backed No Findings / Review / Exclude-from-training candidate
+  language.
 - Clear calibration and confidence communication.
 - Public benchmark and corpus evidence.
 - Reports and gallery that reduce review burden.

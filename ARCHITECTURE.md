@@ -28,10 +28,10 @@ Improvement Plan. Cleanup execution, repair, regeneration, export, hosted UI,
 and plugins are future work and are not part of v0.18.0-alpha.
 
 The product direction after v0.6 is a LoRA Dataset Decision Engine: evidence
-should help users decide which images are ready to train, which need review,
-and which deserve priority attention before training. Internal systems exist to improve
-decision quality, confidence communication, false-positive reduction, and review
-efficiency.
+should help users decide which images have no current review findings, which
+need review, and which deserve priority attention before training. Internal
+systems exist to improve decision quality, confidence communication,
+false-positive reduction, and review efficiency.
 
 The long-term architectural direction is deterministic, evidence-backed dataset
 improvement. Dataset Forge may later support cleanup planning and optional
@@ -58,6 +58,17 @@ Inspect
 
 This is a future boundary, not current product scope. v0.18 remains a LoRA
 Dataset Decision Engine.
+
+v0.19 should not implement deterministic execution. Its architectural purpose
+is Real-World Triage Evidence: image-level triage dossiers, image-centered
+recommendations with findings nested underneath, analyzer coverage summaries,
+clear no-finding semantics, and better wording around crystalline faceting,
+high microtexture, Priority Review, and accepted/acceptable style. The full
+workflow should be validated against the anthropomorphic LoRA dataset while
+remaining read-only, advisory, deterministic, and sidecar-based.
+
+For v0.19, execution, cleanup, export, repair, source-image modification, and
+pixel modification remain explicitly out of scope.
 
 ---
 

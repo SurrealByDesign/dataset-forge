@@ -11,10 +11,10 @@
 
 Rule Zero: Dataset Forge exists to reduce uncertainty, not automate judgment.
 
-Dataset Forge helps LoRA dataset builders decide which images are ready to
-train, which need review, and which should be excluded from training. Every
-recommendation must be grounded in deterministic analysis, measurable evidence,
-and explainable findings.
+Dataset Forge helps LoRA dataset builders decide which images have no current
+review findings, which need review, and which should be considered for
+exclusion from training. Every recommendation must be grounded in deterministic
+analysis, measurable evidence, and explainable findings.
 
 Its purpose is not to make images prettier.
 
@@ -53,8 +53,9 @@ no changes at all.
 
 Dataset Forge is a LoRA Dataset Decision Engine.
 
-It helps users decide which images are ready to train, which images need human
-review, and which images should be excluded from training.
+It helps users decide which images have no current review findings, which
+images need human review, and which images should be considered for exclusion
+from training.
 
 Inspection is the evidence layer.
 
@@ -151,8 +152,13 @@ No AI is required for v1.
 
 No source-image modification is allowed in v1.
 
-Success is measured by producing trustworthy Ready / Review /
-Exclude-from-training guidance backed by findings.
+Success is measured by producing trustworthy No Findings / Review /
+Exclude-from-training candidate guidance backed by findings.
+
+User-facing "ready" language should be used carefully. Until calibration
+supports a stronger claim, no-finding states should be described as
+**No Findings Emitted** or **No Current Review Finding**, not as proof that an
+image is artifact-free or guaranteed suitable for training.
 
 ---
 
