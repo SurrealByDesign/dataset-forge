@@ -7,73 +7,72 @@
 
 ## Current Objective
 
-**v0.1 alpha** -- ship **Dataset Forge Inspect**, a complete working vertical slice:
+**v0.21.0-alpha** -- make the local Review Desk a clearer dataset curation
+workstation by adding a Dataset Overview and deterministic next-action
+guidance.
 
-```
-Dataset -> DatasetContext -> Analyzer -> Finding -> Report
-```
-
-v0.1 alpha implements this slice. The goal is not architectural perfection.
-The goal is a trustworthy analysis report that justifies future cleanup.
+The Review Desk remains the primary human-facing interface. It consumes
+existing inspect sidecars, shows review progress, explains which images need
+attention, and records human decisions in `review_decisions.json`.
 
 ---
 
-## Ultimate Objective
+## Product Identity
 
-Produce cleaner, more consistent LoRA training datasets through evidence-based
-analysis and minimally invasive intervention.
+Dataset Forge is an evidence-first, deterministic, non-destructive LoRA
+dataset curation workstation.
 
-Analysis is the foundation. Cleanup is the product.
+It helps users:
+
+- inspect image datasets
+- understand evidence
+- make human review decisions
+- document those decisions before training
+
+The product reduces uncertainty. It does not automate judgment.
 
 ---
 
 ## What Is In Scope Now
 
-- `Finding` dataclass (universal output contract)
-- `DatasetContext` dataclass (statistical reference frame)
-- `Analyzer` base class and initial analyzers
-- JSON and TXT report writers
-- CLI: `dataset-forge inspect <path>`
-- Calibration benchmarks for each analyzer
+- Dataset Overview inside the localhost Review Desk
+- review progress counts and decision counts
+- next-action guidance based only on existing sidecars
+- top finding category summaries
+- analyzer coverage summaries
+- clearer read-only and sidecar-driven scope language
+- documentation cleanup that reflects the current review-first direction
 
 ---
 
-## What Is Out of Scope for v0.1 alpha
+## What Is Out of Scope Now
 
-- Cleanup (any kind)
-- UI
-- Caption generation or auditing
-- Plugin systems
-- Exporters
-- Large architectural rewrites
-- Any feature without an immediate consumer in the v1 pipeline
+- cleanup
+- execution
+- repair
+- export
+- source-image modification
+- moving, copying, deleting, renaming, or quarantining files
+- quarantine folder creation
+- analyzer threshold changes
+- new analyzer families
+- hosted/cloud review
+- database-backed state
 
-Code for future phases exists in the repository (`cleanup/`, `plugins/`,
-`execution/`, `transforms/`, `exporters/`, `review/`) and is preserved but
-not active. Do not expand it. Do not delete it.
-
----
-
-## Definition of Done for v1
-
-```bash
-dataset-forge inspect ./dataset
-```
-
-Produces a coherent, trustworthy report based on real analyzers and calibrated
-evidence. At that point, Dataset Forge stops being an idea and becomes a
-working tool.
+`cleanup/`, `execution/`, `transforms/`, and `exporters/` remain legacy or
+future-only code paths. They are not part of the public v0.21 workflow and
+should not be expanded for this release.
 
 ---
 
 ## Primary Reference Dataset
 
-The anthropomorphic character dataset (hotdogs, bananas, pickle wizard, armored
-characters  --  watercolor and colored-pencil style) is the benchmark every
-implementation decision is measured against.
+The anthropomorphic character dataset remains the real-world validation set for
+review workflow decisions.
 
-Before implementing any feature, ask:
+Before implementing a feature, ask:
 
-> "Does this make Dataset Forge better at safely analyzing and improving this dataset?"
+> "Does this help a human safely decide what to do with this real dataset
+> before training, without modifying files?"
 
-If no, postpone to v2.
+If no, postpone it.

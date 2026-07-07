@@ -609,6 +609,15 @@ It is an interface layer only. It must remain local, deterministic, and
 sidecar-based, with no network dependencies, cleanup execution, export,
 automatic repair, source-image modification, or pixel modification.
 
+v0.21 adds a computed Dataset Overview inside the same local Review Desk. The
+overview is derived from existing sidecars only: `inspection_report.json`,
+`recommendation_summary.json`, `triage_dossiers.json`, and optional
+`review_decisions.json`. It summarizes triage counts, review progress, decision
+counts, workflow counts, top finding categories, analyzer coverage, and a
+deterministic next action. It does not run analyzers, inspect pixels, modify
+images, move files, copy files, create quarantine folders, export datasets,
+change analyzer thresholds, or change the review-decision schema.
+
 v0.10 adds `dataset-forge inspect --review-gallery`, which writes
 `review_gallery.html` from the existing `inspection_report.json` and
 `recommendation_summary.json` sidecars. The gallery is plain deterministic HTML

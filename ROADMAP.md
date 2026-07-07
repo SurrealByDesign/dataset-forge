@@ -640,6 +640,40 @@ Constraints:
 
 ---
 
+## v0.21.0-alpha: Review Desk Dataset Overview
+
+**Goal:** Make the Review Desk immediately answer "where should I look next?"
+for real datasets.
+
+v0.21 is Review Desk overview and progress guidance, not execution. It adds a
+computed Dataset Overview to the local browser desk from existing sidecars only.
+
+Scope:
+
+- Show total image count and triage counts.
+- Show review progress, decision counts, and workflow counts.
+- Show top finding categories in deterministic order.
+- Show analyzer coverage summaries.
+- Add deterministic next-action guidance:
+  - undecided Priority Review images first
+  - then undecided Needs Review images
+  - then optional No Findings Emitted sampling
+  - then complete-state guidance
+- Make read-only, sidecar-driven scope visible in the Review Desk.
+- Clarify that Quarantine Planned is workflow intent only, not file movement.
+
+Constraints:
+
+- No source-image modification.
+- No file movement, copying, deletion, export, or quarantine folder creation.
+- No cleanup, repair, execution, or automatic improvement action.
+- No analyzer threshold changes.
+- No new analyzer families.
+- No `review_decisions.json` schema change unless a true blocker appears.
+- No hosted app, login, database, cloud service, or network dependency.
+
+---
+
 ## v1.0: Stable LoRA Dataset Decision Engine
 
 **Goal:** Ship a stable, read-only product that helps users decide what belongs

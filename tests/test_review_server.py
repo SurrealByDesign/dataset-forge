@@ -23,13 +23,71 @@ from dataset_forge.review_server import (
 )
 
 
-def _write_workspace(root: Path) -> tuple[Path, Path]:
+def _write_workspace(root: Path, *, include_needs_review: bool = False) -> tuple[Path, Path]:
     output = root / "inspect_output"
     output.mkdir()
     image = root / "priority.png"
     ready = root / "ready.png"
+    needs = root / "needs.png"
     Image.fromarray(np.full((24, 24, 3), 128, dtype=np.uint8)).save(image)
     Image.fromarray(np.full((24, 24, 3), 64, dtype=np.uint8)).save(ready)
+    if include_needs_review:
+        Image.fromarray(np.full((24, 24, 3), 96, dtype=np.uint8)).save(needs)
+    recommendations = [
+        {
+            "image_path": str(image),
+            "recommendation": "PRIORITY_REVIEW",
+            "display_label": "Priority Review",
+            "primary_reason": "High-severity finding detected.",
+            "reason_codes": ["finding.high_severity"],
+            "finding_refs": [
+                {
+                    "analyzer": "texture_analyzer/v1",
+                    "category": "artifact.texture",
+                    "severity": "HIGH",
+                },
+                {
+                    "analyzer": "oversharpening_halo_analyzer/v1",
+                    "category": "artifact.oversharpening_halo",
+                    "severity": "MEDIUM",
+                },
+            ],
+            "guidance": "Review this image early before training.",
+            "confidence_note": "Recommendations are advisory.",
+        },
+        {
+            "image_path": str(ready),
+            "recommendation": "READY_FOR_TRAINING",
+            "display_label": "No Findings Emitted",
+            "primary_reason": "No findings were emitted for this image.",
+            "reason_codes": ["no_findings"],
+            "finding_refs": [],
+            "guidance": "No current evidence requiring review.",
+            "confidence_note": "Recommendations are advisory.",
+        },
+    ]
+    if include_needs_review:
+        recommendations.append({
+            "image_path": str(needs),
+            "recommendation": "NEEDS_REVIEW",
+            "display_label": "Needs Review",
+            "primary_reason": "Medium-severity finding detected.",
+            "reason_codes": ["finding.medium_severity"],
+            "finding_refs": [
+                {
+                    "analyzer": "high_frequency_isolated_artifact_analyzer/v1",
+                    "category": "artifact.high_frequency_isolated",
+                    "severity": "MEDIUM",
+                },
+                {
+                    "analyzer": "texture_analyzer/v1",
+                    "category": "artifact.texture",
+                    "severity": "LOW",
+                },
+            ],
+            "guidance": "Review this image before training.",
+            "confidence_note": "Recommendations are advisory.",
+        })
     (output / "inspection_report.json").write_text(
         json.dumps({
             "schema": "dataset-forge/inspection/v1",
@@ -43,49 +101,46 @@ def _write_workspace(root: Path) -> tuple[Path, Path]:
             "schema": "dataset-forge/recommendation-summary/v1",
             "source_report_schema": "dataset-forge/inspection/v1",
             "summary": {
-                "image_count": 2,
+                "image_count": 3 if include_needs_review else 2,
                 "ready_for_training_count": 1,
-                "needs_review_count": 0,
+                "needs_review_count": 1 if include_needs_review else 0,
                 "priority_review_count": 1,
                 "analyzer_error_count": 0,
             },
-            "recommendations": [
-                {
-                    "image_path": str(image),
-                    "recommendation": "PRIORITY_REVIEW",
-                    "display_label": "Priority Review",
-                    "primary_reason": "High-severity finding detected.",
-                    "reason_codes": ["finding.high_severity"],
-                    "finding_refs": [
-                        {
-                            "analyzer": "texture_analyzer/v1",
-                            "category": "artifact.texture",
-                            "severity": "HIGH",
-                        },
-                        {
-                            "analyzer": "oversharpening_halo_analyzer/v1",
-                            "category": "artifact.oversharpening_halo",
-                            "severity": "MEDIUM",
-                        },
-                    ],
-                    "guidance": "Review this image early before training.",
-                    "confidence_note": "Recommendations are advisory.",
-                },
-                {
-                    "image_path": str(ready),
-                    "recommendation": "READY_FOR_TRAINING",
-                    "display_label": "No Findings Emitted",
-                    "primary_reason": "No findings were emitted for this image.",
-                    "reason_codes": ["no_findings"],
-                    "finding_refs": [],
-                    "guidance": "No current evidence requiring review.",
-                    "confidence_note": "Recommendations are advisory.",
-                },
-            ],
+            "analyzer_coverage": {
+                "schema": "dataset-forge/analyzer-coverage/v1",
+                "analyzers": [
+                    {
+                        "analyzer": "high_frequency_isolated_artifact_analyzer",
+                        "version": "v1",
+                        "finding_count": 1 if include_needs_review else 0,
+                        "image_count": 1 if include_needs_review else 0,
+                        "calibration_status": "uncalibrated",
+                    },
+                    {
+                        "analyzer": "texture_analyzer",
+                        "version": "v1",
+                        "finding_count": 2 if include_needs_review else 1,
+                        "image_count": 2 if include_needs_review else 1,
+                        "calibration_status": "uncalibrated",
+                    },
+                ],
+            },
+            "recommendations": recommendations,
         }),
         encoding="utf-8",
     )
     return output, image
+
+
+def _write_review_decisions(output: Path, decisions: list[dict[str, object]]) -> None:
+    (output / "review_decisions.json").write_text(
+        json.dumps({
+            "schema": REVIEW_DECISIONS_SCHEMA,
+            "decisions": decisions,
+        }),
+        encoding="utf-8",
+    )
 
 
 class ReviewServerDataTests(unittest.TestCase):
@@ -110,6 +165,95 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertEqual(priority["finding_count"], 2)
         self.assertIn("artifact.texture", priority["finding_categories"])
         self.assertIn("ready.png", json.dumps(data))
+
+    def test_overview_counts_and_scope_are_computed_from_sidecars(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp), include_needs_review=True)
+            _write_review_decisions(output, [
+                {
+                    "image_path": str(image),
+                    "decision": "KEEP",
+                    "workflow_state": "REVIEWED",
+                },
+            ])
+
+            data = build_review_data(output)
+
+        overview = data["overview"]
+        self.assertEqual(overview["image_count"], 3)
+        self.assertEqual(
+            overview["triage_counts"],
+            {
+                "Priority Review": 1,
+                "Needs Review": 1,
+                "No Findings Emitted": 1,
+            },
+        )
+        self.assertEqual(overview["review_progress"]["reviewed_count"], 1)
+        self.assertEqual(overview["review_progress"]["pending_review_count"], 2)
+        self.assertEqual(overview["decision_counts"]["KEEP"], 1)
+        self.assertTrue(overview["scope"]["read_only"])
+        self.assertTrue(overview["scope"]["sidecar_driven"])
+        self.assertTrue(overview["scope"]["does_not_run_analyzers"])
+        self.assertTrue(overview["scope"]["does_not_modify_images"])
+        self.assertEqual(overview["scope"]["writes_only"], "review_decisions.json")
+
+    def test_overview_next_action_order_is_deterministic(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp), include_needs_review=True)
+
+            first = build_review_data(output)["overview"]["next_action"]
+            _write_review_decisions(output, [
+                {
+                    "image_path": str(image),
+                    "decision": "KEEP",
+                    "workflow_state": "REVIEWED",
+                },
+            ])
+            second = build_review_data(output)["overview"]["next_action"]
+
+        self.assertEqual(first["label"], "Review Priority Review images")
+        self.assertEqual(first["target_filter"]["triage_status"], "Priority Review")
+        self.assertEqual(second["label"], "Review Needs Review images")
+        self.assertEqual(second["target_filter"]["triage_status"], "Needs Review")
+
+    def test_overview_top_categories_are_sorted_by_count_then_name(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, _image = _write_workspace(Path(tmp), include_needs_review=True)
+
+            data = build_review_data(output)
+
+        categories = data["overview"]["top_finding_categories"]
+        self.assertEqual(
+            categories[:3],
+            [
+                {
+                    "category": "artifact.texture",
+                    "count": 2,
+                    "highest_severity": "HIGH",
+                },
+                {
+                    "category": "artifact.high_frequency_isolated",
+                    "count": 1,
+                    "highest_severity": "MEDIUM",
+                },
+                {
+                    "category": "artifact.oversharpening_halo",
+                    "count": 1,
+                    "highest_severity": "MEDIUM",
+                },
+            ],
+        )
+
+    def test_build_review_data_does_not_write_files(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, _image = _write_workspace(Path(tmp), include_needs_review=True)
+            before = sorted(path.name for path in output.iterdir())
+
+            build_review_data(output)
+            after = sorted(path.name for path in output.iterdir())
+
+        self.assertEqual(after, before)
 
     def test_existing_decisions_load_into_rows(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -284,14 +428,22 @@ class ReviewServerHttpTests(unittest.TestCase):
                 thread.join(timeout=5)
 
         self.assertIn("Dataset Forge Review Desk", html)
+        self.assertIn("Dataset Overview", html)
+        self.assertIn("Apply Next Action", html)
+        self.assertIn("Clear Filters", html)
+        self.assertIn("Review Desk does not run analyzers", html)
+        self.assertIn("Quarantine Planned is workflow intent only", html)
         self.assertIn("review_decisions.json", html)
         self.assertIn('id="zoomViewer"', html)
         self.assertIn("Actual size: 100% pixels", html)
         self.assertIn("mouse wheel zooms", html)
         self.assertIn("Space: larger preview", html)
-        for forbidden in ("repair", "export", "<form", "localStorage"):
+        self.assertIn("export datasets", html)
+        self.assertIn("does not create quarantine folders or move files", html)
+        for forbidden in ("repair", "<form", "localStorage"):
             self.assertNotIn(forbidden, html)
         self.assertEqual(data["summary"]["review_image_count"], 2)
+        self.assertIn("overview", data)
 
     def test_post_writes_decision(self) -> None:
         with TemporaryDirectory() as tmp:

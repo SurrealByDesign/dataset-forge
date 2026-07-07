@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.21.0-alpha
+
+- Added a Dataset Overview to the local Review Desk.
+- Added computed review progress, triage counts, decision counts, workflow
+  counts, top finding categories, and analyzer coverage summaries to the
+  Review Desk data payload.
+- Added deterministic next-action guidance so the desk can point reviewers to
+  undecided Priority Review images first, then Needs Review images, then
+  optional No Findings Emitted sampling.
+- Added Review Desk controls for applying the next action and clearing filters.
+- Clarified that Quarantine Planned is workflow intent only and does not create
+  folders, move files, copy files, export datasets, or modify images.
+- Kept `review_decisions.json` on schema
+  `dataset-forge/review-decisions/v2`.
+- Kept execution, cleanup, export, repair, source-image modification, analyzer
+  threshold changes, and new analyzer families out of scope.
+
 ## v0.20.0-alpha
 
 - Added the local browser-based Review Desk as the primary human-facing review

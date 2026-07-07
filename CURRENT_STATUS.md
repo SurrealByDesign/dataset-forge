@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-07. Reflects v0.20.0-alpha.*
+*Last updated: 2026-07-07. Reflects v0.21.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.20.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.21.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -38,6 +38,12 @@ images by Priority Review, Needs Review, and No Findings Emitted; shows nested
 finding evidence and analyzer coverage; records v2 human decisions, workflow
 state, and notes in `review_decisions.json`; and remains localhost-only,
 deterministic, sidecar-based, and non-destructive.
+v0.21 adds a Dataset Overview inside the Review Desk: review progress, triage
+counts, decision counts, workflow counts, top finding categories, analyzer
+coverage summaries, deterministic next-action guidance, and clearer read-only
+scope language. It keeps `review_decisions.json` on schema v2 and does not add
+cleanup, execution, export, new analyzers, threshold changes, file movement, or
+source-image modification.
 
 Current public behavior remains inspect-first:
 
@@ -45,7 +51,7 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.20.0-alpha:
+Supported in v0.21.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- local-only browser Review Desk
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
@@ -69,7 +75,8 @@ Supported in v0.20.0-alpha:
   `review_decisions.json`
 - Local Review Desk:
   serves existing sidecars from `127.0.0.1` and writes only
-  `review_decisions.json`
+  `review_decisions.json`; includes Dataset Overview and deterministic
+  next-action guidance
 - Dataset Comparison:
   compares existing `inspection_report.json`, `recommendation_summary.json`,
   and optional `review_decisions.json` sidecars; writes
@@ -118,7 +125,7 @@ Supported in v0.20.0-alpha:
 - No analyzer threshold changes
 - No improvement execution, cleanup, repair, export, hosted web app, plugins, or new analyzers
 
-Not supported in v0.20.0-alpha (planned for later releases):
+Not supported in v0.21.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -334,27 +341,29 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-### v0.20.0-alpha Validation
+### v0.21.0-alpha Validation
 
-v0.20 is implemented as Review UX Consolidation, not execution. The remaining
-release-readiness task is real-world validation on the anthropomorphic LoRA
-dataset:
+v0.21 is implemented as Review Desk Dataset Overview, not execution. The
+remaining release-readiness task is real-world validation on the anthropomorphic
+LoRA dataset:
 
 1. Run `dataset-forge inspect`.
 2. Open `dataset-forge review <inspect_output>`.
 3. Confirm the Review Desk makes Priority Review, Needs Review, and No Findings
    Emitted images understandable at image-card level.
-4. Record sample Keep, Accepted Style / False Positive, Improvement Candidate,
+4. Confirm the Dataset Overview reports review progress, top categories,
+   analyzer coverage, and deterministic next-action guidance.
+5. Record sample Keep, Accepted Style / False Positive, Improvement Candidate,
    Removal Candidate, and Undecided decisions.
-5. Confirm `review_decisions.json` uses schema
+6. Confirm `review_decisions.json` uses schema
    `dataset-forge/review-decisions/v2`.
-6. Confirm comparison, plan, and preview continue to consume the v2 decisions
+7. Confirm comparison, plan, and preview continue to consume the v2 decisions
    without executing or modifying images.
 
 Keep static `review_gallery.html` as a secondary read-only artifact. The local
 `dataset-forge review` command is now the primary human decision workflow.
 
-Explicitly out of scope for v0.20:
+Explicitly out of scope for v0.21:
 
 - deterministic execution
 - cleanup execution

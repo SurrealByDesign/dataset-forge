@@ -272,6 +272,14 @@ def _review_data_from_workspace(workspace: ReviewWorkspace) -> dict[str, Any]:
         if image["decision"] is not None:
             decision_counts[image["decision"]] = decision_counts.get(image["decision"], 0) + 1
         workflow_counts[image["workflow_state"]] = workflow_counts.get(image["workflow_state"], 0) + 1
+    overview = _build_overview(
+        images,
+        summary,
+        workspace.recommendation_summary.get("analyzer_coverage", {}),
+        reviewed_count,
+        decision_counts,
+        workflow_counts,
+    )
     return {
         "schema": "dataset-forge/review-desk-data/v1",
         "review_decisions_schema": REVIEW_DECISIONS_SCHEMA,
@@ -292,6 +300,7 @@ def _review_data_from_workspace(workspace: ReviewWorkspace) -> dict[str, Any]:
             "decision_counts": decision_counts,
             "workflow_counts": workflow_counts,
         },
+        "overview": overview,
         "analyzer_coverage": workspace.recommendation_summary.get("analyzer_coverage", {}),
         "decision_values": sorted(_DECISION_VALUES),
         "workflow_states": sorted(_WORKFLOW_STATES),
@@ -307,6 +316,153 @@ def _review_data_from_workspace(workspace: ReviewWorkspace) -> dict[str, Any]:
         },
         "images": images,
         "rows": images,
+    }
+
+
+def _build_overview(
+    images: list[dict[str, Any]],
+    summary: Mapping[str, Any],
+    analyzer_coverage: Mapping[str, Any],
+    reviewed_count: int,
+    decision_counts: Mapping[str, int],
+    workflow_counts: Mapping[str, int],
+) -> dict[str, Any]:
+    image_count = int(summary.get("image_count", len(images)))
+    triage_counts = {
+        "Priority Review": int(summary.get("priority_review_count", 0)),
+        "Needs Review": int(summary.get("needs_review_count", 0)),
+        "No Findings Emitted": int(
+            summary.get(
+                "no_findings_emitted_count",
+                summary.get("ready_for_training_count", 0),
+            )
+        ),
+    }
+    pending_count = len(images) - reviewed_count
+    return {
+        "image_count": image_count,
+        "triage_counts": triage_counts,
+        "review_progress": {
+            "review_image_count": len(images),
+            "reviewed_count": reviewed_count,
+            "pending_review_count": pending_count,
+            "completion_percent": (
+                round((reviewed_count / len(images)) * 100, 1)
+                if images
+                else 100.0
+            ),
+        },
+        "decision_counts": dict(sorted(decision_counts.items())),
+        "workflow_counts": dict(sorted(workflow_counts.items())),
+        "top_finding_categories": _top_categories(images),
+        "analyzer_coverage_summary": _analyzer_coverage_summary(analyzer_coverage),
+        "next_action": _next_action(images),
+        "scope": {
+            "read_only": True,
+            "sidecar_driven": True,
+            "writes_only": REVIEW_DECISIONS_FILENAME,
+            "does_not_run_analyzers": True,
+            "does_not_modify_images": True,
+            "does_not_move_copy_export_or_quarantine_files": True,
+        },
+        "no_finding_semantics": (
+            "No Findings Emitted means no current deterministic analyzer emitted "
+            "a review finding. It is not proof that an image is artifact-free, "
+            "caption-ready, or suitable for training."
+        ),
+    }
+
+
+def _top_categories(images: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts: dict[str, int] = {}
+    severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+    category_severity: dict[str, str] = {}
+    for image in images:
+        references = image.get("findings", []) or image.get("finding_refs", [])
+        for finding in references:
+            if not isinstance(finding, dict):
+                continue
+            category = str(finding.get("category", ""))
+            if not category:
+                continue
+            counts[category] = counts.get(category, 0) + 1
+            severity = str(finding.get("severity", ""))
+            current = category_severity.get(category)
+            if current is None or severity_rank.get(severity, 99) < severity_rank.get(current, 99):
+                category_severity[category] = severity
+    return [
+        {
+            "category": category,
+            "count": count,
+            "highest_severity": category_severity.get(category, ""),
+        }
+        for category, count in sorted(
+            counts.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:8]
+    ]
+
+
+def _analyzer_coverage_summary(analyzer_coverage: Mapping[str, Any]) -> list[dict[str, Any]]:
+    analyzers = analyzer_coverage.get("analyzers", [])
+    if not isinstance(analyzers, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    for item in analyzers:
+        if not isinstance(item, dict):
+            continue
+        rows.append({
+            "analyzer": str(item.get("analyzer", "")),
+            "version": str(item.get("version", "")),
+            "finding_count": int(item.get("finding_count", 0) or 0),
+            "image_count": int(item.get("image_count", 0) or 0),
+            "calibration_status": str(item.get("calibration_status", "advisory")),
+        })
+    return sorted(rows, key=lambda item: (item["analyzer"], item["version"]))
+
+
+def _next_action(images: list[dict[str, Any]]) -> dict[str, Any]:
+    ordered_targets = (
+        (
+            "Priority Review",
+            "Review Priority Review images",
+            "Highest-priority images still need human decisions.",
+        ),
+        (
+            "Needs Review",
+            "Review Needs Review images",
+            "Priority Review images are decided; continue with remaining flagged images.",
+        ),
+        (
+            "No Findings Emitted",
+            "Optionally sample No Findings Emitted images",
+            "Flagged images have decisions recorded; sample no-finding images if you want extra confidence.",
+        ),
+    )
+    for triage, label, reason in ordered_targets:
+        matches = [
+            image for image in images
+            if image["triage_status"] == triage
+            and image["decision"] in (None, ReviewDecisionValue.UNDECIDED.value)
+        ]
+        if matches:
+            first = sorted(matches, key=lambda image: image["filename"])[0]
+            return {
+                "label": label,
+                "reason": reason,
+                "target_filter": {
+                    "triage_status": triage,
+                    "decision": ReviewDecisionValue.UNDECIDED.value,
+                },
+                "target_image_id": first["id"],
+                "target_filename": first["filename"],
+            }
+    return {
+        "label": "Review decisions are complete",
+        "reason": "Every image in the current Review Desk has a recorded decision.",
+        "target_filter": {},
+        "target_image_id": None,
+        "target_filename": None,
     }
 
 
@@ -347,6 +503,7 @@ def _review_images(workspace: ReviewWorkspace) -> list[dict[str, Any]]:
             "severities": severities,
             "max_confidence": max(confidences) if confidences else None,
             "finding_count": len(finding_refs),
+            "finding_refs": finding_refs,
             "findings": findings,
             "evidence_summary": _evidence_summary(findings),
             "suggested_review_action": str(
@@ -498,6 +655,11 @@ textarea { min-height: 90px; resize: vertical; }
 .counts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .count { border: 1px solid var(--line); padding: 8px; background: #fafbfc; }
 .count strong { display: block; font-size: 1.15rem; }
+.overview { background: var(--panel); border: 1px solid var(--line); padding: 12px; margin-bottom: 14px; }
+.overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 10px 0; }
+.overview-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.overview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.overview-actions button { padding: 7px 9px; }
 .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
 .toolbar input { width: 180px; }
 .group-title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-top: 18px; }
@@ -536,7 +698,7 @@ dialog { border: 1px solid var(--line); max-width: 620px; }
 <div class="app">
 <aside class="left">
   <h1>Dataset Forge Review Desk</h1>
-  <p>This local desk writes only <code>review_decisions.json</code>. Source images are never modified.</p>
+  <p>This local desk consumes generated sidecars and writes only <code>review_decisions.json</code>. Source images are never modified.</p>
   <section class="counts" id="counts"></section>
   <label for="search">Search</label>
   <input id="search" type="search" placeholder="filename or evidence">
@@ -562,9 +724,11 @@ dialog { border: 1px solid var(--line); max-width: 620px; }
     <option value="0.5">0.50 and above</option>
   </select>
   <button id="nextUndecided" type="button" title="Next undecided (N)">Next Undecided <span class="shortcut">N</span></button>
+  <button id="clearFilters" type="button" title="Clear all filters">Clear Filters</button>
   <button id="shortcutHelp" type="button" title="Keyboard reference (?)">Shortcuts <span class="shortcut">?</span></button>
 </aside>
 <main class="center">
+  <section id="overview" class="overview"></section>
   <section class="toolbar">
     <label for="thumbSize">Thumbnail size</label>
     <input id="thumbSize" type="range" min="130" max="280" value="170">
@@ -612,7 +776,7 @@ const decisionLabels = {
 };
 const workflowLabels = {
   IN_DATASET: 'In Dataset',
-  QUARANTINE_PLANNED: 'Quarantine Planned',
+  QUARANTINE_PLANNED: 'Quarantine Planned (workflow note only)',
   REVIEWED: 'Reviewed'
 };
 const shortcutDecision = { '1': 'KEEP', '2': 'ACCEPTED_STYLE_FALSE_POSITIVE', '3': 'IMPROVEMENT_CANDIDATE', '4': 'REMOVAL_CANDIDATE', 'u': 'UNDECIDED' };
@@ -706,6 +870,9 @@ function renderGroups() {
     if (!images.length) grid.innerHTML = '<p class="muted">No images in this group.</p>';
     root.appendChild(section);
   });
+  if (!visible) {
+    root.insertAdjacentHTML('afterbegin', '<p class="muted">No matching images. Clear filters or broaden the current review selection.</p>');
+  }
   document.getElementById('visibleCount').textContent = `${visible} visible`;
 }
 function renderCounts() {
@@ -714,6 +881,53 @@ function renderCounts() {
     countBox('Reviewed', data.summary.already_reviewed_count) +
     countBox('Priority', data.summary.priority_review_count) +
     countBox('Remaining', data.summary.pending_review_count);
+}
+function renderOverview() {
+  const overview = data.overview || {};
+  const progress = overview.review_progress || {};
+  const triage = overview.triage_counts || {};
+  const next = overview.next_action || {};
+  const categories = overview.top_finding_categories || [];
+  const analyzers = overview.analyzer_coverage_summary || [];
+  const categoryButtons = categories.length
+    ? categories.map(item => `<button type="button" data-category="${escapeText(item.category)}">${escapeText(item.category)} (${item.count})</button>`).join('')
+    : '<span class="muted">No finding categories emitted.</span>';
+  const analyzerRows = analyzers.length
+    ? analyzers.map(item => `<span class="badge">${escapeText(item.analyzer)}: ${item.finding_count} findings on ${item.image_count} images, ${escapeText(item.calibration_status || 'advisory')}</span>`).join('')
+    : '<span class="muted">No analyzer coverage summary was recorded.</span>';
+  document.getElementById('overview').innerHTML = `
+    <h2>Dataset Overview</h2>
+    <p>Review-first overview from existing sidecars only. The Review Desk does not run analyzers, modify images, move files, copy files, create quarantine folders, or export datasets.</p>
+    <div class="overview-grid">
+      ${countBox('Total images', overview.image_count || 0)}
+      ${countBox('Priority Review', triage['Priority Review'] || 0)}
+      ${countBox('Needs Review', triage['Needs Review'] || 0)}
+      ${countBox('No Findings Emitted', triage['No Findings Emitted'] || 0)}
+      ${countBox('Reviewed', progress.reviewed_count || 0)}
+      ${countBox('Pending', progress.pending_review_count || 0)}
+      ${countBox('Complete', (progress.completion_percent || 0) + '%')}
+    </div>
+    <h2>Next Action</h2>
+    <p><strong>${escapeText(next.label || 'Review dataset')}</strong></p>
+    <p>${escapeText(next.reason || '')}</p>
+    <div class="overview-actions">
+      <button id="applyNextAction" type="button">Apply Next Action</button>
+      <button id="overviewClearFilters" type="button">Clear Filters</button>
+    </div>
+    <h2>Top Finding Categories</h2>
+    <div class="overview-list">${categoryButtons}</div>
+    <h2>Analyzer Coverage</h2>
+    <div class="overview-list">${analyzerRows}</div>
+    <p class="muted">${escapeText(overview.no_finding_semantics || '')}</p>
+    <p class="muted">Quarantine Planned is workflow intent only. Dataset Forge does not create quarantine folders or move files.</p>`;
+  document.getElementById('applyNextAction').addEventListener('click', applyNextAction);
+  document.getElementById('overviewClearFilters').addEventListener('click', clearFilters);
+  document.querySelectorAll('#overview [data-category]').forEach(button => {
+    button.addEventListener('click', () => {
+      document.getElementById('categoryFilter').value = button.dataset.category;
+      renderGroups();
+    });
+  });
 }
 function populateFilters() {
   const decision = document.getElementById('decisionFilter');
@@ -803,6 +1017,7 @@ async function saveDecision(image, decision, workflowState, notes) {
   }
   data = await response.json();
   renderCounts();
+  renderOverview();
   renderGroups();
   renderDetail();
   if (center) center.scrollTop = previousScroll;
@@ -817,6 +1032,22 @@ function moveSelection(offset) {
 function nextUndecided() {
   const target = currentImages().find(image => !image.decision || image.decision === 'UNDECIDED');
   if (target) selectImage(target.id);
+}
+function clearFilters() {
+  ['search', 'decisionFilter', 'workflowFilter', 'triageFilter', 'categoryFilter', 'severityFilter', 'confidenceFilter'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  renderGroups();
+}
+function applyNextAction() {
+  const next = data.overview && data.overview.next_action;
+  if (!next) return;
+  clearFilters();
+  const filter = next.target_filter || {};
+  if (filter.triage_status) document.getElementById('triageFilter').value = filter.triage_status;
+  if (filter.decision) document.getElementById('decisionFilter').value = filter.decision;
+  renderGroups();
+  if (next.target_image_id) selectImage(next.target_image_id);
 }
 function openPreview(image) {
   openZoom(image);
@@ -885,6 +1116,7 @@ async function render() {
   populateFilters();
   selectedId = data.images[0] && data.images[0].id;
   renderCounts();
+  renderOverview();
   renderGroups();
   renderDetail();
 }
@@ -894,6 +1126,7 @@ async function render() {
 });
 document.getElementById('thumbSize').addEventListener('input', event => document.documentElement.style.setProperty('--thumb-size', event.target.value + 'px'));
 document.getElementById('nextUndecided').addEventListener('click', nextUndecided);
+document.getElementById('clearFilters').addEventListener('click', clearFilters);
 document.getElementById('shortcutHelp').addEventListener('click', () => document.getElementById('shortcuts').showModal());
 document.getElementById('zoomClose').addEventListener('click', closeZoom);
 document.getElementById('zoomPrev').addEventListener('click', () => zoomMove(-1));

@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.20.0-alpha** -- adds a local browser-based Review Desk to the LoRA Dataset Decision Engine.
+**v0.21.0-alpha** -- adds a Dataset Overview and next-action guidance to the local Review Desk.
 
 Dataset Forge helps you decide which images belong in your LoRA before you train.
 
@@ -26,12 +26,13 @@ Raw Dataset
 -> Train
 ```
 
-**v0.20.0-alpha is read-only decision support.** Dataset Forge reads your
+**v0.21.0-alpha is read-only decision support.** Dataset Forge reads your
 dataset and writes reports beside it. It never modifies source images. There is
 still no cleanup, repair, export, hosted web app, cloud service, plugins, or
-new analyzer family in this release. v0.20 makes `dataset-forge review` the
-primary human-facing workflow: a localhost-only Review Desk for images,
-evidence, filters, human decisions, workflow state, and notes.
+new analyzer family in this release. v0.21 keeps `dataset-forge review` as the
+primary human-facing workflow and adds a Dataset Overview for review progress,
+triage counts, top finding categories, analyzer coverage, and deterministic
+next-action guidance.
 
 ---
 
@@ -183,12 +184,12 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.20.0-alpha exposes `inspect`,
+- **No public recommendation command yet.** v0.21.0-alpha exposes `inspect`,
   local `review`, sidecar-only `compare`, advisory `plan`, and
   execution-free `preview`. There is no separate `dataset-forge recommend`
   command.
 
-- **No cleanup, repair, execution, or export.** v0.20.0-alpha is read-only.
+- **No cleanup, repair, execution, or export.** v0.21.0-alpha is read-only.
   Improvement Planning writes `improvement_plan.json` and
   `improvement_plan.md` only. Improvement Preview writes
   `improvement_preview.json` and `improvement_preview.md` only. Cleanup,
@@ -264,6 +265,27 @@ Implemented v0.20 focus:
 The browser workflow must remain local, deterministic, and sidecar-based. It
 must not modify source images, execute cleanup, export datasets, add automatic
 repair, or add network dependencies.
+
+---
+
+## v0.21 Dataset Overview
+
+v0.21 adds a Dataset Overview inside the Review Desk. The overview summarizes
+existing inspect sidecars and review decisions without running analyzers or
+changing files.
+
+Implemented v0.21 focus:
+
+- Show total images and triage counts.
+- Show review progress, decision counts, and workflow counts.
+- Show top finding categories and analyzer coverage.
+- Provide deterministic next-action guidance.
+- Make read-only, sidecar-driven scope visible in the interface.
+- Clarify that Quarantine Planned is workflow intent only, not file movement.
+
+The overview is descriptive only. It does not score dataset quality, change
+analyzer thresholds, create folders, move images, copy images, export datasets,
+or execute improvements.
 
 ---
 
@@ -619,7 +641,7 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.20.0-alpha.** There is no public flag or command that modifies, repairs,
+  v0.21.0-alpha.** There is no public flag or command that modifies, repairs,
   exports, rejects, or regenerates images. `dataset-forge plan` writes advisory
   Improvement Candidates only. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,

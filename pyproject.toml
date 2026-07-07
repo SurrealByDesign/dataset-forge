@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataset-forge"
-version = "0.20.0a0"
-description = "Dataset Forge v0.20.0-alpha -- a LoRA Dataset Decision Engine with a local browser Review Desk for real-world triage evidence, inspect, review, comparison, improvement planning, and preview workflows."
+version = "0.21.0a0"
+description = "Dataset Forge v0.21.0-alpha -- a read-only LoRA dataset curation workstation with a local Review Desk, Dataset Overview, inspect, review, comparison, improvement planning, and preview workflows."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
