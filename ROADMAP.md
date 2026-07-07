@@ -6,8 +6,8 @@
 
 Dataset Forge is a LoRA Dataset Decision Engine.
 
-Its purpose is to help LoRA dataset builders decide which images are ready to
-train, which need review, and which deserve priority attention before training. Every
+Its purpose is to help LoRA dataset builders decide which images emitted no
+current review findings, which need review, and which deserve priority attention before training. Every
 recommendation must be grounded in deterministic analysis, measurable evidence,
 and explainable findings.
 
@@ -504,7 +504,7 @@ Constraints:
 
 ## v0.19.0-alpha: Real-World Triage Evidence
 
-**Status:** Planned.
+**Status:** Implemented.
 
 **Goal:** Make Dataset Forge better at helping a human decide what to do with
 real images before any cleanup, export, or deterministic execution exists.
@@ -574,21 +574,69 @@ Constraints:
 
 ---
 
-## v1.0 Track: Review Experience / Gallery Improvement
+## v0.20.0-alpha: Browser-Based Review Desk
 
-**Goal:** Make human review fast enough that users run Dataset Forge before
-every LoRA.
+**Status:** Planned.
 
-Focus areas:
+**Goal:** Make the local browser review workflow the primary human-facing
+Dataset Forge experience. A first-time user should immediately understand
+which images need attention, why they were flagged, what decision they should
+make, and where that decision is saved.
 
-- Carry forward the v0.19 image-level triage dossier model.
-- Decision-oriented gallery sections.
-- Evidence summaries that are useful at thumbnail and full-image scale.
-- Clear confidence wording.
-- Better grouping by reason for review.
-- Easy handoff from terminal summary to visual review.
+v0.20 is Review UX Consolidation, not execution. It turns the local review
+server into an image-centered browser Review Desk over existing sidecars while
+keeping `review_gallery.html` as a secondary read-only artifact.
 
-Still out of scope: cleanup, repair, export, UI-first redesign, and AI editing.
+Primary changes:
+
+- After `inspect`, print the output directory and the most useful files to open
+  first, especially the local review gallery / review desk.
+- Make the browser review desk the main review entry point after inspect.
+- Show images, not just reports.
+- Group images by:
+  - Priority Review
+  - Needs Review
+  - No Findings Emitted
+- Each image card should show:
+  - thumbnail
+  - filename
+  - triage status
+  - finding categories
+  - confidence and severity
+  - evidence summary
+  - suggested review action
+  - links or anchors to detailed triage dossier entries
+- Add basic filtering:
+  - status
+  - analyzer / finding category
+  - severity
+  - confidence
+- Support decision-making in the browser:
+  - Keep
+  - Accepted Style / False Positive
+  - Improvement Candidate
+  - Removal Candidate
+  - Undecided
+  - Notes field
+- Store workflow state separately from human decision:
+  - In Dataset
+  - Quarantine Planned
+  - Reviewed
+- Persist decisions to `review_decisions.json`.
+- Move Review Decisions to `dataset-forge/review-decisions/v2`.
+- Migrate existing v1 review decisions when loaded.
+
+Constraints:
+
+- Local-only browser UI.
+- Deterministic and sidecar-based.
+- No network dependencies.
+- No source-image modification.
+- No cleanup execution.
+- No dataset export.
+- No automatic repair.
+- No automatic exclude/delete/move/rename decisions.
+- No cloud service, login, database, or hosted app.
 
 ---
 

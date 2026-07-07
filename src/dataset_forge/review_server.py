@@ -23,6 +23,7 @@ from dataset_forge.review_decisions import (
     ReviewDecision,
     ReviewDecisionSet,
     ReviewDecisionValue,
+    ReviewWorkflowState,
     load_review_decisions,
     parse_review_decisions,
 )
@@ -33,9 +34,10 @@ DEFAULT_REVIEW_PORT = 8765
 INSPECTION_REPORT_FILENAME = "inspection_report.json"
 RECOMMENDATION_SUMMARY_FILENAME = "recommendation_summary.json"
 REVIEW_DECISIONS_FILENAME = "review_decisions.json"
+TRIAGE_DOSSIERS_FILENAME = "triage_dossiers.json"
 
-_REVIEW_RECOMMENDATIONS = {"PRIORITY_REVIEW", "NEEDS_REVIEW"}
 _DECISION_VALUES = {value.value for value in ReviewDecisionValue}
+_WORKFLOW_STATES = {value.value for value in ReviewWorkflowState}
 
 
 class ReviewServerError(ValueError):
@@ -48,8 +50,10 @@ class ReviewWorkspace:
     inspection_report_path: Path
     recommendation_summary_path: Path
     review_decisions_path: Path
+    triage_dossiers_path: Path
     inspection_report: dict[str, Any]
     recommendation_summary: dict[str, Any]
+    triage_dossiers: dict[str, Any]
     review_decisions: ReviewDecisionSet
 
 
@@ -60,6 +64,7 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
     inspection_path = root / INSPECTION_REPORT_FILENAME
     recommendation_path = root / RECOMMENDATION_SUMMARY_FILENAME
     decisions_path = root / REVIEW_DECISIONS_FILENAME
+    triage_path = root / TRIAGE_DOSSIERS_FILENAME
 
     if not inspection_path.exists():
         raise ReviewServerError(
@@ -77,6 +82,11 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
         recommendation_path,
         "recommendation summary",
     )
+    triage_dossiers = (
+        _load_json_object(triage_path, "triage dossiers")
+        if triage_path.exists()
+        else {"schema": "dataset-forge/triage-dossiers/missing", "dossiers": []}
+    )
     decisions = (
         load_review_decisions(decisions_path)
         if decisions_path.exists()
@@ -88,8 +98,10 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
         inspection_report_path=inspection_path,
         recommendation_summary_path=recommendation_path,
         review_decisions_path=decisions_path,
+        triage_dossiers_path=triage_path,
         inspection_report=inspection_report,
         recommendation_summary=recommendation_summary,
+        triage_dossiers=triage_dossiers,
         review_decisions=decisions,
     )
 
@@ -251,74 +263,126 @@ class _ReviewRequestHandler(BaseHTTPRequestHandler):
 
 
 def _review_data_from_workspace(workspace: ReviewWorkspace) -> dict[str, Any]:
-    rows = _review_rows(workspace)
+    images = _review_images(workspace)
     summary = workspace.recommendation_summary.get("summary", {})
+    reviewed_count = sum(1 for image in images if image["decision"] not in (None, "UNDECIDED"))
+    decision_counts: dict[str, int] = {value: 0 for value in sorted(_DECISION_VALUES)}
+    workflow_counts: dict[str, int] = {value: 0 for value in sorted(_WORKFLOW_STATES)}
+    for image in images:
+        if image["decision"] is not None:
+            decision_counts[image["decision"]] = decision_counts.get(image["decision"], 0) + 1
+        workflow_counts[image["workflow_state"]] = workflow_counts.get(image["workflow_state"], 0) + 1
     return {
-        "schema": "dataset-forge/local-review-data/v1",
+        "schema": "dataset-forge/review-desk-data/v1",
         "review_decisions_schema": REVIEW_DECISIONS_SCHEMA,
         "dataset_path": str(workspace.inspection_report.get("dataset_path", "")),
         "summary": {
+            "image_count": int(summary.get("image_count", len(images))),
             "priority_review_count": int(summary.get("priority_review_count", 0)),
             "needs_review_count": int(summary.get("needs_review_count", 0)),
-            "review_row_count": len(rows),
-            "already_reviewed_count": sum(1 for row in rows if row["current_decision"]),
-            "pending_review_count": sum(1 for row in rows if not row["current_decision"]),
+            "no_findings_emitted_count": int(
+                summary.get(
+                    "no_findings_emitted_count",
+                    summary.get("ready_for_training_count", 0),
+                )
+            ),
+            "review_image_count": len(images),
+            "already_reviewed_count": reviewed_count,
+            "pending_review_count": len(images) - reviewed_count,
+            "decision_counts": decision_counts,
+            "workflow_counts": workflow_counts,
         },
+        "analyzer_coverage": workspace.recommendation_summary.get("analyzer_coverage", {}),
         "decision_values": sorted(_DECISION_VALUES),
-        "rows": rows,
+        "workflow_states": sorted(_WORKFLOW_STATES),
+        "scope": {
+            "local_only": True,
+            "read_only_inputs": True,
+            "writes_only": REVIEW_DECISIONS_FILENAME,
+            "execution": "out_of_scope",
+            "cleanup": "out_of_scope",
+            "export": "out_of_scope",
+            "source_image_modification": "out_of_scope",
+            "file_movement": "out_of_scope",
+        },
+        "images": images,
+        "rows": images,
     }
 
 
-def _review_rows(workspace: ReviewWorkspace) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    seen: set[tuple[str, str, str]] = set()
+def _review_images(workspace: ReviewWorkspace) -> list[dict[str, Any]]:
+    dossiers = {
+        str(item.get("image_path", "")): item
+        for item in workspace.triage_dossiers.get("dossiers", [])
+        if isinstance(item, dict)
+    }
+    images: list[dict[str, Any]] = []
     for item in workspace.recommendation_summary.get("recommendations", []):
-        if item.get("recommendation") not in _REVIEW_RECOMMENDATIONS:
-            continue
         image_path = str(item.get("image_path", ""))
-        for ref in item.get("finding_refs", []):
-            category = str(ref.get("category", ""))
-            analyzer = str(ref.get("analyzer", ""))
-            scope = (image_path, category, analyzer)
-            if not image_path or scope in seen:
-                continue
-            seen.add(scope)
-            decision = workspace.review_decisions.decision_for(
-                image_path,
-                category,
-                analyzer,
-            )
-            rows.append({
-                "id": _row_id(image_path, category, analyzer),
-                "image_path": image_path,
-                "thumbnail_url": f"/image?path={quote(image_path)}",
-                "filename": Path(image_path).name or image_path,
-                "recommendation": str(item.get("display_label", "")),
-                "primary_reason": str(item.get("primary_reason", "")),
-                "category": category,
-                "analyzer": analyzer,
-                "severity": str(ref.get("severity", "")),
-                "current_decision": decision.decision if decision else None,
-                "notes": decision.notes if decision else "",
-            })
-    return sorted(rows, key=lambda row: (row["recommendation"], row["filename"], row["category"], row["analyzer"]))
+        if not image_path:
+            continue
+        decision = workspace.review_decisions.decision_for(image_path)
+        findings = list(item.get("findings", []))
+        finding_refs = list(item.get("finding_refs", []))
+        severities = _unique_values(findings, finding_refs, "severity")
+        confidences = [
+            float(finding.get("confidence", 0))
+            for finding in findings
+            if isinstance(finding, dict) and isinstance(finding.get("confidence"), int | float)
+        ]
+        categories = _unique_values(findings, finding_refs, "category")
+        analyzers = _unique_values(findings, finding_refs, "analyzer")
+        dossier = dossiers.get(image_path, {})
+        images.append({
+            "id": _row_id(image_path),
+            "image_path": image_path,
+            "thumbnail_url": f"/image?path={quote(image_path)}",
+            "filename": Path(image_path).name or image_path,
+            "triage_status": str(item.get("display_label", "")),
+            "recommendation": str(item.get("recommendation", "")),
+            "primary_reason": str(item.get("primary_reason", "")),
+            "reason_codes": list(item.get("reason_codes", [])),
+            "finding_categories": categories,
+            "analyzers": analyzers,
+            "severities": severities,
+            "max_confidence": max(confidences) if confidences else None,
+            "finding_count": len(finding_refs),
+            "findings": findings,
+            "evidence_summary": _evidence_summary(findings),
+            "suggested_review_action": str(
+                dossier.get("suggested_human_action")
+                or item.get("guidance", "")
+            ),
+            "confidence_note": str(item.get("confidence_note", "")),
+            "no_finding_semantics": str(dossier.get("no_finding_semantics", "")),
+            "dossier_anchor": _anchor_for_image(image_path),
+            "decision": decision.decision if decision else None,
+            "workflow_state": (
+                decision.workflow_state
+                if decision
+                else ReviewWorkflowState.IN_DATASET.value
+            ),
+            "notes": decision.notes if decision else "",
+            "decision_history": list(decision.decision_history) if decision else [],
+        })
+    return sorted(images, key=lambda row: (_triage_sort(row["recommendation"]), row["filename"]))
 
 
 def _decision_from_payload(payload: Mapping[str, Any]) -> ReviewDecision:
     decision = payload.get("decision")
     if decision not in _DECISION_VALUES:
         raise ReviewServerError(f"invalid review decision: {decision!r}")
+    workflow_state = payload.get("workflow_state", ReviewWorkflowState.IN_DATASET.value)
+    if workflow_state not in _WORKFLOW_STATES:
+        raise ReviewServerError(f"invalid workflow state: {workflow_state!r}")
     image_path = _required_str(payload, "image_path")
-    category = _optional_str(payload, "category")
-    analyzer = _optional_str(payload, "analyzer")
     recommendation = _optional_str(payload, "recommendation")
     notes = payload.get("notes", "")
     if not isinstance(notes, str):
         raise ReviewServerError("notes must be a string")
     return ReviewDecision(
         image_path=image_path.replace("\\", "/"),
-        category=category,
-        analyzer=analyzer,
+        workflow_state=str(workflow_state),
         recommendation=recommendation,
         decision=str(decision),
         notes=notes,
@@ -326,7 +390,7 @@ def _decision_from_payload(payload: Mapping[str, Any]) -> ReviewDecision:
 
 
 def _decision_scope(decision: ReviewDecision) -> tuple[str, str | None, str | None]:
-    return (decision.image_path, decision.category, decision.analyzer)
+    return (decision.image_path, None, None)
 
 
 def _load_json_object(path: Path, label: str) -> dict[str, Any]:
@@ -355,129 +419,536 @@ def _optional_str(payload: Mapping[str, Any], field: str) -> str | None:
     return value
 
 
-def _row_id(image_path: str, category: str, analyzer: str) -> str:
-    return sha256(f"{image_path}\0{category}\0{analyzer}".encode("utf-8")).hexdigest()[:16]
+def _row_id(image_path: str) -> str:
+    return sha256(image_path.encode("utf-8")).hexdigest()[:16]
+
+
+def _unique_values(
+    findings: list[Any],
+    refs: list[Any],
+    field: str,
+) -> list[str]:
+    values: list[str] = []
+    for collection in (findings, refs):
+        for item in collection:
+            if not isinstance(item, dict):
+                continue
+            value = str(item.get(field, ""))
+            if value and value not in values:
+                values.append(value)
+    return values
+
+
+def _evidence_summary(findings: list[Any]) -> str:
+    parts: list[str] = []
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        category = str(finding.get("category", "finding"))
+        severity = str(finding.get("severity", ""))
+        confidence = finding.get("confidence")
+        label = f"{category}"
+        if severity:
+            label += f" ({severity})"
+        if isinstance(confidence, int | float):
+            label += f", confidence {confidence:.2f}"
+        parts.append(label)
+    return "; ".join(parts) if parts else "No current findings emitted."
+
+
+def _anchor_for_image(image_path: str) -> str:
+    return "#dossier-" + sha256(image_path.encode("utf-8")).hexdigest()[:12]
+
+
+def _triage_sort(recommendation: str) -> int:
+    return {
+        "PRIORITY_REVIEW": 0,
+        "NEEDS_REVIEW": 1,
+        "READY_FOR_TRAINING": 2,
+    }.get(recommendation, 3)
 
 
 def _review_html() -> str:
-    buttons = "\n".join(
-        f'<button type="button" data-decision="{value}">{value.replace("_", " ").title()}</button>'
-        for value in sorted(_DECISION_VALUES)
-    )
-    return f"""<!doctype html>
+    return """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dataset Forge Review Decisions</title>
+<title>Dataset Forge Review Desk</title>
 <style>
-body {{ margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1f2933; background: #f7f8fb; }}
-main {{ max-width: 1120px; margin: 0 auto; padding: 28px 18px 48px; }}
-.note, .card {{ background: #fff; border: 1px solid #d9dee7; padding: 14px; }}
-.counts {{ display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }}
-.count {{ background: #fff; border: 1px solid #d9dee7; padding: 10px 14px; min-width: 150px; }}
-.cards {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }}
-.card {{ display: grid; grid-template-columns: 120px 1fr; gap: 12px; }}
-img {{ width: 120px; height: 120px; object-fit: contain; background: #eef2f6; border: 1px solid #d9dee7; }}
-h1, h2, h3, p {{ margin-top: 0; }}
-p {{ color: #5b6472; }}
-button {{ margin: 3px 3px 3px 0; padding: 6px 8px; border: 1px solid #9aa8b8; background: #fff; cursor: pointer; }}
-button.selected {{ background: #28536b; border-color: #28536b; color: #fff; }}
-textarea {{ width: 100%; min-height: 54px; box-sizing: border-box; }}
-.status {{ font-weight: bold; color: #28536b; }}
+:root { color-scheme: light; --ink: #17202a; --muted: #5d6877; --line: #d9dee7; --paper: #f5f6f8; --panel: #fff; --accent: #28536b; --danger: #8a3342; --warn: #8a611c; --ok: #2f684e; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: var(--ink); background: var(--paper); }
+button, input, select, textarea { font: inherit; }
+button { border: 1px solid #9aa8b8; background: #fff; color: var(--ink); cursor: pointer; }
+button:hover, button.selected { border-color: var(--accent); color: var(--accent); }
+.app { display: grid; grid-template-columns: 280px minmax(360px, 1fr) 360px; min-height: 100vh; }
+aside, main { min-width: 0; }
+.left, .right { background: var(--panel); border-color: var(--line); border-style: solid; overflow: auto; max-height: 100vh; }
+.left { border-width: 0 1px 0 0; padding: 16px; }
+.right { border-width: 0 0 0 1px; padding: 16px; }
+.center { padding: 16px; overflow: auto; max-height: 100vh; }
+h1 { font-size: 1.35rem; margin: 0 0 12px; }
+h2 { font-size: 1rem; margin: 20px 0 10px; }
+h3 { font-size: .9rem; margin: 0 0 8px; overflow-wrap: anywhere; }
+p { color: var(--muted); line-height: 1.35; margin: 0 0 10px; }
+label { display: block; margin: 10px 0 4px; color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; }
+input, select, textarea { width: 100%; border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 8px; }
+textarea { min-height: 90px; resize: vertical; }
+.counts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.count { border: 1px solid var(--line); padding: 8px; background: #fafbfc; }
+.count strong { display: block; font-size: 1.15rem; }
+.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.toolbar input { width: 180px; }
+.group-title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-top: 18px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--thumb-size, 170px), 1fr)); gap: 10px; }
+.card { background: var(--panel); border: 3px solid var(--line); padding: 8px; min-width: 0; }
+.card.priority { border-color: var(--danger); }
+.card.needs { border-color: var(--warn); }
+.card.none { border-color: var(--ok); }
+.card.reviewed { box-shadow: inset 0 0 0 2px #4f7f64; }
+.card.quarantine { box-shadow: inset 0 0 0 2px #8a611c; }
+.card.selected { outline: 3px solid var(--accent); }
+.card img { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #eef2f6; border: 1px solid var(--line); display: block; }
+.badges { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.badge { border: 1px solid var(--line); padding: 3px 5px; font-size: .72rem; background: #f8f9fb; }
+.actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.actions button, .decision-buttons button { padding: 5px 7px; font-size: .78rem; }
+.decision-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.preview { width: 100%; max-height: 360px; object-fit: contain; background: #eef2f6; border: 1px solid var(--line); cursor: zoom-in; }
+.finding { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.muted { color: var(--muted); }
+.shortcut { font-size: .78rem; color: var(--muted); }
+.hidden { display: none !important; }
+dialog { border: 1px solid var(--line); max-width: 620px; }
+.zoom-viewer { position: fixed; inset: 0; z-index: 20; background: rgba(13, 18, 25, .94); color: #fff; display: grid; grid-template-rows: auto 1fr; }
+.zoom-viewer[hidden] { display: none; }
+.zoom-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px; background: rgba(13, 18, 25, .98); border-bottom: 1px solid #3a4659; }
+.zoom-toolbar button { color: #fff; background: #1c2530; border-color: #667386; padding: 7px 9px; }
+.zoom-title { flex: 1 1 220px; overflow-wrap: anywhere; color: #dbe4ee; }
+.zoom-stage { overflow: hidden; position: relative; cursor: grab; }
+.zoom-stage.dragging { cursor: grabbing; }
+.zoom-image { position: absolute; left: 50%; top: 50%; transform-origin: center center; max-width: none; max-height: none; user-select: none; -webkit-user-drag: none; }
+@media (max-width: 980px) { .app { grid-template-columns: 1fr; } .left, .right, .center { max-height: none; border-width: 0 0 1px; } }
 </style>
 </head>
 <body>
-<main>
-<h1>Dataset Forge Review Decisions</h1>
-<section class="note">
-<p>This local review surface writes only <code>review_decisions.json</code>.</p>
-<p>Recommendations are advisory. Source images and inspection sidecars are not modified.</p>
-</section>
-<section class="counts" id="counts"></section>
-<section>
-<h2>Priority Review</h2>
-<div class="cards" id="priority"></div>
-</section>
-<section>
-<h2>Needs Review</h2>
-<div class="cards" id="needs"></div>
-</section>
+<div class="app">
+<aside class="left">
+  <h1>Dataset Forge Review Desk</h1>
+  <p>This local desk writes only <code>review_decisions.json</code>. Source images are never modified.</p>
+  <section class="counts" id="counts"></section>
+  <label for="search">Search</label>
+  <input id="search" type="search" placeholder="filename or evidence">
+  <label for="decisionFilter">Decision</label>
+  <select id="decisionFilter"><option value="">All decisions</option></select>
+  <label for="workflowFilter">Workflow</label>
+  <select id="workflowFilter"><option value="">All workflow states</option></select>
+  <label for="triageFilter">Triage</label>
+  <select id="triageFilter">
+    <option value="">All triage groups</option>
+    <option value="Priority Review">Priority Review</option>
+    <option value="Needs Review">Needs Review</option>
+    <option value="No Findings Emitted">No Findings Emitted</option>
+  </select>
+  <label for="categoryFilter">Finding category</label>
+  <select id="categoryFilter"><option value="">All categories</option></select>
+  <label for="severityFilter">Severity</label>
+  <select id="severityFilter"><option value="">All severities</option></select>
+  <label for="confidenceFilter">Confidence</label>
+  <select id="confidenceFilter">
+    <option value="">All confidence</option>
+    <option value="0.75">0.75 and above</option>
+    <option value="0.5">0.50 and above</option>
+  </select>
+  <button id="nextUndecided" type="button" title="Next undecided (N)">Next Undecided <span class="shortcut">N</span></button>
+  <button id="shortcutHelp" type="button" title="Keyboard reference (?)">Shortcuts <span class="shortcut">?</span></button>
+</aside>
+<main class="center">
+  <section class="toolbar">
+    <label for="thumbSize">Thumbnail size</label>
+    <input id="thumbSize" type="range" min="130" max="280" value="170">
+    <span id="visibleCount" class="muted"></span>
+  </section>
+  <section id="groups"></section>
 </main>
-<template id="decision-buttons">{buttons}</template>
+<aside class="right" id="detail">
+  <p>Select an image to review its evidence.</p>
+</aside>
+</div>
+<dialog id="shortcuts">
+  <h2>Keyboard Shortcuts</h2>
+  <p>J / Left: previous image. K / Right: next image. N: next undecided.</p>
+  <p>1: Keep. 2: Accepted Style / False Positive. 3: Improvement Candidate. 4: Removal Candidate. U: Undecided.</p>
+  <p>Space: larger preview. F: fullscreen preview. Escape: close dialogs.</p>
+  <p>In zoom view: mouse wheel zooms, drag pans, + / - zoom, 0 fits, 1 shows actual size.</p>
+  <button type="button" onclick="document.getElementById('shortcuts').close()">Close</button>
+</dialog>
+<section id="zoomViewer" class="zoom-viewer" hidden aria-label="Image zoom viewer">
+  <div class="zoom-toolbar">
+    <button id="zoomClose" type="button" title="Close zoom (Escape)">Close</button>
+    <button id="zoomPrev" type="button" title="Previous image (J / Left)">Previous</button>
+    <button id="zoomNext" type="button" title="Next image (K / Right)">Next</button>
+    <button id="zoomFit" type="button" title="Fit image to window">Fit</button>
+    <button id="zoomActual" type="button" title="Actual size: 100% pixels">100%</button>
+    <button id="zoomOut" type="button" title="Zoom out">-</button>
+    <button id="zoomIn" type="button" title="Zoom in">+</button>
+    <span id="zoomTitle" class="zoom-title"></span>
+  </div>
+  <div id="zoomStage" class="zoom-stage">
+    <img id="zoomImage" class="zoom-image" alt="">
+  </div>
+</section>
 <script>
-async function loadData() {{
+let data = null;
+let selectedId = null;
+let zoomState = { open: false, scale: 1, fitScale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0, originX: 0, originY: 0 };
+const decisionLabels = {
+  KEEP: 'Keep',
+  ACCEPTED_STYLE_FALSE_POSITIVE: 'Accepted Style / False Positive',
+  IMPROVEMENT_CANDIDATE: 'Improvement Candidate',
+  REMOVAL_CANDIDATE: 'Removal Candidate',
+  UNDECIDED: 'Undecided'
+};
+const workflowLabels = {
+  IN_DATASET: 'In Dataset',
+  QUARANTINE_PLANNED: 'Quarantine Planned',
+  REVIEWED: 'Reviewed'
+};
+const shortcutDecision = { '1': 'KEEP', '2': 'ACCEPTED_STYLE_FALSE_POSITIVE', '3': 'IMPROVEMENT_CANDIDATE', '4': 'REMOVAL_CANDIDATE', 'u': 'UNDECIDED' };
+async function loadData() {
   const response = await fetch('/api/review-data');
   if (!response.ok) throw new Error('Could not load review data');
   return await response.json();
-}}
-function countBox(label, value) {{
-  return `<div class="count"><strong>${{value}}</strong><br>${{label}}</div>`;
-}}
-function escapeText(value) {{
-  return String(value || '').replace(/[&<>"']/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]));
-}}
-function renderRow(row) {{
+}
+function countBox(label, value) {
+  return `<div class="count"><strong>${value}</strong><br>${label}</div>`;
+}
+function escapeText(value) {
+  return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function label(value, labels) { return labels[value] || value || 'Undecided'; }
+function currentImages() {
+  if (!data) return [];
+  const search = document.getElementById('search').value.toLowerCase();
+  const decision = document.getElementById('decisionFilter').value;
+  const workflow = document.getElementById('workflowFilter').value;
+  const triage = document.getElementById('triageFilter').value;
+  const category = document.getElementById('categoryFilter').value;
+  const severity = document.getElementById('severityFilter').value;
+  const confidence = Number(document.getElementById('confidenceFilter').value || 0);
+  return data.images.filter(image => {
+    const searchable = [image.filename, image.evidence_summary, image.primary_reason, image.finding_categories.join(' ')].join(' ').toLowerCase();
+    return (!search || searchable.includes(search))
+      && (!decision || (image.decision || 'UNDECIDED') === decision)
+      && (!workflow || image.workflow_state === workflow)
+      && (!triage || image.triage_status === triage)
+      && (!category || image.finding_categories.includes(category))
+      && (!severity || image.severities.includes(severity))
+      && (!confidence || Number(image.max_confidence || 0) >= confidence);
+  });
+}
+function renderCard(image) {
   const card = document.createElement('article');
-  card.className = 'card';
+  card.className = 'card ' + triageClass(image);
+  if (image.id === selectedId) card.classList.add('selected');
+  if (image.workflow_state === 'REVIEWED') card.classList.add('reviewed');
+  if (image.workflow_state === 'QUARANTINE_PLANNED') card.classList.add('quarantine');
   card.innerHTML = `
-    <img src="${{escapeText(row.thumbnail_url)}}" alt="${{escapeText(row.filename)}}">
-    <div>
-      <h3>${{escapeText(row.filename)}}</h3>
-      <p><strong>Recommendation:</strong> ${{escapeText(row.recommendation)}}</p>
-      <p><strong>Primary reason:</strong> ${{escapeText(row.primary_reason)}}</p>
-      <p><strong>Category:</strong> ${{escapeText(row.category)}}</p>
-      <p><strong>Analyzer:</strong> ${{escapeText(row.analyzer)}}</p>
-      <p><strong>Severity:</strong> ${{escapeText(row.severity)}}</p>
-      <p>Current decision: <span class="status">${{escapeText(row.current_decision || 'Pending Review')}}</span></p>
-      <div class="buttons">${{document.getElementById('decision-buttons').innerHTML}}</div>
-      <label>Notes<br><textarea>${{escapeText(row.notes)}}</textarea></label>
+    <img loading="lazy" src="${escapeText(image.thumbnail_url)}" alt="${escapeText(image.filename)}">
+    <h3>${escapeText(image.filename)}</h3>
+    <div class="badges">
+      <span class="badge">${escapeText(image.triage_status)}</span>
+      <span class="badge">${escapeText(label(image.decision, decisionLabels))}</span>
+      <span class="badge">${escapeText(label(image.workflow_state, workflowLabels))}</span>
+      <span class="badge">${image.finding_count} findings</span>
+    </div>
+    <p>${escapeText(image.evidence_summary)}</p>
+    <div class="actions">
+      ${decisionButton('KEEP', 'Keep')}
+      ${decisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', 'Accepted')}
+      ${decisionButton('IMPROVEMENT_CANDIDATE', 'Improve')}
+      ${decisionButton('REMOVAL_CANDIDATE', 'Remove')}
+      ${decisionButton('UNDECIDED', 'Undecided')}
     </div>`;
-  card.querySelectorAll('button').forEach(button => {{
-    if (button.dataset.decision === row.current_decision) button.classList.add('selected');
-    button.addEventListener('click', async () => {{
-      const payload = {{
-        image_path: row.image_path,
-        category: row.category,
-        analyzer: row.analyzer,
-        recommendation: row.recommendation,
-        decision: button.dataset.decision,
-        notes: card.querySelector('textarea').value
-      }};
-      const response = await fetch('/api/decision', {{
-        method: 'POST',
-        headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify(payload)
-      }});
-      if (!response.ok) {{
-        const error = await response.json();
-        alert(error.error || 'Could not save decision');
-        return;
-      }}
-      await render();
-    }});
-  }});
+  card.addEventListener('click', () => selectImage(image.id));
+  card.addEventListener('dblclick', () => openPreview(image));
+  card.querySelectorAll('button').forEach(button => button.addEventListener('click', event => {
+    event.stopPropagation();
+    saveDecision(image, button.dataset.decision, image.workflow_state, image.notes);
+  }));
   return card;
-}}
-async function render() {{
-  const data = await loadData();
+}
+function decisionButton(value, text) {
+  return `<button type="button" data-decision="${value}" title="${escapeText(decisionLabels[value])}">${escapeText(text)}</button>`;
+}
+function triageClass(image) {
+  if (image.recommendation === 'PRIORITY_REVIEW') return 'priority';
+  if (image.recommendation === 'NEEDS_REVIEW') return 'needs';
+  return 'none';
+}
+function groupTitle(label, count) { return `<div class="group-title"><h2>${escapeText(label)}</h2><span class="muted">${count}</span></div>`; }
+function renderGroups() {
+  const groups = [
+    ['Priority Review', currentImages().filter(i => i.triage_status === 'Priority Review')],
+    ['Needs Review', currentImages().filter(i => i.triage_status === 'Needs Review')],
+    ['No Findings Emitted', currentImages().filter(i => i.triage_status === 'No Findings Emitted')]
+  ];
+  const root = document.getElementById('groups');
+  root.innerHTML = '';
+  let visible = 0;
+  groups.forEach(([name, images]) => {
+    visible += images.length;
+    const section = document.createElement('section');
+    section.innerHTML = groupTitle(name, images.length) + '<div class="grid"></div>';
+    const grid = section.querySelector('.grid');
+    images.forEach(image => grid.appendChild(renderCard(image)));
+    if (!images.length) grid.innerHTML = '<p class="muted">No images in this group.</p>';
+    root.appendChild(section);
+  });
+  document.getElementById('visibleCount').textContent = `${visible} visible`;
+}
+function renderCounts() {
   document.getElementById('counts').innerHTML =
-    countBox('Priority Review', data.summary.priority_review_count) +
-    countBox('Needs Review', data.summary.needs_review_count) +
-    countBox('Already Reviewed', data.summary.already_reviewed_count) +
-    countBox('Pending Review', data.summary.pending_review_count);
-  const priority = document.getElementById('priority');
-  const needs = document.getElementById('needs');
-  priority.innerHTML = '';
-  needs.innerHTML = '';
-  data.rows.forEach(row => {{
-    if (row.recommendation === 'Priority Review') priority.appendChild(renderRow(row));
-    if (row.recommendation === 'Needs Review') needs.appendChild(renderRow(row));
-  }});
-  if (!priority.childElementCount) priority.innerHTML = '<p>No images in this group.</p>';
-  if (!needs.childElementCount) needs.innerHTML = '<p>No images in this group.</p>';
-}}
-render().catch(error => document.body.insertAdjacentHTML('beforeend', `<pre>${{escapeText(error.message)}}</pre>`));
+    countBox('Images', data.summary.image_count) +
+    countBox('Reviewed', data.summary.already_reviewed_count) +
+    countBox('Priority', data.summary.priority_review_count) +
+    countBox('Remaining', data.summary.pending_review_count);
+}
+function populateFilters() {
+  const decision = document.getElementById('decisionFilter');
+  data.decision_values.forEach(value => decision.insertAdjacentHTML('beforeend', `<option value="${value}">${escapeText(label(value, decisionLabels))}</option>`));
+  const workflow = document.getElementById('workflowFilter');
+  data.workflow_states.forEach(value => workflow.insertAdjacentHTML('beforeend', `<option value="${value}">${escapeText(label(value, workflowLabels))}</option>`));
+  const categories = [...new Set(data.images.flatMap(image => image.finding_categories))].sort();
+  categories.forEach(value => document.getElementById('categoryFilter').insertAdjacentHTML('beforeend', `<option value="${escapeText(value)}">${escapeText(value)}</option>`));
+  const severities = [...new Set(data.images.flatMap(image => image.severities))].sort();
+  severities.forEach(value => document.getElementById('severityFilter').insertAdjacentHTML('beforeend', `<option value="${escapeText(value)}">${escapeText(value)}</option>`));
+}
+function selectImage(id) {
+  selectedId = id;
+  renderGroups();
+  renderDetail();
+}
+function selectedImage() {
+  return data.images.find(image => image.id === selectedId) || data.images[0];
+}
+function renderDetail() {
+  const image = selectedImage();
+  if (!image) return;
+  selectedId = image.id;
+  document.getElementById('detail').innerHTML = `
+    <img class="preview" src="${escapeText(image.thumbnail_url)}" alt="${escapeText(image.filename)}">
+    <h2>${escapeText(image.filename)}</h2>
+    <p><strong>Path:</strong> ${escapeText(image.image_path)}</p>
+    <p><strong>Triage:</strong> ${escapeText(image.triage_status)}</p>
+    <p><strong>Evidence:</strong> ${escapeText(image.evidence_summary)}</p>
+    <p><strong>Suggested review action:</strong> ${escapeText(image.suggested_review_action)}</p>
+    <div class="decision-buttons">
+      ${detailDecisionButton('KEEP', '1 Keep')}
+      ${detailDecisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', '2 Accepted Style / False Positive')}
+      ${detailDecisionButton('IMPROVEMENT_CANDIDATE', '3 Improvement Candidate')}
+      ${detailDecisionButton('REMOVAL_CANDIDATE', '4 Removal Candidate')}
+      ${detailDecisionButton('UNDECIDED', 'U Undecided')}
+    </div>
+    <label for="workflowState">Workflow state</label>
+    <select id="workflowState">${data.workflow_states.map(value => `<option value="${value}" ${value === image.workflow_state ? 'selected' : ''}>${escapeText(label(value, workflowLabels))}</option>`).join('')}</select>
+    <label for="notes">Notes</label>
+    <textarea id="notes">${escapeText(image.notes)}</textarea>
+    <h2>Findings</h2>
+    ${renderFindings(image)}
+    <h2>Analyzer Coverage</h2>
+    ${renderCoverage()}
+    <h2>Triage Dossier</h2>
+    <p><a href="${escapeText(image.dossier_anchor)}">Dossier anchor</a></p>
+    <p class="muted">${escapeText(image.no_finding_semantics || image.confidence_note)}</p>`;
+  document.querySelectorAll('.decision-buttons button').forEach(button => button.addEventListener('click', () => {
+    saveDecision(image, button.dataset.decision, document.getElementById('workflowState').value, document.getElementById('notes').value);
+  }));
+  document.querySelector('.preview').addEventListener('click', () => openZoom(image));
+  document.getElementById('workflowState').addEventListener('change', event => saveDecision(image, image.decision || 'UNDECIDED', event.target.value, document.getElementById('notes').value));
+  document.getElementById('notes').addEventListener('change', event => saveDecision(image, image.decision || 'UNDECIDED', document.getElementById('workflowState').value, event.target.value));
+}
+function detailDecisionButton(value, text) {
+  const image = selectedImage();
+  return `<button type="button" data-decision="${value}" class="${image && (image.decision || 'UNDECIDED') === value ? 'selected' : ''}">${escapeText(text)}</button>`;
+}
+function renderFindings(image) {
+  if (!image.findings.length) return '<p>No current findings emitted.</p>';
+  return image.findings.map(finding => `
+    <section class="finding">
+      <h3>${escapeText(finding.category)} / ${escapeText(finding.analyzer)}</h3>
+      <p><strong>Severity:</strong> ${escapeText(finding.severity)} <strong>Confidence:</strong> ${escapeText(finding.confidence)}</p>
+      <p>${escapeText(finding.explanation)}</p>
+      <p>${escapeText(finding.recommendation)}</p>
+    </section>`).join('');
+}
+function renderCoverage() {
+  const analyzers = (data.analyzer_coverage && data.analyzer_coverage.analyzers) || [];
+  if (!analyzers.length) return '<p>No analyzer coverage summary was recorded.</p>';
+  return analyzers.map(item => `<p>${escapeText(item.analyzer || '')}: ${escapeText(item.finding_count || 0)} findings on ${escapeText(item.image_count || 0)} images.</p>`).join('');
+}
+async function saveDecision(image, decision, workflowState, notes) {
+  const center = document.querySelector('.center');
+  const previousScroll = center ? center.scrollTop : 0;
+  const response = await fetch('/api/decision', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ image_path: image.image_path, recommendation: image.triage_status, decision, workflow_state: workflowState, notes })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    alert(error.error || 'Could not save decision');
+    return;
+  }
+  data = await response.json();
+  renderCounts();
+  renderGroups();
+  renderDetail();
+  if (center) center.scrollTop = previousScroll;
+}
+function moveSelection(offset) {
+  const visible = currentImages();
+  if (!visible.length) return;
+  const index = Math.max(0, visible.findIndex(image => image.id === selectedId));
+  const next = visible[(index + offset + visible.length) % visible.length];
+  selectImage(next.id);
+}
+function nextUndecided() {
+  const target = currentImages().find(image => !image.decision || image.decision === 'UNDECIDED');
+  if (target) selectImage(target.id);
+}
+function openPreview(image) {
+  openZoom(image);
+}
+function openZoom(image) {
+  if (!image) return;
+  selectedId = image.id;
+  const viewer = document.getElementById('zoomViewer');
+  const zoomImage = document.getElementById('zoomImage');
+  document.getElementById('zoomTitle').textContent = `${image.filename} - ${image.triage_status}`;
+  zoomImage.alt = image.filename;
+  zoomImage.onload = () => fitZoom();
+  zoomImage.src = image.thumbnail_url;
+  viewer.hidden = false;
+  zoomState.open = true;
+  renderGroups();
+  renderDetail();
+}
+function closeZoom() {
+  document.getElementById('zoomViewer').hidden = true;
+  zoomState.open = false;
+}
+function fitZoom() {
+  const stage = document.getElementById('zoomStage');
+  const image = document.getElementById('zoomImage');
+  const naturalWidth = image.naturalWidth || 1;
+  const naturalHeight = image.naturalHeight || 1;
+  zoomState.fitScale = Math.min(stage.clientWidth / naturalWidth, stage.clientHeight / naturalHeight, 1);
+  zoomState.scale = zoomState.fitScale;
+  zoomState.x = 0;
+  zoomState.y = 0;
+  applyZoom();
+}
+function actualZoom() {
+  zoomState.scale = 1;
+  zoomState.x = 0;
+  zoomState.y = 0;
+  applyZoom();
+}
+function changeZoom(delta, anchorX, anchorY) {
+  const before = zoomState.scale;
+  zoomState.scale = Math.max(zoomState.fitScale * .5, Math.min(8, zoomState.scale * delta));
+  if (anchorX != null && anchorY != null && before > 0) {
+    const ratio = zoomState.scale / before;
+    zoomState.x = anchorX - (anchorX - zoomState.x) * ratio;
+    zoomState.y = anchorY - (anchorY - zoomState.y) * ratio;
+  }
+  applyZoom();
+}
+function applyZoom() {
+  const image = document.getElementById('zoomImage');
+  image.style.width = `${image.naturalWidth || 1}px`;
+  image.style.height = `${image.naturalHeight || 1}px`;
+  image.style.transform = `translate(calc(-50% + ${zoomState.x}px), calc(-50% + ${zoomState.y}px)) scale(${zoomState.scale})`;
+}
+function zoomMove(offset) {
+  moveSelection(offset);
+  openZoom(selectedImage());
+}
+function toggleZoom() {
+  if (zoomState.open) closeZoom();
+  else openZoom(selectedImage());
+}
+async function render() {
+  data = await loadData();
+  populateFilters();
+  selectedId = data.images[0] && data.images[0].id;
+  renderCounts();
+  renderGroups();
+  renderDetail();
+}
+['search', 'decisionFilter', 'workflowFilter', 'triageFilter', 'categoryFilter', 'severityFilter', 'confidenceFilter'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderGroups);
+  document.getElementById(id).addEventListener('change', renderGroups);
+});
+document.getElementById('thumbSize').addEventListener('input', event => document.documentElement.style.setProperty('--thumb-size', event.target.value + 'px'));
+document.getElementById('nextUndecided').addEventListener('click', nextUndecided);
+document.getElementById('shortcutHelp').addEventListener('click', () => document.getElementById('shortcuts').showModal());
+document.getElementById('zoomClose').addEventListener('click', closeZoom);
+document.getElementById('zoomPrev').addEventListener('click', () => zoomMove(-1));
+document.getElementById('zoomNext').addEventListener('click', () => zoomMove(1));
+document.getElementById('zoomFit').addEventListener('click', fitZoom);
+document.getElementById('zoomActual').addEventListener('click', actualZoom);
+document.getElementById('zoomOut').addEventListener('click', () => changeZoom(1 / 1.25));
+document.getElementById('zoomIn').addEventListener('click', () => changeZoom(1.25));
+document.getElementById('zoomStage').addEventListener('wheel', event => {
+  event.preventDefault();
+  const rect = event.currentTarget.getBoundingClientRect();
+  changeZoom(event.deltaY < 0 ? 1.15 : 1 / 1.15, event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2);
+});
+document.getElementById('zoomStage').addEventListener('pointerdown', event => {
+  zoomState.dragging = true;
+  zoomState.startX = event.clientX;
+  zoomState.startY = event.clientY;
+  zoomState.originX = zoomState.x;
+  zoomState.originY = zoomState.y;
+  event.currentTarget.classList.add('dragging');
+  event.currentTarget.setPointerCapture(event.pointerId);
+});
+document.getElementById('zoomStage').addEventListener('pointermove', event => {
+  if (!zoomState.dragging) return;
+  zoomState.x = zoomState.originX + event.clientX - zoomState.startX;
+  zoomState.y = zoomState.originY + event.clientY - zoomState.startY;
+  applyZoom();
+});
+document.getElementById('zoomStage').addEventListener('pointerup', event => {
+  zoomState.dragging = false;
+  event.currentTarget.classList.remove('dragging');
+  event.currentTarget.releasePointerCapture(event.pointerId);
+});
+document.addEventListener('keydown', event => {
+  if (zoomState.open) {
+    if (event.key === 'Escape') { event.preventDefault(); closeZoom(); return; }
+    if (event.key === ' ' || event.key === 'f') { event.preventDefault(); closeZoom(); return; }
+    if (event.key === 'j' || event.key === 'ArrowLeft') { event.preventDefault(); zoomMove(-1); return; }
+    if (event.key === 'k' || event.key === 'ArrowRight') { event.preventDefault(); zoomMove(1); return; }
+    if (event.key === '+' || event.key === '=') { event.preventDefault(); changeZoom(1.25); return; }
+    if (event.key === '-') { event.preventDefault(); changeZoom(1 / 1.25); return; }
+    if (event.key === '0') { event.preventDefault(); fitZoom(); return; }
+    if (event.key === '1') { event.preventDefault(); actualZoom(); return; }
+  }
+  if (event.target.matches('input, textarea, select')) return;
+  if (event.key === '?' ) document.getElementById('shortcuts').showModal();
+  if (event.key === 'j' || event.key === 'ArrowLeft') moveSelection(-1);
+  if (event.key === 'k' || event.key === 'ArrowRight') moveSelection(1);
+  if (event.key === 'n') nextUndecided();
+  if (event.key === ' ') { event.preventDefault(); toggleZoom(); }
+  if (event.key === 'f') { const image = selectedImage(); if (image) openPreview(image); }
+  const decision = shortcutDecision[event.key.toLowerCase()];
+  if (decision) { const image = selectedImage(); if (image) saveDecision(image, decision, image.workflow_state, image.notes); }
+});
+render().catch(error => document.body.insertAdjacentHTML('beforeend', `<pre>${escapeText(error.message)}</pre>`));
 </script>
 </body>
 </html>

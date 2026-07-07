@@ -87,10 +87,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.19.0-alpha: decide which LoRA dataset images "
+            "Dataset Forge v0.20.0-alpha: decide which LoRA dataset images "
             "have no current review findings, need review, deserve priority "
-            "attention, or have evidence-backed Improvement Candidates and "
-            "previews."
+            "attention, and record evidence-backed human decisions in the "
+            "local Review Desk."
         ),
     )
     parser.add_argument(
@@ -233,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.19.0-alpha CLI. "
+            "Error: this command is not part of the public v0.20.0-alpha CLI. "
             "Use 'dataset-forge inspect', 'review', 'compare', 'plan', 'preview', "
             "'--help', or '--version'.",
             file=sys.stderr,
@@ -576,6 +576,17 @@ def _inspect_main(argv: list[str]) -> int:
     print("Execution, cleanup, export, and source-image modification are out of scope.")
     print("Source images were not modified.")
     print()
+    print("Start Here")
+    print("----------")
+    print(f"Review Desk: dataset-forge review \"{result.output_dir}\"")
+    print(f"Output dir:   {result.output_dir}")
+    print("Decisions:    review_decisions.json")
+    print()
+    print("Open first:")
+    print(f"  {result.triage_dossier_markdown}")
+    print(f"  {result.recommendation_markdown}")
+    print(f"  {result.json_report}")
+    print()
     print("Report written:")
     print(f"  {result.json_report}")
     print(f"  {result.txt_report}")
@@ -601,7 +612,7 @@ def _review_main(argv: list[str]) -> int:
         prog="dataset-forge review",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
-            "Open a local-only review page for an inspect output folder.\n"
+            "Open the local-only Review Desk for an inspect output folder.\n"
             "Use this after inspect to record human decisions in review_decisions.json.\n"
             "Source images and reports are not modified."
         ),
@@ -621,11 +632,12 @@ def _review_main(argv: list[str]) -> int:
 
     output_dir = args.inspect_output.expanduser().resolve()
     try:
-        print("Dataset Forge Review")
-        print("====================")
+        print("Dataset Forge Review Desk")
+        print("=========================")
         print(f"Inspect output: {output_dir}")
         print(f"Serving:        http://{LOCAL_REVIEW_HOST}:{args.port}")
         print("Writes only:    review_decisions.json")
+        print("Consumes only:  generated JSON sidecars")
         print("Source images and reports will not be modified.")
         print("Press Ctrl+C to stop.")
         serve_review_server(output_dir, port=args.port)

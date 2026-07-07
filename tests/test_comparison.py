@@ -139,9 +139,8 @@ class ComparisonSummaryTests(unittest.TestCase):
             decisions=[
                 {
                     "image_path": "missing_source/changed.png",
-                    "category": "artifact.texture",
-                    "analyzer": "texture_analyzer/v1",
-                    "decision": "NEEDS_REVIEW",
+                    "decision": "UNDECIDED",
+                    "workflow_state": "IN_DATASET",
                 },
             ],
         )

@@ -600,6 +600,15 @@ image, review status, suggested human action, analyzer coverage, and explicit
 read-only scope. They do not execute cleanup, export datasets, modify source
 images, or modify pixels.
 
+v0.20 should consolidate review UX into a local browser-based review desk over
+the same sidecars. The review desk should show image cards grouped by Priority
+Review, Needs Review, and No Findings Emitted; support filters by status,
+analyzer/finding category, severity, and confidence; link back to detailed
+triage dossier entries; and persist human decisions to `review_decisions.json`.
+It is an interface layer only. It must remain local, deterministic, and
+sidecar-based, with no network dependencies, cleanup execution, export,
+automatic repair, source-image modification, or pixel modification.
+
 v0.10 adds `dataset-forge inspect --review-gallery`, which writes
 `review_gallery.html` from the existing `inspection_report.json` and
 `recommendation_summary.json` sidecars. The gallery is plain deterministic HTML

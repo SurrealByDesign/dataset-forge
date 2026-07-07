@@ -466,9 +466,12 @@ def _review_counts_by_category(
     for decision in review_decisions.decisions:
         if decision.category is None:
             continue
-        if decision.decision == ReviewDecisionValue.CONFIRMED_ARTIFACT.value:
+        if decision.decision in {
+            ReviewDecisionValue.IMPROVEMENT_CANDIDATE.value,
+            ReviewDecisionValue.REMOVAL_CANDIDATE.value,
+        }:
             confirmed[decision.category] = confirmed.get(decision.category, 0) + 1
-        elif decision.decision == ReviewDecisionValue.FALSE_POSITIVE.value:
+        elif decision.decision == ReviewDecisionValue.ACCEPTED_STYLE_FALSE_POSITIVE.value:
             false_positive[decision.category] = false_positive.get(decision.category, 0) + 1
     return dict(sorted(confirmed.items())), dict(sorted(false_positive.items()))
 

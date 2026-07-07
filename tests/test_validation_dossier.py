@@ -77,13 +77,15 @@ def _decisions() -> dict:
                 "image_path": "image_00.png",
                 "category": TEXTURE,
                 "analyzer": TEXTURE_ANALYZER,
-                "decision": "CONFIRMED_ARTIFACT",
+                "decision": "IMPROVEMENT_CANDIDATE",
+                "workflow_state": "REVIEWED",
             },
             {
                 "image_path": "image_03.png",
                 "category": TEXTURE,
                 "analyzer": TEXTURE_ANALYZER,
-                "decision": "FALSE_POSITIVE",
+                "decision": "ACCEPTED_STYLE_FALSE_POSITIVE",
+                "workflow_state": "REVIEWED",
             },
         ],
     }

@@ -14,6 +14,23 @@ Dataset Forge should use user workflow language before architecture language.
 
 ---
 
+## v0.20 Direction: Browser Review Desk Discoverability
+
+v0.20 should make the browser-based review desk the primary post-inspect
+handoff. After `inspect`, terminal output should clearly show:
+
+- the output directory
+- the local review gallery / review desk to open first
+- the triage dossiers for detailed evidence
+- where browser review decisions are saved: `review_decisions.json`
+
+The review desk should show images grouped by Priority Review, Needs Review,
+and No Findings Emitted, and should support local decision-making without
+modifying source images, executing cleanup, exporting datasets, adding
+automatic repair, or using network dependencies.
+
+---
+
 ## Command
 
 ```
@@ -79,6 +96,17 @@ Reports written:
   review_gallery.html  # only with --review-gallery
   priority_review_contact_sheet.png  # only with --contact-sheets
   needs_review_contact_sheet.png     # only with --contact-sheets
+
+Start Here
+----------
+Review Desk: dataset-forge review "path/to/dataset/inspect_output"
+Output dir:   path/to/dataset/inspect_output
+Decisions:    review_decisions.json
+
+Open first:
+  triage_dossiers.md
+  recommendation_summary.md
+  inspection_report.json
 ```
 
 ---
@@ -92,11 +120,12 @@ dataset-forge review path/to/dataset/inspect_output/
 Expected terminal output:
 
 ```
-Dataset Forge Review
-====================
+Dataset Forge Review Desk
+=========================
 Inspect output: path/to/dataset/inspect_output
 Serving:        http://127.0.0.1:8765
 Writes only:    review_decisions.json
+Consumes only:  generated JSON sidecars
 Source images and reports will not be modified.
 Press Ctrl+C to stop.
 ```
@@ -105,7 +134,7 @@ The local review server:
 
 - binds only to `127.0.0.1`
 - reads `inspection_report.json`, `recommendation_summary.json`, and optional
-  `review_decisions.json`
+- `triage_dossiers.json`, and optional `review_decisions.json`
 - writes only `review_decisions.json`
 - does not modify source images, inspection reports, recommendation summaries,
   static galleries, or contact sheets

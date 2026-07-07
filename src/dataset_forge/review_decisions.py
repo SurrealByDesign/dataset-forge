@@ -12,34 +12,58 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-REVIEW_DECISIONS_SCHEMA = "dataset-forge/review-decisions/v1"
+REVIEW_DECISIONS_SCHEMA_V1 = "dataset-forge/review-decisions/v1"
+REVIEW_DECISIONS_SCHEMA = "dataset-forge/review-decisions/v2"
 
 
 class ReviewDecisionValue(str, Enum):
-    CONFIRMED_ARTIFACT = "CONFIRMED_ARTIFACT"
-    FALSE_POSITIVE = "FALSE_POSITIVE"
-    ACCEPTABLE_STYLE = "ACCEPTABLE_STYLE"
-    NEEDS_REVIEW = "NEEDS_REVIEW"
-    IGNORE = "IGNORE"
-    LOCKED = "LOCKED"
+    KEEP = "KEEP"
+    ACCEPTED_STYLE_FALSE_POSITIVE = "ACCEPTED_STYLE_FALSE_POSITIVE"
+    IMPROVEMENT_CANDIDATE = "IMPROVEMENT_CANDIDATE"
+    REMOVAL_CANDIDATE = "REMOVAL_CANDIDATE"
+    UNDECIDED = "UNDECIDED"
+
+
+class ReviewWorkflowState(str, Enum):
+    IN_DATASET = "IN_DATASET"
+    QUARANTINE_PLANNED = "QUARANTINE_PLANNED"
+    REVIEWED = "REVIEWED"
 
 
 _DECISION_ORDER = tuple(value.value for value in ReviewDecisionValue)
+_WORKFLOW_STATES = {value.value for value in ReviewWorkflowState}
 _TOP_LEVEL_FIELDS = {"schema", "decisions"}
 _DECISION_FIELDS = {
     "image_path",
     "decision",
+    "workflow_state",
     "category",
     "analyzer",
     "reason",
     "recommendation",
     "notes",
+    "reviewed_at",
+    "decision_history",
 }
 _EXCLUDE_FROM_FUTURE_ACTION = {
-    ReviewDecisionValue.FALSE_POSITIVE.value,
-    ReviewDecisionValue.ACCEPTABLE_STYLE.value,
-    ReviewDecisionValue.IGNORE.value,
-    ReviewDecisionValue.LOCKED.value,
+    ReviewDecisionValue.KEEP.value,
+    ReviewDecisionValue.ACCEPTED_STYLE_FALSE_POSITIVE.value,
+}
+_LEGACY_DECISIONS = {
+    "CONFIRMED_ARTIFACT",
+    "FALSE_POSITIVE",
+    "ACCEPTABLE_STYLE",
+    "NEEDS_REVIEW",
+    "IGNORE",
+    "LOCKED",
+}
+_LEGACY_TO_V2 = {
+    "CONFIRMED_ARTIFACT": ReviewDecisionValue.IMPROVEMENT_CANDIDATE.value,
+    "FALSE_POSITIVE": ReviewDecisionValue.ACCEPTED_STYLE_FALSE_POSITIVE.value,
+    "ACCEPTABLE_STYLE": ReviewDecisionValue.ACCEPTED_STYLE_FALSE_POSITIVE.value,
+    "NEEDS_REVIEW": ReviewDecisionValue.UNDECIDED.value,
+    "IGNORE": ReviewDecisionValue.KEEP.value,
+    "LOCKED": ReviewDecisionValue.KEEP.value,
 }
 
 
@@ -47,16 +71,20 @@ _EXCLUDE_FROM_FUTURE_ACTION = {
 class ReviewDecision:
     image_path: str
     decision: str | None
+    workflow_state: str = ReviewWorkflowState.IN_DATASET.value
     category: str | None = None
     analyzer: str | None = None
     recommendation: str | None = None
     notes: str = ""
     reason: str = ""
+    reviewed_at: str | None = None
+    decision_history: tuple[dict[str, Any], ...] = ()
 
-    def to_dict(self) -> dict[str, str | None]:
+    def to_dict(self) -> dict[str, Any]:
         payload = {
             "image_path": self.image_path,
             "decision": self.decision,
+            "workflow_state": self.workflow_state,
         }
         if self.category is not None:
             payload["category"] = self.category
@@ -68,6 +96,10 @@ class ReviewDecision:
             payload["notes"] = self.notes
         if self.reason:
             payload["reason"] = self.reason
+        if self.reviewed_at is not None:
+            payload["reviewed_at"] = self.reviewed_at
+        if self.decision_history:
+            payload["decision_history"] = list(self.decision_history)
         return payload
 
 
@@ -80,6 +112,7 @@ class ReviewDecisionSummary:
     locked_image_count: int
     ignored_image_count: int
     unresolved_review_count: int
+    counts_by_workflow_state: dict[str, int]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,6 +123,7 @@ class ReviewDecisionSummary:
             "locked_image_count": self.locked_image_count,
             "ignored_image_count": self.ignored_image_count,
             "unresolved_review_count": self.unresolved_review_count,
+            "counts_by_workflow_state": dict(self.counts_by_workflow_state),
         }
 
 
@@ -138,12 +172,7 @@ class ReviewDecisionSet:
         return self.decision_for(image_path, category, analyzer)
 
     def is_image_locked(self, image_path: str | Path) -> bool:
-        image = _normalize_path(str(image_path))
-        return any(
-            decision.image_path == image
-            and decision.decision == ReviewDecisionValue.LOCKED.value
-            for decision in self.decisions
-        )
+        return False
 
     def is_finding_confirmed(
         self,
@@ -151,7 +180,10 @@ class ReviewDecisionSet:
         category: str,
     ) -> bool:
         decision = self.decision_for(image_path, category)
-        return decision is not None and decision.decision == ReviewDecisionValue.CONFIRMED_ARTIFACT.value
+        return decision is not None and decision.decision in {
+            ReviewDecisionValue.IMPROVEMENT_CANDIDATE.value,
+            ReviewDecisionValue.REMOVAL_CANDIDATE.value,
+        }
 
     def is_finding_false_positive(
         self,
@@ -159,7 +191,10 @@ class ReviewDecisionSet:
         category: str,
     ) -> bool:
         decision = self.decision_for(image_path, category)
-        return decision is not None and decision.decision == ReviewDecisionValue.FALSE_POSITIVE.value
+        return (
+            decision is not None
+            and decision.decision == ReviewDecisionValue.ACCEPTED_STYLE_FALSE_POSITIVE.value
+        )
 
     def should_exclude_from_future_action(
         self,
@@ -188,6 +223,9 @@ def parse_review_decisions(data: dict[str, Any]) -> ReviewDecisionSet:
     _reject_unknown_fields(data, _TOP_LEVEL_FIELDS, "review decisions payload")
 
     schema = data.get("schema")
+    if schema == REVIEW_DECISIONS_SCHEMA_V1:
+        data = migrate_review_decisions_v1_to_v2(data).to_dict()
+        schema = data.get("schema")
     if schema != REVIEW_DECISIONS_SCHEMA:
         raise ValueError(
             f"Unsupported review decision schema {schema!r}; "
@@ -198,21 +236,16 @@ def parse_review_decisions(data: dict[str, Any]) -> ReviewDecisionSet:
     if not isinstance(raw_decisions, list):
         raise ValueError("review decisions must contain a 'decisions' list")
 
-    seen: set[tuple[str, str | None, str | None]] = set()
+    seen: set[str] = set()
     decisions: list[ReviewDecision] = []
     for raw in raw_decisions:
         if not isinstance(raw, dict):
             raise ValueError("each review decision must be an object")
         _reject_unknown_fields(raw, _DECISION_FIELDS, "review decision")
         decision = _parse_decision(raw)
-        scope = (decision.image_path, decision.category, decision.analyzer)
+        scope = decision.image_path
         if scope in seen:
-            if decision.category is None:
-                raise ValueError(f"duplicate review decision for image: {decision.image_path}")
-            raise ValueError(
-                "duplicate review decision for image/category/analyzer: "
-                f"{decision.image_path} / {decision.category} / {decision.analyzer}"
-            )
+            raise ValueError(f"duplicate review decision for image: {decision.image_path}")
         seen.add(scope)
         decisions.append(decision)
 
@@ -230,11 +263,15 @@ def summarize_review_decisions(
     counts_by_decision = {decision: 0 for decision in _DECISION_ORDER}
     counts_by_analyzer: dict[str, int] = {}
     counts_by_category: dict[str, int] = {}
+    counts_by_workflow_state = {state: 0 for state in sorted(_WORKFLOW_STATES)}
     locked_images: set[str] = set()
     ignored_images: set[str] = set()
     unresolved_review_count = 0
 
     for decision in items:
+        counts_by_workflow_state[decision.workflow_state] = (
+            counts_by_workflow_state.get(decision.workflow_state, 0) + 1
+        )
         if decision.decision is None:
             continue
         counts_by_decision[decision.decision] += 1
@@ -242,11 +279,7 @@ def summarize_review_decisions(
             counts_by_analyzer[decision.analyzer] = counts_by_analyzer.get(decision.analyzer, 0) + 1
         if decision.category is not None:
             counts_by_category[decision.category] = counts_by_category.get(decision.category, 0) + 1
-        if decision.decision == ReviewDecisionValue.LOCKED.value:
-            locked_images.add(decision.image_path)
-        if decision.decision == ReviewDecisionValue.IGNORE.value:
-            ignored_images.add(decision.image_path)
-        if decision.decision == ReviewDecisionValue.NEEDS_REVIEW.value:
+        if decision.decision == ReviewDecisionValue.UNDECIDED.value:
             unresolved_review_count += 1
 
     return ReviewDecisionSummary(
@@ -257,6 +290,7 @@ def summarize_review_decisions(
         locked_image_count=len(locked_images),
         ignored_image_count=len(ignored_images),
         unresolved_review_count=unresolved_review_count,
+        counts_by_workflow_state=counts_by_workflow_state,
     )
 
 
@@ -276,6 +310,9 @@ def _parse_decision(raw: dict[str, Any]) -> ReviewDecision:
     decision = raw.get("decision")
     if decision is not None and decision not in _DECISION_ORDER:
         raise ValueError(f"unknown review decision value: {decision!r}")
+    workflow_state = raw.get("workflow_state", ReviewWorkflowState.IN_DATASET.value)
+    if workflow_state not in _WORKFLOW_STATES:
+        raise ValueError(f"unknown workflow state: {workflow_state!r}")
     image_path = _normalize_path(raw.get("image_path"))
     category = _optional_non_empty_string(raw.get("category"), "category")
     analyzer = _optional_non_empty_string(raw.get("analyzer"), "analyzer")
@@ -289,15 +326,109 @@ def _parse_decision(raw: dict[str, Any]) -> ReviewDecision:
     reason = raw.get("reason", "")
     if not isinstance(reason, str):
         raise ValueError("reason must be a string when provided")
+    reviewed_at = raw.get("reviewed_at")
+    if reviewed_at is not None and not isinstance(reviewed_at, str):
+        raise ValueError("reviewed_at must be a string when provided")
+    decision_history = raw.get("decision_history", [])
+    if not isinstance(decision_history, list) or not all(
+        isinstance(item, dict) for item in decision_history
+    ):
+        raise ValueError("decision_history must be a list of objects when provided")
     return ReviewDecision(
         image_path=image_path,
         decision=decision,
+        workflow_state=str(workflow_state),
         category=category,
         analyzer=analyzer,
         recommendation=recommendation,
         notes=notes,
         reason=reason,
+        reviewed_at=reviewed_at,
+        decision_history=tuple(dict(item) for item in decision_history),
     )
+
+
+def migrate_review_decisions_v1_to_v2(data: dict[str, Any]) -> ReviewDecisionSet:
+    """Collapse legacy finding-scoped decisions into v2 image-scoped decisions."""
+
+    raw_decisions = data.get("decisions")
+    if not isinstance(raw_decisions, list):
+        raise ValueError("review decisions must contain a 'decisions' list")
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for raw in raw_decisions:
+        if not isinstance(raw, dict):
+            raise ValueError("each review decision must be an object")
+        image_path = _normalize_path(raw.get("image_path"))
+        legacy_decision = raw.get("decision")
+        if legacy_decision is not None and legacy_decision not in _LEGACY_DECISIONS:
+            raise ValueError(f"unknown review decision value: {legacy_decision!r}")
+        grouped.setdefault(image_path, []).append(raw)
+
+    migrated: list[ReviewDecision] = []
+    for image_path, entries in grouped.items():
+        chosen = _choose_legacy_entry(entries)
+        legacy_value = chosen.get("decision")
+        decision = _LEGACY_TO_V2.get(legacy_value) if legacy_value is not None else None
+        notes = "\n".join(
+            str(entry.get("notes", ""))
+            for entry in entries
+            if isinstance(entry.get("notes", ""), str) and entry.get("notes", "")
+        )
+        history = [
+            {
+                "schema": REVIEW_DECISIONS_SCHEMA_V1,
+                "decision": entry.get("decision"),
+                "category": entry.get("category"),
+                "analyzer": entry.get("analyzer"),
+                "recommendation": entry.get("recommendation"),
+                "notes": entry.get("notes", ""),
+            }
+            for entry in entries
+        ]
+        migrated.append(
+            ReviewDecision(
+                image_path=image_path,
+                decision=decision,
+                workflow_state=(
+                    ReviewWorkflowState.REVIEWED.value
+                    if decision is not None and decision != ReviewDecisionValue.UNDECIDED.value
+                    else ReviewWorkflowState.IN_DATASET.value
+                ),
+                recommendation=_optional_non_empty_string(
+                    chosen.get("recommendation"),
+                    "recommendation",
+                ),
+                notes=notes,
+                reason=str(chosen.get("reason", "")) if chosen.get("reason") else "",
+                decision_history=tuple(history),
+            )
+        )
+
+    return ReviewDecisionSet(
+        schema=REVIEW_DECISIONS_SCHEMA,
+        decisions=tuple(sorted(migrated, key=_decision_sort_key)),
+    )
+
+
+def _choose_legacy_entry(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    priority = {
+        "CONFIRMED_ARTIFACT": 0,
+        "NEEDS_REVIEW": 1,
+        "FALSE_POSITIVE": 2,
+        "ACCEPTABLE_STYLE": 2,
+        "LOCKED": 3,
+        "IGNORE": 3,
+        None: 4,
+    }
+    return sorted(
+        entries,
+        key=lambda entry: (
+            priority.get(entry.get("decision"), 99),
+            str(entry.get("category", "")),
+            str(entry.get("analyzer", "")),
+        ),
+    )[0]
 
 
 def _decisions_by_scope(
@@ -370,11 +501,14 @@ def _decision_sort_key(decision: ReviewDecision) -> tuple[str, str, str, str]:
 
 __all__ = [
     "REVIEW_DECISIONS_SCHEMA",
+    "REVIEW_DECISIONS_SCHEMA_V1",
     "ReviewDecision",
     "ReviewDecisionSet",
     "ReviewDecisionSummary",
     "ReviewDecisionValue",
+    "ReviewWorkflowState",
     "load_review_decisions",
+    "migrate_review_decisions_v1_to_v2",
     "parse_review_decisions",
     "summarize_review_decisions",
     "write_review_decisions_json",

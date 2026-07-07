@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.19.0-alpha** -- adds Real-World Triage Evidence to the LoRA Dataset Decision Engine.
+**v0.20.0-alpha** -- adds a local browser-based Review Desk to the LoRA Dataset Decision Engine.
 
 Dataset Forge helps you decide which images belong in your LoRA before you train.
 
@@ -26,12 +26,12 @@ Raw Dataset
 -> Train
 ```
 
-**v0.19.0-alpha is read-only decision support.** Dataset Forge reads your
+**v0.20.0-alpha is read-only decision support.** Dataset Forge reads your
 dataset and writes reports beside it. It never modifies source images. There is
 still no cleanup, repair, export, hosted web app, cloud service, plugins, or
-new analyzer family in this release. v0.19 adds image-level triage dossiers,
-image-centered recommendation evidence, analyzer coverage summaries, and
-clearer no-finding wording before any future execution exists.
+new analyzer family in this release. v0.20 makes `dataset-forge review` the
+primary human-facing workflow: a localhost-only Review Desk for images,
+evidence, filters, human decisions, workflow state, and notes.
 
 ---
 
@@ -51,10 +51,10 @@ Inspect a dataset:
 uv run dataset-forge inspect my_dataset/
 ```
 
-Open the main human-facing summary first:
+Open the local Review Desk first:
 
 ```text
-my_dataset/inspect_output/recommendation_summary.md
+uv run dataset-forge review my_dataset/inspect_output/
 ```
 
 Expected outputs:
@@ -67,7 +67,8 @@ Expected outputs:
 | `recommendation_summary.json` | Machine-readable No Findings Emitted / Needs Review / Priority Review sidecar. |
 | `triage_dossiers.md` | Image-level triage dossiers with findings nested under each image. |
 | `triage_dossiers.json` | Machine-readable triage dossier sidecar. |
-| `review_decisions_template.json` | Optional starter file for human review decisions. |
+| `review_decisions_template.json` | Optional starter file for v2 human review decisions. |
+| `review_decisions.json` | Persistent local Review Desk decisions, workflow state, and notes. |
 | `review_gallery.html` | Optional visual review page from `--review-gallery`. |
 | `priority_review_contact_sheet.png` | Optional visual sheet from `--contact-sheets`. |
 | `needs_review_contact_sheet.png` | Optional visual sheet from `--contact-sheets`. |
@@ -117,10 +118,10 @@ reports separate images with no findings from images that deserve human review.
 The normal workflow is:
 
 1. Run `dataset-forge inspect my_dataset/`.
-2. Open `recommendation_summary.md`.
+2. Open `dataset-forge review my_dataset/inspect_output/`.
 3. Review Priority Review images first.
-4. Review Needs Review images if useful.
-5. Record decisions with `dataset-forge review my_dataset/inspect_output/`.
+4. Review Needs Review and No Findings Emitted images if useful.
+5. Record decisions, workflow state, and notes in the local Review Desk.
 6. Re-run inspect after dataset changes or a later review pass.
 7. Compare runs with `dataset-forge compare ...`.
 8. Generate an advisory Improvement Plan with `dataset-forge plan ...` if you
@@ -182,12 +183,12 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.19.0-alpha exposes `inspect`,
-  optional local `review`, sidecar-only `compare`, advisory `plan`, and
+- **No public recommendation command yet.** v0.20.0-alpha exposes `inspect`,
+  local `review`, sidecar-only `compare`, advisory `plan`, and
   execution-free `preview`. There is no separate `dataset-forge recommend`
   command.
 
-- **No cleanup, repair, execution, or export.** v0.19.0-alpha is read-only.
+- **No cleanup, repair, execution, or export.** v0.20.0-alpha is read-only.
   Improvement Planning writes `improvement_plan.json` and
   `improvement_plan.md` only. Improvement Preview writes
   `improvement_preview.json` and `improvement_preview.md` only. Cleanup,
@@ -237,6 +238,32 @@ v0.19 focus:
 
 Execution, cleanup, export, repair, source-image modification, and pixel
 modification remain explicitly out of scope.
+
+---
+
+## v0.20 Browser-Based Review Desk
+
+v0.20 makes the local browser review workflow the primary human-facing Dataset
+Forge experience. After `inspect`, the CLI points users clearly to the output
+directory, the Review Desk command, and the best evidence files to open first.
+
+Implemented v0.20 focus:
+
+- Show images grouped by Priority Review, Needs Review, and No Findings
+  Emitted.
+- Show thumbnail, filename, triage status, finding categories,
+  confidence/severity, evidence summary, suggested review action, and links or
+  anchors to detailed triage dossier entries.
+- Add filters for status, analyzer/finding category, severity, and confidence.
+- Let the user record decisions in the browser: Keep, Accepted Style / False
+  Positive, Improvement Candidate, Removal Candidate, Undecided, workflow
+  state, and notes.
+- Persist decisions to `review_decisions.json` using
+  `dataset-forge/review-decisions/v2`, with v1 migration on load.
+
+The browser workflow must remain local, deterministic, and sidecar-based. It
+must not modify source images, execute cleanup, export datasets, add automatic
+repair, or add network dependencies.
 
 ---
 
@@ -592,14 +619,14 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.19.0-alpha.** There is no public flag or command that modifies, repairs,
+  v0.20.0-alpha.** There is no public flag or command that modifies, repairs,
   exports, rejects, or regenerates images. `dataset-forge plan` writes advisory
   Improvement Candidates only. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,
   a human-readable explanation, and a recommendation. No black-box scores.
-- **Healthy images stay quiet.** Images with no findings are listed as Ready for
-  Training in the sidecar summary, but that is not a guarantee that an image is
-  artifact-free.
+- **Healthy images stay quiet.** Images with no findings are listed as No
+  Findings Emitted in the sidecar summary, but that is not a guarantee that an
+  image is artifact-free.
 
 ---
 

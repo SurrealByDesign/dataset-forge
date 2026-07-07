@@ -144,7 +144,8 @@ class TestRunInspectBasic(unittest.TestCase):
             "decisions": [
                 {
                     "image_path": str(images[0]),
-                    "decision": "ACCEPTABLE_STYLE",
+                    "decision": "ACCEPTED_STYLE_FALSE_POSITIVE",
+                    "workflow_state": "REVIEWED",
                     "notes": "human checked this one",
                 },
             ],
@@ -168,7 +169,8 @@ class TestRunInspectBasic(unittest.TestCase):
                 "decisions": [
                     {
                         "image_path": str(images[0]),
-                        "decision": "ACCEPTABLE_STYLE",
+                        "decision": "ACCEPTED_STYLE_FALSE_POSITIVE",
+                        "workflow_state": "REVIEWED",
                     },
                 ],
             }),

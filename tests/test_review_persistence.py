@@ -72,11 +72,13 @@ class ReviewPersistenceTests(unittest.TestCase):
             "decisions": [
                 {
                     "image_path": "img_0.png",
-                    "decision": "ACCEPTABLE_STYLE",
+                    "decision": "ACCEPTED_STYLE_FALSE_POSITIVE",
+                    "workflow_state": "REVIEWED",
                 },
                 {
                     "image_path": "img_1.png",
                     "decision": None,
+                    "workflow_state": "IN_DATASET",
                     "recommendation": "No Findings Emitted",
                     "notes": "",
                 },
@@ -86,7 +88,7 @@ class ReviewPersistenceTests(unittest.TestCase):
         statuses = review_status_by_image(summary, decisions)
 
         self.assertEqual(statuses["img_0.png"].status, "Already Reviewed")
-        self.assertEqual(statuses["img_0.png"].decisions, ("Acceptable Style",))
+        self.assertEqual(statuses["img_0.png"].decisions, ("Accepted Style / False Positive",))
         self.assertEqual(statuses["img_1.png"].status, "Pending Review")
         self.assertEqual(statuses["img_1.png"].decisions, ())
 

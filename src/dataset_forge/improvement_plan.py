@@ -35,9 +35,10 @@ IMPROVEMENT_PLAN_MARKDOWN_FILENAME = "improvement_plan.md"
 
 _ELIGIBLE_RECOMMENDATIONS = {NEEDS_REVIEW, PRIORITY_REVIEW}
 _SUPPRESSING_DECISIONS = {
-    ReviewDecisionValue.FALSE_POSITIVE.value: "Human review marked this finding as a false positive.",
-    ReviewDecisionValue.ACCEPTABLE_STYLE.value: "Human review marked this finding as acceptable style.",
-    ReviewDecisionValue.IGNORE.value: "Human review chose to ignore this scope.",
+    ReviewDecisionValue.KEEP.value: "Human review chose to keep this image in the dataset.",
+    ReviewDecisionValue.ACCEPTED_STYLE_FALSE_POSITIVE.value: (
+        "Human review marked this image as accepted style or a false positive."
+    ),
 }
 _OPERATION_BY_CATEGORY = {
     "texture.high_microtexture": "High Microtexture Review",
@@ -107,17 +108,11 @@ def build_improvement_plan(
         for ref in finding_refs:
             item = _planning_item(recommendation, ref, workspace["review_decisions"])
             decision = item["review_decision"]
-            if _is_locked(item, workspace["review_decisions"]):
-                suppressed.append({
-                    **item,
-                    "status": "SUPPRESSED",
-                    "planning_notes": "Human review locked this image. No Improvement Candidate is created.",
-                })
-            elif decision and decision["decision"] == ReviewDecisionValue.NEEDS_REVIEW.value:
+            if decision and decision["decision"] == ReviewDecisionValue.UNDECIDED.value:
                 deferred.append({
                     **item,
                     "status": "DEFERRED",
-                    "planning_notes": "Human review marked this scope as still needing review.",
+                    "planning_notes": "Human review marked this image as undecided.",
                 })
             elif decision and decision["decision"] in _SUPPRESSING_DECISIONS:
                 suppressed.append({
@@ -330,15 +325,6 @@ def _planning_item(
         "review_decision": _decision_payload(decision),
         "suggested_improvement": _suggested_improvement(category),
     }
-
-
-def _is_locked(item: Mapping[str, Any], decisions: ReviewDecisionSet | None) -> bool:
-    if decisions is None:
-        return False
-    if decisions.is_image_locked(str(item["image_path"])):
-        return True
-    decision = item["review_decision"]
-    return bool(decision and decision["decision"] == ReviewDecisionValue.LOCKED.value)
 
 
 def _decision_payload(decision: ReviewDecision | None) -> dict[str, str | None] | None:

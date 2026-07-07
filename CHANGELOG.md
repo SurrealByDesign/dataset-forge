@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.20.0-alpha
+
+- Added the local browser-based Review Desk as the primary human-facing review
+  workflow from `dataset-forge review <inspect_output>`.
+- Made Review Desk data image-centered: one card per image with nested
+  findings, evidence summaries, triage status, analyzer coverage, suggested
+  review action, and No Findings Emitted entries.
+- Added browser filters for decision, workflow state, triage group, finding
+  category, severity, confidence, and search text.
+- Added Review Decisions schema v2:
+  `dataset-forge/review-decisions/v2`.
+- Added v1 review decision migration on load.
+- Added human decisions: Keep, Accepted Style / False Positive, Improvement
+  Candidate, Removal Candidate, and Undecided.
+- Added separate workflow state: In Dataset, Quarantine Planned, and Reviewed.
+- Added notes persistence in `review_decisions.json`.
+- Added read-only zoom/lightbox viewing with fit, actual size, zoom in/out,
+  mouse wheel zoom, drag pan, previous/next, Space, and Escape support.
+- Improved `inspect` end-of-run output with a Start Here block pointing to the
+  Review Desk command, output directory, and key files.
+- Kept execution, cleanup, export, repair, file movement, quarantine folder
+  creation, source-image modification, and pixel modification out of scope.
+
 ## v0.19.0-alpha
 
 - Replaced user-facing `Ready for Training` language with

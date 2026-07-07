@@ -77,6 +77,7 @@ def _decision(
     payload: dict[str, object] = {
         "image_path": image_path,
         "decision": decision,
+        "workflow_state": "IN_DATASET",
     }
     if category is not None:
         payload["category"] = category
@@ -219,12 +220,12 @@ class ImprovementPlanTests(unittest.TestCase):
 
         self.assertEqual(plan["summary"]["improvement_candidate_count"], 0)
 
-    def test_confirmed_artifact_is_eligible_for_planning(self) -> None:
+    def test_improvement_candidate_is_eligible_for_planning(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output = _write_output(
                 Path(tmp) / "inspect_output",
                 recommendations=[_recommendation("dataset/img.png")],
-                decisions=[_decision("dataset/img.png", "CONFIRMED_ARTIFACT")],
+                decisions=[_decision("dataset/img.png", "IMPROVEMENT_CANDIDATE")],
             )
 
             plan = build_improvement_plan(output, generated_at="2026-07-05T00:00:00Z")
@@ -232,34 +233,28 @@ class ImprovementPlanTests(unittest.TestCase):
         self.assertEqual(plan["summary"]["improvement_candidate_count"], 1)
         self.assertEqual(
             plan["improvement_candidates"][0]["review_decision"]["decision"],
-            "CONFIRMED_ARTIFACT",
+            "IMPROVEMENT_CANDIDATE",
         )
 
-    def test_false_positive_suppresses_planning(self) -> None:
-        plan = self._plan_for_decision("FALSE_POSITIVE")
+    def test_accepted_style_false_positive_suppresses_planning(self) -> None:
+        plan = self._plan_for_decision("ACCEPTED_STYLE_FALSE_POSITIVE")
 
         self.assertEqual(plan["summary"]["improvement_candidate_count"], 0)
         self.assertEqual(plan["summary"]["suppressed_improvement_candidate_count"], 1)
 
-    def test_acceptable_style_suppresses_planning(self) -> None:
-        plan = self._plan_for_decision("ACCEPTABLE_STYLE")
+    def test_keep_suppresses_planning(self) -> None:
+        plan = self._plan_for_decision("KEEP")
 
         self.assertEqual(plan["summary"]["improvement_candidate_count"], 0)
         self.assertEqual(plan["summary"]["suppressed_improvement_candidate_count"], 1)
 
-    def test_ignore_suppresses_planning(self) -> None:
-        plan = self._plan_for_decision("IGNORE")
-
-        self.assertEqual(plan["summary"]["improvement_candidate_count"], 0)
-        self.assertEqual(plan["summary"]["suppressed_improvement_candidate_count"], 1)
-
-    def test_needs_review_defers_planning(self) -> None:
-        plan = self._plan_for_decision("NEEDS_REVIEW")
+    def test_undecided_defers_planning(self) -> None:
+        plan = self._plan_for_decision("UNDECIDED")
 
         self.assertEqual(plan["summary"]["improvement_candidate_count"], 0)
         self.assertEqual(plan["summary"]["deferred_improvement_candidate_count"], 1)
 
-    def test_locked_image_suppresses_planning(self) -> None:
+    def test_keep_image_level_decision_suppresses_planning(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output = _write_output(
                 Path(tmp) / "inspect_output",
@@ -267,7 +262,7 @@ class ImprovementPlanTests(unittest.TestCase):
                 decisions=[
                     _decision(
                         "dataset/img.png",
-                        "LOCKED",
+                        "KEEP",
                         category=None,
                         analyzer=None,
                     ),
@@ -278,7 +273,7 @@ class ImprovementPlanTests(unittest.TestCase):
 
         self.assertEqual(plan["summary"]["improvement_candidate_count"], 0)
         self.assertEqual(plan["summary"]["suppressed_improvement_candidate_count"], 1)
-        self.assertIn("locked", plan["suppressed_improvement_candidates"][0]["planning_notes"].lower())
+        self.assertIn("keep", plan["suppressed_improvement_candidates"][0]["planning_notes"].lower())
 
     def test_deterministic_ordering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

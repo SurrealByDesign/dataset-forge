@@ -94,19 +94,22 @@ class ReviewServerDataTests(unittest.TestCase):
             with self.assertRaises(ReviewServerError):
                 load_review_workspace(Path(tmp))
 
-    def test_builds_rows_from_flagged_recommendations_only(self) -> None:
+    def test_builds_image_centered_rows_for_all_triage_groups(self) -> None:
         with TemporaryDirectory() as tmp:
             output, _image = _write_workspace(Path(tmp))
 
             data = build_review_data(output)
 
-        self.assertEqual(data["summary"]["review_row_count"], 2)
+        self.assertEqual(data["summary"]["review_image_count"], 2)
         self.assertEqual(data["summary"]["pending_review_count"], 2)
         self.assertEqual(
-            {row["category"] for row in data["rows"]},
-            {"artifact.texture", "artifact.oversharpening_halo"},
+            {row["triage_status"] for row in data["rows"]},
+            {"Priority Review", "No Findings Emitted"},
         )
-        self.assertNotIn("ready.png", json.dumps(data))
+        priority = [row for row in data["rows"] if row["triage_status"] == "Priority Review"][0]
+        self.assertEqual(priority["finding_count"], 2)
+        self.assertIn("artifact.texture", priority["finding_categories"])
+        self.assertIn("ready.png", json.dumps(data))
 
     def test_existing_decisions_load_into_rows(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -117,9 +120,8 @@ class ReviewServerDataTests(unittest.TestCase):
                     "decisions": [
                         {
                             "image_path": str(image),
-                            "category": "artifact.texture",
-                            "analyzer": "texture_analyzer/v1",
-                            "decision": "ACCEPTABLE_STYLE",
+                            "decision": "ACCEPTED_STYLE_FALSE_POSITIVE",
+                            "workflow_state": "REVIEWED",
                             "notes": "intentional style",
                         },
                     ],
@@ -129,12 +131,13 @@ class ReviewServerDataTests(unittest.TestCase):
 
             data = build_review_data(output)
 
-        texture = [
+        row = [
             row for row in data["rows"]
-            if row["category"] == "artifact.texture"
+            if row["filename"] == "priority.png"
         ][0]
-        self.assertEqual(texture["current_decision"], "ACCEPTABLE_STYLE")
-        self.assertEqual(texture["notes"], "intentional style")
+        self.assertEqual(row["decision"], "ACCEPTED_STYLE_FALSE_POSITIVE")
+        self.assertEqual(row["workflow_state"], "REVIEWED")
+        self.assertEqual(row["notes"], "intentional style")
 
     def test_post_update_writes_review_decisions_json(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -142,16 +145,16 @@ class ReviewServerDataTests(unittest.TestCase):
 
             update_review_decision(output, {
                 "image_path": str(image),
-                "category": "artifact.texture",
-                "analyzer": "texture_analyzer/v1",
                 "recommendation": "Priority Review",
-                "decision": "CONFIRMED_ARTIFACT",
+                "decision": "IMPROVEMENT_CANDIDATE",
+                "workflow_state": "REVIEWED",
                 "notes": "visible artifact",
             })
             payload = json.loads((output / "review_decisions.json").read_text(encoding="utf-8"))
 
         self.assertEqual(payload["schema"], REVIEW_DECISIONS_SCHEMA)
-        self.assertEqual(payload["decisions"][0]["decision"], "CONFIRMED_ARTIFACT")
+        self.assertEqual(payload["decisions"][0]["decision"], "IMPROVEMENT_CANDIDATE")
+        self.assertEqual(payload["decisions"][0]["workflow_state"], "REVIEWED")
         self.assertEqual(payload["decisions"][0]["notes"], "visible artifact")
 
     def test_same_scope_decision_updates_and_unrelated_decisions_are_preserved(self) -> None:
@@ -163,13 +166,11 @@ class ReviewServerDataTests(unittest.TestCase):
                     "decisions": [
                         {
                             "image_path": str(image),
-                            "category": "artifact.texture",
-                            "analyzer": "texture_analyzer/v1",
-                            "decision": "NEEDS_REVIEW",
+                            "decision": "UNDECIDED",
                         },
                         {
                             "image_path": "unmatched.png",
-                            "decision": "LOCKED",
+                            "decision": "KEEP",
                         },
                     ],
                 }),
@@ -178,26 +179,22 @@ class ReviewServerDataTests(unittest.TestCase):
 
             update_review_decision(output, {
                 "image_path": str(image),
-                "category": "artifact.texture",
-                "analyzer": "texture_analyzer/v1",
-                "decision": "FALSE_POSITIVE",
+                "decision": "ACCEPTED_STYLE_FALSE_POSITIVE",
                 "notes": "not an artifact",
             })
             payload = json.loads((output / "review_decisions.json").read_text(encoding="utf-8"))
 
         self.assertEqual(len(payload["decisions"]), 2)
-        self.assertIn("LOCKED", json.dumps(payload))
-        self.assertIn("FALSE_POSITIVE", json.dumps(payload))
-        self.assertNotIn("NEEDS_REVIEW", json.dumps(payload))
+        self.assertIn("KEEP", json.dumps(payload))
+        self.assertIn("ACCEPTED_STYLE_FALSE_POSITIVE", json.dumps(payload))
+        self.assertNotIn("UNDECIDED", json.dumps(payload))
 
     def test_duplicate_existing_decisions_are_rejected(self) -> None:
         with TemporaryDirectory() as tmp:
             output, image = _write_workspace(Path(tmp))
             duplicate = {
                 "image_path": str(image),
-                "category": "artifact.texture",
-                "analyzer": "texture_analyzer/v1",
-                "decision": "NEEDS_REVIEW",
+                "decision": "UNDECIDED",
             }
             (output / "review_decisions.json").write_text(
                 json.dumps({
@@ -225,7 +222,7 @@ class ReviewServerDataTests(unittest.TestCase):
                     "image_path": str(image),
                     "category": "artifact.texture",
                     "analyzer": "texture_analyzer/v1",
-                    "decision": "NEEDS_REVIEW",
+                    "decision": "UNDECIDED",
                     "notes": ["not", "plain", "text"],
                 })
 
@@ -251,9 +248,7 @@ class ReviewServerDataTests(unittest.TestCase):
 
             update_review_decision(output, {
                 "image_path": str(image),
-                "category": "artifact.texture",
-                "analyzer": "texture_analyzer/v1",
-                "decision": "NEEDS_REVIEW",
+                "decision": "UNDECIDED",
                 "notes": "",
             })
 
@@ -288,11 +283,15 @@ class ReviewServerHttpTests(unittest.TestCase):
                 server.server_close()
                 thread.join(timeout=5)
 
-        self.assertIn("Dataset Forge Review Decisions", html)
+        self.assertIn("Dataset Forge Review Desk", html)
         self.assertIn("review_decisions.json", html)
-        for forbidden in ("cleanup", "repair", "export", "<form", "localStorage"):
+        self.assertIn('id="zoomViewer"', html)
+        self.assertIn("Actual size: 100% pixels", html)
+        self.assertIn("mouse wheel zooms", html)
+        self.assertIn("Space: larger preview", html)
+        for forbidden in ("repair", "export", "<form", "localStorage"):
             self.assertNotIn(forbidden, html)
-        self.assertEqual(data["summary"]["review_row_count"], 2)
+        self.assertEqual(data["summary"]["review_image_count"], 2)
 
     def test_post_writes_decision(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -306,9 +305,8 @@ class ReviewServerHttpTests(unittest.TestCase):
                     base + "/api/decision",
                     data=json.dumps({
                         "image_path": str(image),
-                        "category": "artifact.texture",
-                        "analyzer": "texture_analyzer/v1",
-                        "decision": "LOCKED",
+                        "decision": "KEEP",
+                        "workflow_state": "REVIEWED",
                         "notes": "approved by human",
                     }).encode("utf-8"),
                     headers={"Content-Type": "application/json"},
@@ -325,7 +323,7 @@ class ReviewServerHttpTests(unittest.TestCase):
                 thread.join(timeout=5)
 
         self.assertEqual(data["summary"]["already_reviewed_count"], 1)
-        self.assertEqual(payload["decisions"][0]["decision"], "LOCKED")
+        self.assertEqual(payload["decisions"][0]["decision"], "KEEP")
 
     def test_post_rejects_invalid_decision(self) -> None:
         with TemporaryDirectory() as tmp:

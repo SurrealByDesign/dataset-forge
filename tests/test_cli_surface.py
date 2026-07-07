@@ -23,7 +23,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Dataset Forge v0.19.0-alpha", stdout)
+        self.assertIn("Dataset Forge v0.20.0-alpha", stdout)
         self.assertIn("inspect", stdout)
         self.assertIn("review", stdout)
         self.assertIn("compare", stdout)
@@ -63,7 +63,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 0.19.0a0")
+        self.assertEqual(stdout.strip(), "dataset-forge 0.20.0a0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -81,7 +81,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
                 self.assertEqual(exit_code, 2)
                 self.assertEqual(stdout, "")
-                self.assertIn("not part of the public v0.19.0-alpha CLI", stderr)
+                self.assertIn("not part of the public v0.20.0-alpha CLI", stderr)
 
     def test_review_help_is_local_only_help(self) -> None:
         exit_code, stdout, stderr = self._run(["review", "--help"])
@@ -204,6 +204,9 @@ class PublicCliSurfaceTests(unittest.TestCase):
             self.assertIn("triage_dossiers.json", stdout)
             self.assertIn("triage_dossiers.md", stdout)
             self.assertIn("review_decisions_template.json", stdout)
+            self.assertIn("Start Here", stdout)
+            self.assertIn("Review Desk: dataset-forge review", stdout)
+            self.assertIn("Output dir:", stdout)
 
     def test_inspect_review_gallery_flag_writes_html(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

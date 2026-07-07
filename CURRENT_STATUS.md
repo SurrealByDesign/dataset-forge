@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-07. Reflects v0.19.0-alpha.*
+*Last updated: 2026-07-07. Reflects v0.20.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.19.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.20.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -32,6 +32,12 @@ v0.19 adds Real-World Triage Evidence: user-facing No Findings Emitted
 language, image-centered recommendation evidence, analyzer coverage summaries,
 and image-level triage dossiers. It keeps execution, cleanup, export, repair,
 source-image modification, and pixel modification out of scope.
+v0.20 adds the Browser-Based Review Desk: `dataset-forge review` now launches a
+local, image-centered browser workflow over generated JSON sidecars. It groups
+images by Priority Review, Needs Review, and No Findings Emitted; shows nested
+finding evidence and analyzer coverage; records v2 human decisions, workflow
+state, and notes in `review_decisions.json`; and remains localhost-only,
+deterministic, sidecar-based, and non-destructive.
 
 Current public behavior remains inspect-first:
 
@@ -39,9 +45,9 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.19.0-alpha:
+Supported in v0.20.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
-- `dataset-forge review <inspect_output>` -- optional local-only review decision server
+- `dataset-forge review <inspect_output>` -- local-only browser Review Desk
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
   --output <comparison_output>` -- sidecar-only comparison between inspect runs
 - `dataset-forge plan <inspect_output>` -- advisory Improvement Planning from
@@ -61,7 +67,7 @@ Supported in v0.19.0-alpha:
 - Persistent Review Decisions sidecars:
   `review_decisions_template.json` and optional user-authored
   `review_decisions.json`
-- Local Review Decision Server:
+- Local Review Desk:
   serves existing sidecars from `127.0.0.1` and writes only
   `review_decisions.json`
 - Dataset Comparison:
@@ -86,8 +92,8 @@ Supported in v0.19.0-alpha:
 - Emit per-analyzer and per-category TP/FP/FN/TN, precision, recall, F1, and false-positive rate
 - Internal Review Decisions over existing `inspection_report.json` findings
 - Load schema-versioned human decisions for images and finding categories
-- Summarize confirmed artifacts, false positives, acceptable style, review,
-  ignored, and locked decisions
+- Summarize Keep, Accepted Style / False Positive, Improvement Candidate,
+  Removal Candidate, and Undecided decisions plus workflow state
 - Internal Validation Dossiers over existing inspection reports, labels, and optional review decisions
 - Emit per-analyzer/per-category reliability summaries, examples, threshold-review candidates, and conservative readiness statuses
 - Internal Real-World Validation Corpus framework for legally safe, labeled
@@ -112,7 +118,7 @@ Supported in v0.19.0-alpha:
 - No analyzer threshold changes
 - No improvement execution, cleanup, repair, export, hosted web app, plugins, or new analyzers
 
-Not supported in v0.19.0-alpha (planned for later releases):
+Not supported in v0.20.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -328,67 +334,27 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-### v0.19.0-alpha Direction: Real-World Triage Evidence
+### v0.20.0-alpha Validation
 
-Do not implement deterministic execution yet.
+v0.20 is implemented as Review UX Consolidation, not execution. The remaining
+release-readiness task is real-world validation on the anthropomorphic LoRA
+dataset:
 
-v0.19 should make Dataset Forge better at helping a human decide what to do
-with real images before any cleanup, export, or pixel modification exists. The
-release should be validated against the anthropomorphic LoRA dataset and should
-treat real review friction as product evidence.
+1. Run `dataset-forge inspect`.
+2. Open `dataset-forge review <inspect_output>`.
+3. Confirm the Review Desk makes Priority Review, Needs Review, and No Findings
+   Emitted images understandable at image-card level.
+4. Record sample Keep, Accepted Style / False Positive, Improvement Candidate,
+   Removal Candidate, and Undecided decisions.
+5. Confirm `review_decisions.json` uses schema
+   `dataset-forge/review-decisions/v2`.
+6. Confirm comparison, plan, and preview continue to consume the v2 decisions
+   without executing or modifying images.
 
-Primary tasks:
+Keep static `review_gallery.html` as a secondary read-only artifact. The local
+`dataset-forge review` command is now the primary human decision workflow.
 
-1. **Keep no-finding language evidence-honest** -- user-facing output now uses
-   `No Findings Emitted`; keep avoiding stronger ready/training claims until
-   calibration supports them.
-
-2. **Clarify no-finding semantics** -- explain that no finding means no current
-   deterministic analyzer emitted a review signal. It does not certify that an
-   image is artifact-free, optimal, caption-ready, or guaranteed suitable for
-   LoRA training.
-
-3. **Add image-level triage dossiers** -- center each output item on an image,
-   with findings, evidence values, analyzer names, severity, confidence notes,
-   review status, and suggested human action nested underneath.
-
-4. **Make recommendations image-centered** -- avoid making finding-level
-   planning entries feel like separate image-level work items unless the output
-   explicitly explains that they are supporting evidence for one image.
-
-5. **Add analyzer coverage summaries** -- report which analyzers ran, which
-   emitted findings, which emitted none, which remain uncalibrated, and which
-   artifact families are currently uncovered.
-
-6. **Improve artifact-family wording** -- crystalline faceting should not read
-   as generic microtexture or as an automatic cleanup instruction; high
-   microtexture should read as a dataset-relative review signal, not proof of
-   defect.
-
-7. **Improve review-state wording** -- Priority Review means review first, not
-   exclude or execute; accepted/acceptable style means intentional style was
-   acknowledged by a human, not that the analyzer failed.
-
-8. **Validate the full workflow on the anthropomorphic dataset** -- inspect,
-   recommendation summary, review gallery, human review decisions, comparison,
-   improvement planning, and preview should be checked as one read-only user
-   workflow.
-
-Supporting validation tasks:
-
-- Populate the Real-World Validation Corpus with legally safe labeled data
-  before claiming real-world reliability.
-- Use Validation Dossiers on labeled real-world datasets before changing
-  analyzer thresholds or strengthening recommendation language.
-- Collect Review Decisions from human audit passes: confirmed artifacts, false
-  positives, acceptable style, ignored, locked, and needs-review outcomes.
-- TextureAnalyzer calibration remains pending; z-score thresholds are
-  uncalibrated.
-- Crystalline grain 45-55 TP/FP interleaving still needs a fourth
-  discriminating signal. Candidates: spatial coherence, directional frequency
-  energy, micro-edge profile.
-
-Explicitly out of scope for v0.19:
+Explicitly out of scope for v0.20:
 
 - deterministic execution
 - cleanup execution
@@ -397,6 +363,8 @@ Explicitly out of scope for v0.19:
 - source-image modification
 - pixel modification
 - automatic exclude/delete/move/rename decisions
+- network dependencies
+- cloud service, login, database, or hosted app
 
 ---
 

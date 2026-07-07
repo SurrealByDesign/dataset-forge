@@ -17,6 +17,7 @@ from dataset_forge.review_decisions import (
     REVIEW_DECISIONS_SCHEMA,
     ReviewDecision,
     ReviewDecisionSet,
+    ReviewWorkflowState,
     load_review_decisions,
 )
 
@@ -110,11 +111,9 @@ def _template_decision(item: ImageRecommendation) -> dict[str, str | None]:
         "image_path": item.image_path,
         "recommendation": item.display_label,
         "decision": None,
+        "workflow_state": ReviewWorkflowState.IN_DATASET.value,
         "notes": "",
     }
-    if item.finding_refs:
-        payload["category"] = item.finding_refs[0].category
-        payload["analyzer"] = item.finding_refs[0].analyzer
     return payload
 
 
@@ -135,7 +134,14 @@ def _matching_decisions(
 
 
 def _display_decision(value: str) -> str:
-    return value.replace("_", " ").title()
+    labels = {
+        "KEEP": "Keep",
+        "ACCEPTED_STYLE_FALSE_POSITIVE": "Accepted Style / False Positive",
+        "IMPROVEMENT_CANDIDATE": "Improvement Candidate",
+        "REMOVAL_CANDIDATE": "Removal Candidate",
+        "UNDECIDED": "Undecided",
+    }
+    return labels.get(value, value.replace("_", " ").title())
 
 
 def review_status_lines(

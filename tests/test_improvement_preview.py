@@ -22,7 +22,7 @@ def _candidate(
     *,
     status: str = "PLANNING_ONLY",
     suggested_improvement: str = "Microtexture Normalization",
-    decision: str | None = "CONFIRMED_ARTIFACT",
+    decision: str | None = "IMPROVEMENT_CANDIDATE",
 ) -> dict[str, object]:
     return {
         "image_path": image_path,
@@ -43,6 +43,7 @@ def _candidate(
                 "category": "artifact.crystalline_faceting",
                 "analyzer": "crystalline_faceting_analyzer/v1",
                 "decision": decision,
+                "workflow_state": "REVIEWED",
             }
             if decision is not None
             else None
@@ -129,9 +130,8 @@ class ImprovementPreviewTests(unittest.TestCase):
                     "decisions": [
                         {
                             "image_path": "dataset/img.png",
-                            "category": "artifact.crystalline_faceting",
-                            "analyzer": "crystalline_faceting_analyzer/v1",
-                            "decision": "CONFIRMED_ARTIFACT",
+                            "decision": "IMPROVEMENT_CANDIDATE",
+                            "workflow_state": "REVIEWED",
                         }
                     ],
                 }),
