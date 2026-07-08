@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.25.0-alpha
+
+- Added Dataset Intelligence to the local Review Desk contract.
+- Dataset Intelligence is descriptive, deterministic, evidence-first, and
+  sidecar-derived. It organizes existing evidence without scoring or grading
+  datasets.
+- Added dataset-level review status, evidence summary, analyzer contribution,
+  dataset coverage, dataset characteristics, review guidance, and provenance
+  sections to the Review Desk payload.
+- Used `inspection_manifest.json` and `comparison_summary.json` when present,
+  while continuing to work from existing inspect sidecars when optional
+  sidecars are absent.
+- Kept the image grid and human decision workflow as the primary Review Desk
+  work surface.
+- Did not add new sidecars, analyzers, analyzer toggles, review profiles,
+  scores, pass/fail labels, cleanup, execution, repair, export, quarantine
+  folders, file movement, or source image modification.
+
 ## v0.24.0-alpha
 
 - Made Dataset Comparison manifest-aware.

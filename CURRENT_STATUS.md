@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-07. Reflects v0.24.0-alpha.*
+*Last updated: 2026-07-07. Reflects v0.25.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.24.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.25.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -63,6 +63,12 @@ manifest schema, inspection profile, Dataset Forge version, analyzer
 participation, analyzer versions, display policy, and triage policy. It does
 not block comparison, rerun analyzers, reinterpret findings, change existing
 comparison fields, or change any review workflow behavior.
+v0.25 adds Dataset Intelligence inside the Review Desk contract. Dataset
+Intelligence is descriptive, deterministic, evidence-first, and sidecar-derived:
+it organizes review status, evidence categories, analyzer contribution, dataset
+coverage, dataset characteristics, review guidance, and provenance without
+creating a new sidecar, scoring datasets, grading datasets, running analyzers,
+changing thresholds, or modifying images.
 
 Current public behavior remains inspect-first:
 
@@ -70,7 +76,7 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.24.0-alpha:
+Supported in v0.25.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- local-only browser Review Desk
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
@@ -96,8 +102,8 @@ Supported in v0.24.0-alpha:
   `review_decisions.json`
 - Local Review Desk:
   serves existing sidecars from `127.0.0.1` and writes only
-  `review_decisions.json`; includes Dataset Overview and deterministic
-  next-action guidance
+  `review_decisions.json`; includes Dataset Intelligence, Dataset Overview,
+  and deterministic next-action guidance
 - Dataset Comparison:
   compares existing `inspection_report.json`, `recommendation_summary.json`,
   optional `review_decisions.json`, and optional `inspection_manifest.json`
@@ -148,9 +154,9 @@ Supported in v0.24.0-alpha:
 - No analyzer threshold changes
 - No improvement execution, cleanup, repair, export, hosted web app, plugins, or new analyzers
 - No configurable review signals, profile UI, analyzer toggles, blocking
-  comparison behavior, or dataset analytics
+  comparison behavior, quality scoring, or generic dataset analytics
 
-Not supported in v0.24.0-alpha (planned for later releases):
+Not supported in v0.25.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -164,13 +170,13 @@ Not supported in v0.24.0-alpha (planned for later releases):
 - Additional analyzers beyond the current first-pass set (v1.x)
 - Calibrated thresholds (pending labeled benchmark ground truth)
 - Configurable Review Signals
-- Dataset analytics
+- Generic dataset analytics beyond deterministic Dataset Intelligence
 
 ---
 
 ## Test suite
 
-**985 tests passing, 1 skipped.**
+**991 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.

@@ -29,6 +29,8 @@ INSPECTION_REPORT_FILENAME = "inspection_report.json"
 RECOMMENDATION_SUMMARY_FILENAME = "recommendation_summary.json"
 REVIEW_DECISIONS_FILENAME = "review_decisions.json"
 TRIAGE_DOSSIERS_FILENAME = "triage_dossiers.json"
+INSPECTION_MANIFEST_FILENAME = "inspection_manifest.json"
+COMPARISON_SUMMARY_FILENAME = "comparison_summary.json"
 REVIEW_DESK_DATA_SCHEMA = "dataset-forge/review-desk-data/v1"
 
 _DECISION_VALUES = {value.value for value in ReviewDecisionValue}
@@ -46,9 +48,15 @@ class ReviewWorkspace:
     recommendation_summary_path: Path
     review_decisions_path: Path
     triage_dossiers_path: Path
+    inspection_manifest_path: Path
+    comparison_summary_path: Path
     inspection_report: dict[str, Any]
     recommendation_summary: dict[str, Any]
     triage_dossiers: dict[str, Any]
+    inspection_manifest: dict[str, Any] | None
+    inspection_manifest_error: str
+    comparison_summary: dict[str, Any] | None
+    comparison_summary_error: str
     review_decisions: ReviewDecisionSet
 
 
@@ -60,6 +68,8 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
     recommendation_path = root / RECOMMENDATION_SUMMARY_FILENAME
     decisions_path = root / REVIEW_DECISIONS_FILENAME
     triage_path = root / TRIAGE_DOSSIERS_FILENAME
+    manifest_path = root / INSPECTION_MANIFEST_FILENAME
+    comparison_path = root / COMPARISON_SUMMARY_FILENAME
 
     if not inspection_path.exists():
         raise ReviewDeskError(
@@ -82,6 +92,14 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
         if triage_path.exists()
         else {"schema": "dataset-forge/triage-dossiers/missing", "dossiers": []}
     )
+    inspection_manifest, inspection_manifest_error = _load_optional_json_object(
+        manifest_path,
+        "inspection manifest",
+    )
+    comparison_summary, comparison_summary_error = _load_optional_json_object(
+        comparison_path,
+        "comparison summary",
+    )
     decisions = (
         load_review_decisions(decisions_path)
         if decisions_path.exists()
@@ -94,9 +112,15 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
         recommendation_summary_path=recommendation_path,
         review_decisions_path=decisions_path,
         triage_dossiers_path=triage_path,
+        inspection_manifest_path=manifest_path,
+        comparison_summary_path=comparison_path,
         inspection_report=inspection_report,
         recommendation_summary=recommendation_summary,
         triage_dossiers=triage_dossiers,
+        inspection_manifest=inspection_manifest,
+        inspection_manifest_error=inspection_manifest_error,
+        comparison_summary=comparison_summary,
+        comparison_summary_error=comparison_summary_error,
         review_decisions=decisions,
     )
 
@@ -117,6 +141,12 @@ def build_review_payload(workspace: ReviewWorkspace) -> dict[str, Any]:
     decision_counts = _decision_counts(images)
     workflow_counts = _workflow_counts(images)
     overview = build_overview(images, source_summary, analyzer_coverage)
+    dataset_intelligence = build_dataset_intelligence(
+        workspace,
+        images,
+        source_summary,
+        analyzer_coverage,
+    )
 
     return {
         "schema": REVIEW_DESK_DATA_SCHEMA,
@@ -134,6 +164,7 @@ def build_review_payload(workspace: ReviewWorkspace) -> dict[str, Any]:
             "workflow_counts": workflow_counts,
         },
         "overview": overview,
+        "dataset_intelligence": dataset_intelligence,
         "analyzer_coverage": analyzer_coverage,
         "decision_values": sorted(_DECISION_VALUES),
         "workflow_states": sorted(_WORKFLOW_STATES),
@@ -149,6 +180,279 @@ def build_review_payload(workspace: ReviewWorkspace) -> dict[str, Any]:
         },
         "images": images,
         "rows": images,
+    }
+
+
+def build_dataset_intelligence(
+    workspace: ReviewWorkspace,
+    images: list[dict[str, Any]],
+    summary: Mapping[str, Any],
+    analyzer_coverage: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build deterministic dataset-level evidence organization."""
+
+    return {
+        "review_status": build_intelligence_review_status(images, summary),
+        "evidence_summary": build_intelligence_evidence_summary(images),
+        "analyzer_contribution": build_intelligence_analyzer_contribution(
+            analyzer_coverage,
+            workspace.inspection_manifest,
+        ),
+        "dataset_coverage": build_intelligence_dataset_coverage(
+            workspace,
+            summary,
+        ),
+        "dataset_characteristics": build_intelligence_dataset_characteristics(
+            workspace.inspection_manifest,
+            workspace.inspection_report,
+        ),
+        "review_guidance": build_intelligence_review_guidance(images),
+        "provenance": build_intelligence_provenance(
+            workspace.inspection_manifest,
+            workspace.comparison_summary is not None,
+        ),
+        "scope": {
+            "descriptive_only": True,
+            "no_quality_score": True,
+            "does_not_run_analyzers": True,
+            "does_not_modify_images": True,
+            "sidecar_only": True,
+            "writes_only": REVIEW_DECISIONS_FILENAME,
+        },
+    }
+
+
+def build_intelligence_review_status(
+    images: list[dict[str, Any]],
+    summary: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build dataset-level review status counts."""
+
+    progress = build_review_progress(images)
+    triage_counts = {
+        "Priority Review": int(summary.get("priority_review_count", 0)),
+        "Needs Review": int(summary.get("needs_review_count", 0)),
+        "No Findings Emitted": _no_findings_count(summary),
+    }
+    return {
+        "image_count": int(summary.get("image_count", len(images))),
+        "triage_counts": triage_counts,
+        "reviewed_count": progress["reviewed_count"],
+        "undecided_count": progress["pending_review_count"],
+        "decision_completion_percent": progress["completion_percent"],
+        "decision_counts": _decision_counts(images),
+        "workflow_counts": _workflow_counts(images),
+        "remaining_undecided_by_triage": _remaining_undecided_by_triage(images),
+    }
+
+
+def build_intelligence_evidence_summary(
+    images: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build deterministic finding category evidence rows."""
+
+    image_count = len(images)
+    severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+    rows: dict[str, dict[str, Any]] = {}
+    affected: dict[str, set[str]] = {}
+    undecided: dict[str, set[str]] = {}
+    for image in images:
+        image_id = str(image.get("image_path", image.get("id", "")))
+        is_undecided = image.get("decision") in (None, ReviewDecisionValue.UNDECIDED.value)
+        for finding in _image_findings(image):
+            category = str(finding.get("category", ""))
+            if not category:
+                continue
+            row = rows.setdefault(
+                category,
+                {
+                    "finding_category": category,
+                    "finding_count": 0,
+                    "highest_observed_severity": "",
+                },
+            )
+            row["finding_count"] += 1
+            severity = str(finding.get("severity", ""))
+            current = str(row.get("highest_observed_severity", ""))
+            if current == "" or severity_rank.get(severity, 99) < severity_rank.get(current, 99):
+                row["highest_observed_severity"] = severity
+            affected.setdefault(category, set()).add(image_id)
+            if is_undecided:
+                undecided.setdefault(category, set()).add(image_id)
+
+    category_rows = []
+    for category, row in rows.items():
+        affected_count = len(affected.get(category, set()))
+        category_rows.append({
+            **row,
+            "affected_image_count": affected_count,
+            "affected_image_percentage": _percentage(affected_count, image_count),
+            "undecided_image_count": len(undecided.get(category, set())),
+        })
+    category_rows.sort(
+        key=lambda item: (
+            -int(item["affected_image_count"]),
+            -int(item["finding_count"]),
+            str(item["finding_category"]),
+        )
+    )
+    top = category_rows[0] if category_rows else None
+    return {
+        "category_rows": category_rows,
+        "concentration": {
+            "top_category": top["finding_category"] if top else None,
+            "top_category_image_count": int(top["affected_image_count"]) if top else 0,
+            "top_category_percentage": (
+                float(top["affected_image_percentage"]) if top else 0.0
+            ),
+        },
+    }
+
+
+def build_intelligence_analyzer_contribution(
+    analyzer_coverage: Mapping[str, Any],
+    inspection_manifest: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Build analyzer contribution rows from sidecar metadata."""
+
+    coverage = _coverage_by_analyzer(analyzer_coverage)
+    manifest_rows = _manifest_analyzers_by_id(inspection_manifest)
+    analyzer_ids = sorted(set(coverage) | set(manifest_rows))
+    rows = []
+    for analyzer_id in analyzer_ids:
+        coverage_row = coverage.get(analyzer_id, {})
+        manifest_row = manifest_rows.get(analyzer_id, {})
+        source = "inspection_manifest" if manifest_row else "recommendation_summary"
+        rows.append({
+            "analyzer": analyzer_id,
+            "version": str(
+                manifest_row.get("version")
+                or coverage_row.get("version")
+                or ""
+            ),
+            "family": str(manifest_row.get("family", "not recorded")),
+            "finding_count": int(
+                manifest_row.get("finding_count", coverage_row.get("finding_count", 0)) or 0
+            ),
+            "affected_image_count": int(
+                manifest_row.get("image_count", coverage_row.get("image_count", 0)) or 0
+            ),
+            "calibration_status": str(
+                manifest_row.get(
+                    "calibration_status",
+                    coverage_row.get("calibration_status", "advisory fallback"),
+                )
+            ),
+            "execution_policy": _nested_policy(manifest_row, "execution", "not recorded"),
+            "display_policy": _nested_policy(manifest_row, "display", "not recorded"),
+            "triage_policy": _nested_policy(manifest_row, "triage", "not recorded"),
+            "metadata_source": source,
+        })
+    return rows
+
+
+def build_intelligence_dataset_coverage(
+    workspace: ReviewWorkspace,
+    summary: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build sidecar completeness and inspection coverage metadata."""
+
+    manifest = workspace.inspection_manifest or {}
+    dataset = manifest.get("dataset", {}) if isinstance(manifest, Mapping) else {}
+    required = {
+        INSPECTION_REPORT_FILENAME: workspace.inspection_report_path.is_file(),
+        RECOMMENDATION_SUMMARY_FILENAME: workspace.recommendation_summary_path.is_file(),
+    }
+    optional = {
+        TRIAGE_DOSSIERS_FILENAME: workspace.triage_dossiers_path.is_file(),
+        INSPECTION_MANIFEST_FILENAME: workspace.inspection_manifest_path.is_file(),
+        REVIEW_DECISIONS_FILENAME: workspace.review_decisions_path.is_file(),
+        COMPARISON_SUMMARY_FILENAME: workspace.comparison_summary_path.is_file(),
+    }
+    return {
+        "required_sidecars": required,
+        "optional_sidecars": optional,
+        "manifest_available": workspace.inspection_manifest is not None,
+        "manifest_error": workspace.inspection_manifest_error,
+        "review_decisions_available": workspace.review_decisions_path.is_file(),
+        "comparison_available": workspace.comparison_summary is not None,
+        "comparison_error": workspace.comparison_summary_error,
+        "image_count": int(dataset.get("image_count", summary.get("image_count", 0)) or 0),
+        "analyzed_count": int(
+            dataset.get("analyzed_count", summary.get("image_count", 0)) or 0
+        ),
+        "error_count": int(
+            dataset.get("error_count", summary.get("analyzer_error_count", 0)) or 0
+        ),
+    }
+
+
+def build_intelligence_dataset_characteristics(
+    inspection_manifest: Mapping[str, Any] | None,
+    inspection_report: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Expose dataset facts already present in sidecars."""
+
+    manifest = inspection_manifest or {}
+    inspection = manifest.get("inspection", {}) if isinstance(manifest, Mapping) else {}
+    profile = inspection.get("profile", {}) if isinstance(inspection, Mapping) else {}
+    tool = manifest.get("tool", {}) if isinstance(manifest, Mapping) else {}
+    dataset = manifest.get("dataset", {}) if isinstance(manifest, Mapping) else {}
+    return {
+        "inspection_profile": _profile_payload(profile),
+        "dataset_forge_version": str(tool.get("version", "")) if isinstance(tool, Mapping) else "",
+        "inspection_started_at": str(inspection.get("started_at", "")) if isinstance(inspection, Mapping) else "",
+        "inspection_completed_at": str(inspection.get("completed_at", "")) if isinstance(inspection, Mapping) else "",
+        "dataset_path": str(
+            dataset.get("path")
+            if isinstance(dataset, Mapping) and dataset.get("path") is not None
+            else inspection_report.get("dataset_path", "")
+        ),
+        "recursive": dataset.get("recursive") if isinstance(dataset, Mapping) else None,
+        "limit": dataset.get("limit") if isinstance(dataset, Mapping) else None,
+        "aspect_ratio_summary": inspection_report.get("aspect_ratio_summary"),
+        "resolution_summary": inspection_report.get("resolution_summary"),
+    }
+
+
+def build_intelligence_review_guidance(images: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build deterministic review guidance without scoring readiness."""
+
+    remaining = _remaining_undecided_by_triage(images)
+    unresolved = build_intelligence_evidence_summary([
+        image for image in images
+        if image.get("decision") in (None, ReviewDecisionValue.UNDECIDED.value)
+    ])["category_rows"]
+    return {
+        "next_review_focus": build_next_action(images),
+        "remaining_priority_review_work": remaining["Priority Review"],
+        "remaining_needs_review_work": remaining["Needs Review"],
+        "unresolved_evidence_categories": unresolved,
+        "optional_no_findings_emitted_sampling": {
+            "remaining_undecided": remaining["No Findings Emitted"],
+            "guidance": (
+                "Optional sample only. No Findings Emitted means no current "
+                "deterministic analyzer emitted a review finding."
+            ),
+        },
+    }
+
+
+def build_intelligence_provenance(
+    inspection_manifest: Mapping[str, Any] | None,
+    comparison_available: bool,
+) -> dict[str, Any]:
+    """Build pure provenance metadata for Dataset Intelligence."""
+
+    manifest = inspection_manifest or {}
+    inspection = manifest.get("inspection", {}) if isinstance(manifest, Mapping) else {}
+    tool = manifest.get("tool", {}) if isinstance(manifest, Mapping) else {}
+    profile = inspection.get("profile", {}) if isinstance(inspection, Mapping) else {}
+    return {
+        "inspection_profile": _profile_payload(profile),
+        "dataset_forge_version": str(tool.get("version", "")) if isinstance(tool, Mapping) else "",
+        "manifest_available": inspection_manifest is not None,
+        "comparison_available": comparison_available,
     }
 
 
@@ -383,6 +687,84 @@ def _workflow_counts(images: list[dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def _remaining_undecided_by_triage(images: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {
+        "Priority Review": 0,
+        "Needs Review": 0,
+        "No Findings Emitted": 0,
+    }
+    for image in images:
+        if image.get("decision") not in (None, ReviewDecisionValue.UNDECIDED.value):
+            continue
+        triage = str(image.get("triage_status", ""))
+        if triage in counts:
+            counts[triage] += 1
+    return counts
+
+
+def _image_findings(image: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    findings = image.get("findings", [])
+    refs = image.get("finding_refs", [])
+    if isinstance(findings, list) and findings:
+        return [item for item in findings if isinstance(item, Mapping)]
+    if isinstance(refs, list):
+        return [item for item in refs if isinstance(item, Mapping)]
+    return []
+
+
+def _percentage(part: int, total: int) -> float:
+    return round((part / total) * 100, 1) if total else 0.0
+
+
+def _coverage_by_analyzer(analyzer_coverage: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    rows: dict[str, Mapping[str, Any]] = {}
+    analyzers = analyzer_coverage.get("analyzers", [])
+    if not isinstance(analyzers, list):
+        return rows
+    for item in analyzers:
+        if isinstance(item, Mapping) and item.get("analyzer"):
+            rows[str(item["analyzer"])] = item
+    return rows
+
+
+def _manifest_analyzers_by_id(
+    inspection_manifest: Mapping[str, Any] | None,
+) -> dict[str, Mapping[str, Any]]:
+    if not inspection_manifest:
+        return {}
+    analyzers = inspection_manifest.get("analyzers", [])
+    if not isinstance(analyzers, list):
+        return {}
+    rows: dict[str, Mapping[str, Any]] = {}
+    for item in analyzers:
+        if isinstance(item, Mapping) and item.get("id"):
+            rows[str(item["id"])] = item
+    return rows
+
+
+def _nested_policy(
+    row: Mapping[str, Any],
+    policy_name: str,
+    fallback: str,
+) -> str:
+    policy = row.get(policy_name, {})
+    if not isinstance(policy, Mapping):
+        return fallback
+    return str(policy.get("policy", fallback))
+
+
+def _profile_payload(profile: Any) -> dict[str, str] | None:
+    if not isinstance(profile, Mapping):
+        return None
+    if not profile:
+        return None
+    return {
+        "id": str(profile.get("id", "")),
+        "display_name": str(profile.get("display_name", "")),
+        "version": str(profile.get("version", "")),
+    }
+
+
 def _no_findings_count(summary: Mapping[str, Any]) -> int:
     return int(
         summary.get(
@@ -400,6 +782,15 @@ def _load_json_object(path: Path, label: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ReviewDeskError(f"{label} must be a JSON object: {path}")
     return data
+
+
+def _load_optional_json_object(path: Path, label: str) -> tuple[dict[str, Any] | None, str]:
+    if not path.exists():
+        return None, ""
+    try:
+        return _load_json_object(path, label), ""
+    except ReviewDeskError as exc:
+        return None, str(exc)
 
 
 def _row_id(image_path: str) -> str:
@@ -462,6 +853,14 @@ __all__ = [
     "ReviewDeskError",
     "ReviewWorkspace",
     "build_analyzer_coverage",
+    "build_dataset_intelligence",
+    "build_intelligence_analyzer_contribution",
+    "build_intelligence_dataset_characteristics",
+    "build_intelligence_dataset_coverage",
+    "build_intelligence_evidence_summary",
+    "build_intelligence_provenance",
+    "build_intelligence_review_guidance",
+    "build_intelligence_review_status",
     "build_next_action",
     "build_overview",
     "build_review_data",

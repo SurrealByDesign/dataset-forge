@@ -629,6 +629,16 @@ without coupling analyzer execution, UI rendering, and review workflow logic.
 It does not add profiles, analyzer configuration, cleanup, execution, export,
 repair, source-image modification, file movement, or schema changes.
 
+v0.25 adds Dataset Intelligence inside that Review Desk contract. Dataset
+Intelligence is dataset-level evidence organization from existing sidecars:
+review status, evidence category rows, analyzer contribution, dataset coverage,
+dataset characteristics, deterministic review guidance, and provenance. It uses
+`inspection_manifest.json` and `comparison_summary.json` when present and
+continues to work when those optional sidecars are absent. It does not create a
+new sidecar, compute image statistics, run analyzers, inspect pixels, score
+datasets, grade datasets, emit pass/fail labels, change thresholds, add
+analyzers, move files, export datasets, or modify source images.
+
 The internal Review Desk payload schema is
 `dataset-forge/review-desk-data/v1`. Its stable top-level fields are:
 
@@ -637,6 +647,7 @@ The internal Review Desk payload schema is
 - `dataset_path`
 - `summary`
 - `overview`
+- `dataset_intelligence`
 - `analyzer_coverage`
 - `decision_values`
 - `workflow_states`

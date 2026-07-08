@@ -266,6 +266,10 @@ textarea { min-height: 90px; resize: vertical; }
 .overview-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .overview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .overview-actions button { padding: 7px 9px; }
+.intelligence-table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: .86rem; }
+.intelligence-table th, .intelligence-table td { border: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
+.intelligence-table th { background: #eef2f6; color: var(--muted); }
+.intelligence-note { border-left: 3px solid var(--accent); padding-left: 8px; margin: 8px 0; }
 .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
 .toolbar input { width: 180px; }
 .group-title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-top: 18px; }
@@ -304,7 +308,7 @@ dialog { border: 1px solid var(--line); max-width: 620px; }
 <div class="app">
 <aside class="left">
   <h1>Dataset Forge Review Desk</h1>
-  <p>This local desk consumes generated sidecars and writes only <code>review_decisions.json</code>. Source images are never modified.</p>
+  <p>This local desk consumes generated sidecars and writes only <code>review_decisions.json</code>. Review Desk does not run analyzers, export datasets, or modify source images.</p>
   <section class="counts" id="counts"></section>
   <label for="search">Search</label>
   <input id="search" type="search" placeholder="filename or evidence">
@@ -395,6 +399,7 @@ async function loadData() {
 function countBox(label, value) {
   return `<div class="count"><strong>${value}</strong><br>${label}</div>`;
 }
+function percent(value) { return `${Number(value || 0).toFixed(1)}%`; }
 function escapeText(value) {
   return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -492,20 +497,60 @@ function renderCounts() {
 }
 function renderOverview() {
   const overview = data.overview || {};
+  const intelligence = data.dataset_intelligence || {};
+  const reviewStatus = intelligence.review_status || {};
+  const evidence = intelligence.evidence_summary || {};
+  const concentration = evidence.concentration || {};
+  const analyzerContribution = intelligence.analyzer_contribution || [];
+  const coverage = intelligence.dataset_coverage || {};
+  const characteristics = intelligence.dataset_characteristics || {};
+  const guidance = intelligence.review_guidance || {};
+  const provenance = intelligence.provenance || {};
+  const scope = intelligence.scope || {};
   const progress = overview.review_progress || {};
   const triage = overview.triage_counts || {};
   const next = overview.next_action || {};
   const categories = overview.top_finding_categories || [];
   const analyzers = overview.analyzer_coverage_summary || [];
+  const remaining = reviewStatus.remaining_undecided_by_triage || {};
+  const evidenceRows = (evidence.category_rows || []).slice(0, 8);
+  const unresolvedRows = (guidance.unresolved_evidence_categories || []).slice(0, 5);
   const categoryButtons = categories.length
     ? categories.map(item => `<button type="button" data-category="${escapeText(item.category)}">${escapeText(item.category)} (${item.count})</button>`).join('')
     : '<span class="muted">No finding categories emitted.</span>';
   const analyzerRows = analyzers.length
     ? analyzers.map(item => `<span class="badge">${escapeText(item.analyzer)}: ${item.finding_count} findings on ${item.image_count} images, Advisory review signal</span>`).join('')
     : '<span class="muted">No analyzer coverage summary was recorded.</span>';
+  const evidenceTable = evidenceRows.length
+    ? `<table class="intelligence-table"><thead><tr><th>Category</th><th>Findings</th><th>Images</th><th>Dataset</th><th>Severity</th><th>Undecided</th></tr></thead><tbody>${evidenceRows.map(item => `
+      <tr>
+        <td>${escapeText(item.finding_category)}</td>
+        <td>${item.finding_count}</td>
+        <td>${item.affected_image_count}</td>
+        <td>${percent(item.affected_image_percentage)}</td>
+        <td>${escapeText(item.highest_observed_severity || 'not recorded')}</td>
+        <td>${item.undecided_image_count}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<p class="muted">No dataset-level finding categories were emitted.</p>';
+  const analyzerTable = analyzerContribution.length
+    ? `<table class="intelligence-table"><thead><tr><th>Analyzer</th><th>Family</th><th>Findings</th><th>Images</th><th>Policies</th><th>Source</th></tr></thead><tbody>${analyzerContribution.map(item => `
+      <tr>
+        <td>${escapeText(item.analyzer)} ${escapeText(item.version)}</td>
+        <td>${escapeText(item.family)}</td>
+        <td>${item.finding_count}</td>
+        <td>${item.affected_image_count}</td>
+        <td>${escapeText(item.calibration_status)}; execution ${escapeText(item.execution_policy)}; display ${escapeText(item.display_policy)}; triage ${escapeText(item.triage_policy)}</td>
+        <td>${escapeText(item.metadata_source)}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<p class="muted">No analyzer contribution rows were recorded.</p>';
+  const sidecars = coverage.optional_sidecars || {};
+  const profile = provenance.inspection_profile || characteristics.inspection_profile || {};
+  const unresolved = unresolvedRows.length
+    ? unresolvedRows.map(item => `<span class="badge">${escapeText(item.finding_category)}: ${item.undecided_image_count} undecided images</span>`).join('')
+    : '<span class="muted">No unresolved evidence categories emitted by current filters.</span>';
   document.getElementById('overview').innerHTML = `
-    <h2>Dataset Overview</h2>
-    <p>Review-first overview from existing sidecars only. The Review Desk does not run analyzers, modify images, move files, copy files, create quarantine folders, or export datasets.</p>
+    <h2>Dataset Intelligence</h2>
+    <p>Descriptive, evidence-first overview from existing sidecars only. Dataset Intelligence organizes evidence; it does not grade, score, pass, fail, or summarize dataset quality.</p>
     <h2>Next Action</h2>
     <p><strong>${escapeText(next.label || 'Review dataset')}</strong></p>
     <p>${escapeText(next.reason || '')}</p>
@@ -523,11 +568,36 @@ function renderOverview() {
       ${countBox('Pending', progress.pending_review_count || 0)}
       ${countBox('Complete', (progress.completion_percent || 0) + '%')}
     </div>
-    <h2>Top Finding Categories</h2>
+    <h2>Review Status</h2>
+    <div class="overview-grid">
+      ${countBox('Remaining Priority Review', remaining['Priority Review'] || 0)}
+      ${countBox('Remaining Needs Review', remaining['Needs Review'] || 0)}
+      ${countBox('Remaining No Findings Emitted', remaining['No Findings Emitted'] || 0)}
+      ${countBox('Decision completion', percent(reviewStatus.decision_completion_percent))}
+    </div>
+    <h2>Evidence Summary</h2>
+    <p class="intelligence-note">Top category: ${escapeText(concentration.top_category || 'none')} on ${concentration.top_category_image_count || 0} images (${percent(concentration.top_category_percentage)}).</p>
+    ${evidenceTable}
+    <h2>Top Finding Category Filters</h2>
     <div class="overview-list">${categoryButtons}</div>
+    <h2>Analyzer Contribution</h2>
+    ${analyzerTable}
     <h2>Analyzer Coverage</h2>
     <div class="overview-list">${analyzerRows}</div>
+    <h2>Dataset Coverage</h2>
+    <div class="overview-grid">
+      ${countBox('Manifest', coverage.manifest_available ? 'yes' : 'no')}
+      ${countBox('Review decisions', coverage.review_decisions_available ? 'yes' : 'no')}
+      ${countBox('Comparison', coverage.comparison_available ? 'yes' : 'no')}
+      ${countBox('Analyzer errors', coverage.error_count || 0)}
+    </div>
+    <p class="muted">Optional sidecars: triage dossiers ${sidecars['triage_dossiers.json'] ? 'present' : 'missing'}, manifest ${sidecars['inspection_manifest.json'] ? 'present' : 'missing'}, review decisions ${sidecars['review_decisions.json'] ? 'present' : 'missing'}, comparison ${sidecars['comparison_summary.json'] ? 'present' : 'missing'}.</p>
+    <h2>Dataset Characteristics</h2>
+    <p class="muted">Profile: ${escapeText((profile && profile.id) || 'not recorded')} ${escapeText((profile && profile.version) || '')}. Dataset Forge version: ${escapeText(provenance.dataset_forge_version || characteristics.dataset_forge_version || 'not recorded')}. Inspection completed: ${escapeText(characteristics.inspection_completed_at || 'not recorded')}.</p>
+    <h2>Unresolved Evidence Categories</h2>
+    <div class="overview-list">${unresolved}</div>
     <p class="muted">${escapeText(overview.no_finding_semantics || '')}</p>
+    <p class="muted">Dataset Intelligence scope: descriptive only ${scope.descriptive_only ? 'yes' : 'no'}; no quality score ${scope.no_quality_score ? 'yes' : 'no'}; does not run analyzers ${scope.does_not_run_analyzers ? 'yes' : 'no'}; does not modify images ${scope.does_not_modify_images ? 'yes' : 'no'}.</p>
     <p class="muted">Quarantine Planned is workflow intent only. Dataset Forge does not create quarantine folders or move files.</p>`;
   document.getElementById('applyNextAction').addEventListener('click', applyNextAction);
   document.getElementById('overviewClearFilters').addEventListener('click', clearFilters);

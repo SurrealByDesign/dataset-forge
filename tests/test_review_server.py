@@ -15,6 +15,9 @@ from dataset_forge.review_decisions import REVIEW_DECISIONS_SCHEMA
 from dataset_forge.review_desk import (
     REVIEW_DESK_DATA_SCHEMA,
     build_analyzer_coverage,
+    build_dataset_intelligence,
+    build_intelligence_analyzer_contribution,
+    build_intelligence_evidence_summary,
     build_next_action,
     build_overview,
     build_review_payload,
@@ -32,7 +35,13 @@ from dataset_forge.review_server import (
 )
 
 
-def _write_workspace(root: Path, *, include_needs_review: bool = False) -> tuple[Path, Path]:
+def _write_workspace(
+    root: Path,
+    *,
+    include_needs_review: bool = False,
+    include_manifest: bool = False,
+    include_comparison: bool = False,
+) -> tuple[Path, Path]:
     output = root / "inspect_output"
     output.mkdir()
     image = root / "priority.png"
@@ -139,6 +148,79 @@ def _write_workspace(root: Path, *, include_needs_review: bool = False) -> tuple
         }),
         encoding="utf-8",
     )
+    if include_manifest:
+        (output / "inspection_manifest.json").write_text(
+            json.dumps({
+                "schema": "dataset-forge/inspection-manifest/v1",
+                "tool": {
+                    "name": "dataset-forge",
+                    "version": "0.25.0a0",
+                },
+                "inspection": {
+                    "profile": {
+                        "id": "default",
+                        "display_name": "Default Inspection",
+                        "version": "v1",
+                    },
+                    "started_at": "2026-07-07T00:00:00Z",
+                    "completed_at": "2026-07-07T00:00:01Z",
+                    "deterministic": True,
+                    "read_only": True,
+                },
+                "dataset": {
+                    "path": str(root),
+                    "recursive": True,
+                    "limit": None,
+                    "image_count": 3 if include_needs_review else 2,
+                    "analyzed_count": 3 if include_needs_review else 2,
+                    "error_count": 0,
+                },
+                "sidecars": {},
+                "analyzers": [
+                    {
+                        "id": "high_frequency_isolated_artifact_analyzer",
+                        "display_name": "High Frequency Isolated Artifact Analyzer",
+                        "version": "v1",
+                        "family": "Technical Quality",
+                        "categories_emitted": ["artifact.high_frequency_isolated"],
+                        "calibration_status": "advisory",
+                        "execution": {"policy": "enabled", "executed": True},
+                        "display": {"policy": "visible"},
+                        "triage": {"policy": "included"},
+                        "finding_count": 1 if include_needs_review else 0,
+                        "image_count": 1 if include_needs_review else 0,
+                    },
+                    {
+                        "id": "texture_analyzer",
+                        "display_name": "Texture Analyzer",
+                        "version": "v1",
+                        "family": "Technical Quality",
+                        "categories_emitted": ["artifact.texture"],
+                        "calibration_status": "advisory",
+                        "execution": {"policy": "enabled", "executed": True},
+                        "display": {"policy": "visible"},
+                        "triage": {"policy": "included"},
+                        "finding_count": 2 if include_needs_review else 1,
+                        "image_count": 2 if include_needs_review else 1,
+                    },
+                ],
+                "disabled_analyzers": [],
+                "compatibility": {
+                    "inspection_report_schema": "dataset-forge/inspection/v1",
+                    "recommendation_summary_schema": "dataset-forge/recommendation-summary/v1",
+                    "manifest_contract_version": 1,
+                },
+            }),
+            encoding="utf-8",
+        )
+    if include_comparison:
+        (output / "comparison_summary.json").write_text(
+            json.dumps({
+                "schema": "dataset-forge/comparison-summary/v1",
+                "inspection_compatibility": {"status": "compatible"},
+            }),
+            encoding="utf-8",
+        )
     return output, image
 
 
@@ -191,6 +273,7 @@ class ReviewServerDataTests(unittest.TestCase):
                 "dataset_path",
                 "summary",
                 "overview",
+                "dataset_intelligence",
                 "analyzer_coverage",
                 "decision_values",
                 "workflow_states",
@@ -236,38 +319,48 @@ class ReviewServerDataTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             output, _image = _write_workspace(Path(tmp), include_needs_review=True)
             data = build_review_data(output)
+            workspace = load_review_workspace(output)
 
-        images = data["images"]
-        source_summary = {
-            "image_count": 3,
-            "priority_review_count": 1,
-            "needs_review_count": 1,
-            "ready_for_training_count": 1,
-        }
-        coverage = data["analyzer_coverage"]
+            images = data["images"]
+            source_summary = {
+                "image_count": 3,
+                "priority_review_count": 1,
+                "needs_review_count": 1,
+                "ready_for_training_count": 1,
+            }
+            coverage = data["analyzer_coverage"]
 
-        self.assertEqual(
-            build_review_progress(images),
-            {
-                "review_image_count": 3,
-                "reviewed_count": 0,
-                "pending_review_count": 3,
-                "completion_percent": 0.0,
-            },
-        )
-        self.assertEqual(
-            build_next_action(images)["target_filter"],
-            {"triage_status": "Priority Review", "decision": "UNDECIDED"},
-        )
-        self.assertEqual(build_top_categories(images), data["overview"]["top_finding_categories"])
-        self.assertEqual(
-            build_analyzer_coverage(coverage),
-            data["overview"]["analyzer_coverage_summary"],
-        )
-        self.assertEqual(
-            build_overview(images, source_summary, coverage),
-            data["overview"],
-        )
+            self.assertEqual(
+                build_review_progress(images),
+                {
+                    "review_image_count": 3,
+                    "reviewed_count": 0,
+                    "pending_review_count": 3,
+                    "completion_percent": 0.0,
+                },
+            )
+            self.assertEqual(
+                build_next_action(images)["target_filter"],
+                {"triage_status": "Priority Review", "decision": "UNDECIDED"},
+            )
+            self.assertEqual(build_top_categories(images), data["overview"]["top_finding_categories"])
+            self.assertEqual(
+                build_analyzer_coverage(coverage),
+                data["overview"]["analyzer_coverage_summary"],
+            )
+            self.assertEqual(
+                build_overview(images, source_summary, coverage),
+                data["overview"],
+            )
+            self.assertEqual(
+                build_dataset_intelligence(
+                    workspace,
+                    images,
+                    source_summary,
+                    coverage,
+                ),
+                data["dataset_intelligence"],
+            )
 
     def test_overview_counts_and_scope_are_computed_from_sidecars(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -300,6 +393,162 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertTrue(overview["scope"]["does_not_run_analyzers"])
         self.assertTrue(overview["scope"]["does_not_modify_images"])
         self.assertEqual(overview["scope"]["writes_only"], "review_decisions.json")
+
+    def test_dataset_intelligence_review_status_and_scope_are_descriptive(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(
+                Path(tmp),
+                include_needs_review=True,
+                include_manifest=True,
+                include_comparison=True,
+            )
+            _write_review_decisions(output, [
+                {
+                    "image_path": str(image),
+                    "decision": "KEEP",
+                    "workflow_state": "REVIEWED",
+                },
+            ])
+
+            intelligence = build_review_data(output)["dataset_intelligence"]
+
+        status = intelligence["review_status"]
+        self.assertEqual(status["image_count"], 3)
+        self.assertEqual(status["reviewed_count"], 1)
+        self.assertEqual(status["undecided_count"], 2)
+        self.assertEqual(status["decision_completion_percent"], 33.3)
+        self.assertEqual(
+            status["remaining_undecided_by_triage"],
+            {
+                "Priority Review": 0,
+                "Needs Review": 1,
+                "No Findings Emitted": 1,
+            },
+        )
+        self.assertTrue(intelligence["scope"]["descriptive_only"])
+        self.assertTrue(intelligence["scope"]["no_quality_score"])
+        self.assertTrue(intelligence["scope"]["does_not_run_analyzers"])
+        self.assertTrue(intelligence["scope"]["does_not_modify_images"])
+        self.assertEqual(intelligence["scope"]["writes_only"], "review_decisions.json")
+
+    def test_dataset_intelligence_evidence_summary_counts_images_and_percentages(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp), include_needs_review=True)
+            _write_review_decisions(output, [
+                {
+                    "image_path": str(image),
+                    "decision": "KEEP",
+                    "workflow_state": "REVIEWED",
+                },
+            ])
+
+            data = build_review_data(output)
+            evidence = data["dataset_intelligence"]["evidence_summary"]
+
+        self.assertEqual(
+            build_intelligence_evidence_summary(data["images"]),
+            evidence,
+        )
+        texture = evidence["category_rows"][0]
+        self.assertEqual(texture["finding_category"], "artifact.texture")
+        self.assertEqual(texture["finding_count"], 2)
+        self.assertEqual(texture["affected_image_count"], 2)
+        self.assertEqual(texture["affected_image_percentage"], 66.7)
+        self.assertEqual(texture["highest_observed_severity"], "HIGH")
+        self.assertEqual(texture["undecided_image_count"], 1)
+        self.assertEqual(evidence["concentration"]["top_category"], "artifact.texture")
+
+    def test_dataset_intelligence_analyzer_contribution_uses_manifest_when_available(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, _image = _write_workspace(
+                Path(tmp),
+                include_needs_review=True,
+                include_manifest=True,
+            )
+
+            data = build_review_data(output)
+            rows = data["dataset_intelligence"]["analyzer_contribution"]
+            manifest = load_review_workspace(output).inspection_manifest
+
+        self.assertEqual(
+            build_intelligence_analyzer_contribution(
+                data["analyzer_coverage"],
+                manifest,
+            ),
+            rows,
+        )
+        texture = [row for row in rows if row["analyzer"] == "texture_analyzer"][0]
+        self.assertEqual(texture["family"], "Technical Quality")
+        self.assertEqual(texture["calibration_status"], "advisory")
+        self.assertEqual(texture["execution_policy"], "enabled")
+        self.assertEqual(texture["display_policy"], "visible")
+        self.assertEqual(texture["triage_policy"], "included")
+        self.assertEqual(texture["metadata_source"], "inspection_manifest")
+
+    def test_dataset_intelligence_analyzer_contribution_falls_back_without_manifest(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, _image = _write_workspace(Path(tmp), include_needs_review=True)
+
+            rows = build_review_data(output)["dataset_intelligence"]["analyzer_contribution"]
+
+        texture = [row for row in rows if row["analyzer"] == "texture_analyzer"][0]
+        self.assertEqual(texture["family"], "not recorded")
+        self.assertEqual(texture["execution_policy"], "not recorded")
+        self.assertEqual(texture["display_policy"], "not recorded")
+        self.assertEqual(texture["triage_policy"], "not recorded")
+        self.assertEqual(texture["metadata_source"], "recommendation_summary")
+
+    def test_dataset_intelligence_coverage_characteristics_and_provenance(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, _image = _write_workspace(
+                Path(tmp),
+                include_needs_review=True,
+                include_manifest=True,
+                include_comparison=True,
+            )
+
+            intelligence = build_review_data(output)["dataset_intelligence"]
+
+        coverage = intelligence["dataset_coverage"]
+        self.assertTrue(coverage["required_sidecars"]["inspection_report.json"])
+        self.assertTrue(coverage["required_sidecars"]["recommendation_summary.json"])
+        self.assertTrue(coverage["optional_sidecars"]["inspection_manifest.json"])
+        self.assertFalse(coverage["optional_sidecars"]["review_decisions.json"])
+        self.assertTrue(coverage["comparison_available"])
+        self.assertEqual(coverage["image_count"], 3)
+        self.assertEqual(coverage["analyzed_count"], 3)
+        self.assertEqual(coverage["error_count"], 0)
+        characteristics = intelligence["dataset_characteristics"]
+        self.assertEqual(characteristics["inspection_profile"]["id"], "default")
+        self.assertEqual(characteristics["dataset_forge_version"], "0.25.0a0")
+        self.assertEqual(characteristics["inspection_completed_at"], "2026-07-07T00:00:01Z")
+        provenance = intelligence["provenance"]
+        self.assertTrue(provenance["manifest_available"])
+        self.assertTrue(provenance["comparison_available"])
+        self.assertEqual(provenance["inspection_profile"]["version"], "v1")
+
+    def test_dataset_intelligence_guidance_ordering_is_deterministic(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp), include_needs_review=True)
+
+            first = build_review_data(output)["dataset_intelligence"]["review_guidance"]
+            _write_review_decisions(output, [
+                {
+                    "image_path": str(image),
+                    "decision": "KEEP",
+                    "workflow_state": "REVIEWED",
+                },
+            ])
+            second = build_review_data(output)["dataset_intelligence"]["review_guidance"]
+
+        self.assertEqual(first["next_review_focus"]["target_filter"]["triage_status"], "Priority Review")
+        self.assertEqual(second["next_review_focus"]["target_filter"]["triage_status"], "Needs Review")
+        self.assertEqual(second["remaining_priority_review_work"], 0)
+        self.assertEqual(second["remaining_needs_review_work"], 1)
+        self.assertEqual(
+            second["optional_no_findings_emitted_sampling"]["remaining_undecided"],
+            1,
+        )
 
     def test_overview_next_action_order_is_deterministic(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -531,7 +780,8 @@ class ReviewServerHttpTests(unittest.TestCase):
                 thread.join(timeout=5)
 
         self.assertIn("Dataset Forge Review Desk", html)
-        self.assertIn("Dataset Overview", html)
+        self.assertIn("Dataset Intelligence", html)
+        self.assertIn("does not grade, score, pass, fail", html)
         self.assertIn("Show Next Review Set", html)
         self.assertIn("This only changes filters and selection.", html)
         self.assertIn("Clear Filters", html)
@@ -543,6 +793,11 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Advisory review signal", html)
         self.assertIn('id="filterSummary"', html)
         self.assertIn("Review Desk does not run analyzers", html)
+        self.assertIn("Evidence Summary", html)
+        self.assertIn("Analyzer Contribution", html)
+        self.assertIn("Dataset Coverage", html)
+        self.assertIn("Dataset Intelligence scope", html)
+        self.assertIn("no quality score", html)
         self.assertIn("Quarantine Planned is workflow intent only", html)
         self.assertIn("review_decisions.json", html)
         self.assertIn('id="zoomViewer"', html)
@@ -555,6 +810,7 @@ class ReviewServerHttpTests(unittest.TestCase):
             self.assertNotIn(forbidden, html)
         self.assertEqual(data["summary"]["review_image_count"], 2)
         self.assertIn("overview", data)
+        self.assertIn("dataset_intelligence", data)
 
     def test_post_writes_decision(self) -> None:
         with TemporaryDirectory() as tmp:

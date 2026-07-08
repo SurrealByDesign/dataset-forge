@@ -135,11 +135,15 @@ The local review server:
 
 - binds only to `127.0.0.1`
 - reads `inspection_report.json`, `recommendation_summary.json`, and optional
-- `triage_dossiers.json`, and optional `review_decisions.json`
+- `triage_dossiers.json`, optional `inspection_manifest.json`, optional
+  `comparison_summary.json`, and optional `review_decisions.json`
+- computes Dataset Intelligence inside the Review Desk data contract from
+  existing sidecars only
 - writes only `review_decisions.json`
 - does not modify source images, inspection reports, recommendation summaries,
   static galleries, or contact sheets
 - does not change recommendation rules or analyzer behavior
+- does not score, grade, pass, or fail datasets
 
 ---
 

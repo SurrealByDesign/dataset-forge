@@ -782,14 +782,48 @@ Constraints:
 
 ---
 
-## v0.25+: Dataset Analytics Foundation
+## v0.25.0-alpha: Dataset Intelligence
 
-Dataset-level analytics should come after manifests are available, so analytics
-can explain which analyzers, versions, and policies produced the evidence.
+**Goal:** Expand the Review Desk from image-level review into dataset-level
+understanding without scoring, grading, fixing, exporting, or automating the
+dataset.
 
-Configurable Review Signals, analyzer families as user-visible filters,
-calibration-driven threshold changes, and additional analyzers should remain
-later milestones.
+v0.25 keeps Dataset Intelligence inside the Review Desk contract layer. It does
+not create a new sidecar. Every value is derived from existing sidecars:
+`inspection_report.json`, `recommendation_summary.json`, `triage_dossiers.json`,
+optional `inspection_manifest.json`, optional `review_decisions.json`, and
+optional `comparison_summary.json`.
+
+Scope:
+
+- Add `dataset_intelligence` to the Review Desk payload.
+- Include review status, evidence summary, analyzer contribution, dataset
+  coverage, dataset characteristics, deterministic review guidance, provenance,
+  and explicit descriptive/read-only scope.
+- Use manifest metadata for analyzer family, calibration status, execution
+  policy, display policy, triage policy, profile, and Dataset Forge version when
+  available.
+- Surface comparison availability without merging comparison deltas into the
+  review workflow.
+- Keep the image grid and human decision controls as the primary work surface.
+
+Constraints:
+
+- No new sidecar.
+- No quality score, readiness score, grade, pass/fail label, or AI summary.
+- No analyzer behavior changes.
+- No analyzer threshold changes.
+- No new analyzers.
+- No profile UI, analyzer toggles, configurable review signals, cleanup,
+  execution, export, repair, transforms, source-image modification, file
+  movement, quarantine folders, training integration, cloud review, or database
+  state.
+
+## v0.26+: Analyzer Descriptor System
+
+Analyzer descriptor metadata should become the internal source of truth before
+Configurable Review Signals, Review Profiles, Calibration Infrastructure, and
+additional analyzers expand the product surface.
 
 ---
 
