@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.25.0-alpha** -- adds Dataset Intelligence to the local Review Desk while preserving read-only review workflows.
+**v0.26.0-alpha** -- adds internal Analyzer Descriptors while preserving read-only review workflows.
 
 Dataset Forge helps you decide which images belong in your LoRA before you train.
 
@@ -26,13 +26,13 @@ Raw Dataset
 -> Train
 ```
 
-**v0.25.0-alpha is read-only decision support.** Dataset Forge reads your
+**v0.26.0-alpha is read-only decision support.** Dataset Forge reads your
 dataset and writes reports beside it. It never modifies source images. There is
 still no cleanup, repair, export, hosted web app, cloud service, plugins, or
-new analyzer family in this release. v0.25 adds Dataset Intelligence inside
-the Review Desk: deterministic, sidecar-derived review status, evidence
-summary, analyzer contribution, dataset coverage, review guidance, and
-provenance. It does not score, grade, pass, or fail datasets.
+new analyzer family in this release. v0.26 adds an internal Analyzer Descriptor
+System so inspection provenance, Dataset Intelligence, and future review-signal
+work share one analyzer metadata source. This is not user configuration, a
+plugin system, profile UI, or analyzer behavior change.
 
 ---
 
@@ -185,12 +185,12 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.25.0-alpha exposes `inspect`,
+- **No public recommendation command yet.** v0.26.0-alpha exposes `inspect`,
   local `review`, sidecar-only `compare`, advisory `plan`, and
   execution-free `preview`. There is no separate `dataset-forge recommend`
   command.
 
-- **No cleanup, repair, execution, or export.** v0.25.0-alpha is read-only.
+- **No cleanup, repair, execution, or export.** v0.26.0-alpha is read-only.
   Improvement Planning writes `improvement_plan.json` and
   `improvement_plan.md` only. Improvement Preview writes
   `improvement_preview.json` and `improvement_preview.md` only. Cleanup,
@@ -373,6 +373,31 @@ sidecar-derived. It does not create a new sidecar, run analyzers, inspect
 pixels, score datasets, grade datasets, pass or fail datasets, modify source
 images, move files, create quarantine folders, execute cleanup, repair images,
 or export datasets.
+
+---
+
+## v0.26 Analyzer Descriptor System
+
+v0.26 adds an internal Analyzer Descriptor System. Analyzer Descriptors are the
+authoritative metadata contract for built-in analyzers.
+
+Implemented v0.26 focus:
+
+- Add an internal descriptor registry with analyzer id, display name,
+  description, version, family, emitted categories, calibration status,
+  deterministic flag, measurement/context requirements, and default
+  execution/display/triage policies.
+- Keep analyzer execution order and fresh analyzer instances in the analyzer
+  registry.
+- Use descriptor metadata when writing `inspection_manifest.json`, while
+  preserving the existing manifest shape.
+- Keep the Review Desk and Dataset Intelligence consuming manifest snapshots,
+  not live descriptors.
+
+Analyzer Descriptors are internal metadata and provenance support. They are not
+user configuration, configurable review signals, review profiles, a plugin
+system, calibration metrics, analyzer threshold changes, new analyzers, cleanup,
+execution, export, repair, or image modification.
 
 ---
 
@@ -732,7 +757,7 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.25.0-alpha.** There is no public flag or command that modifies, repairs,
+  v0.26.0-alpha.** There is no public flag or command that modifies, repairs,
   exports, rejects, or regenerates images. `dataset-forge plan` writes advisory
   Improvement Candidates only. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,

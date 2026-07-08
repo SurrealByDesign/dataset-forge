@@ -17,6 +17,7 @@ import numpy as np
 from PIL import Image
 
 from dataset_forge.analyzers.registry import analyzer_versions
+from dataset_forge.analyzer_descriptors import descriptor_for_id
 from dataset_forge.inspection_manifest import INSPECTION_MANIFEST_SCHEMA
 from dataset_forge.inspect import InspectResult, run_inspect
 from dataset_forge.finding import Finding, Severity
@@ -174,14 +175,33 @@ class TestRunInspectBasic(unittest.TestCase):
         analyzers = {item["id"]: item for item in data["analyzers"]}
         self.assertEqual(set(analyzers), set(analyzer_versions()))
         for analyzer_id, version in analyzer_versions().items():
+            descriptor = descriptor_for_id(analyzer_id)
+            self.assertIsNotNone(descriptor)
             row = analyzers[analyzer_id]
+            self.assertEqual(row["display_name"], descriptor.display_name)
             self.assertEqual(row["version"], version)
-            self.assertEqual(row["family"], "Technical Quality")
-            self.assertEqual(row["calibration_status"], "advisory")
+            self.assertEqual(row["family"], descriptor.family)
+            self.assertEqual(row["calibration_status"], descriptor.calibration_status)
+            self.assertEqual(row["categories_emitted"], list(descriptor.categories_emitted))
             self.assertEqual(row["execution"], {"policy": "enabled", "executed": True})
             self.assertEqual(row["display"], {"policy": "visible"})
             self.assertEqual(row["triage"], {"policy": "included"})
-            self.assertIsInstance(row["categories_emitted"], list)
+            self.assertEqual(
+                set(row),
+                {
+                    "id",
+                    "display_name",
+                    "version",
+                    "family",
+                    "categories_emitted",
+                    "calibration_status",
+                    "execution",
+                    "display",
+                    "triage",
+                    "finding_count",
+                    "image_count",
+                },
+            )
         self.assertEqual(data["disabled_analyzers"], [])
 
     def test_inspection_manifest_finding_counts_are_deterministic(self):

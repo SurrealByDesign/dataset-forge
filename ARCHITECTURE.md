@@ -639,6 +639,16 @@ new sidecar, compute image statistics, run analyzers, inspect pixels, score
 datasets, grade datasets, emit pass/fail labels, change thresholds, add
 analyzers, move files, export datasets, or modify source images.
 
+v0.26 adds an internal Analyzer Descriptor System in
+`src/dataset_forge/analyzer_descriptors.py`. Analyzer descriptors are metadata
+only: id, display name, description, version, family, categories emitted,
+calibration status, deterministic flag, context/measurement requirements, and
+default execution/display/triage policies. They are the authoritative metadata
+source for built-in analyzers, while `analyzers/registry.py` continues to own
+execution order and fresh analyzer instances. Descriptors are not configuration,
+plugins, profile UI, calibration metrics, analyzer execution, threshold logic,
+or user-editable state.
+
 The internal Review Desk payload schema is
 `dataset-forge/review-desk-data/v1`. Its stable top-level fields are:
 
@@ -692,6 +702,12 @@ All current analyzers are recorded with family `Technical Quality`, calibration
 status `advisory`, execution policy `enabled`, display policy `visible`, and
 triage policy `included`. `disabled_analyzers` is empty until configurable
 review signals exist.
+
+Starting in v0.26, manifest analyzer rows are descriptor snapshots plus
+run-specific fields such as `execution.executed`, `finding_count`, and
+`image_count`. The Review Desk and Dataset Intelligence consume manifest
+snapshots, not live descriptors, so older runs remain meaningful even if future
+descriptor metadata changes.
 
 v0.24 makes Dataset Comparison manifest-aware. When optional
 `inspection_manifest.json` sidecars are present, comparison adds an advisory

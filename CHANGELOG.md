@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.26.0-alpha
+
+- Added an internal Analyzer Descriptor System.
+- Added `analyzer_descriptors.py` as the authoritative metadata source for
+  built-in analyzer id, display name, description, version, family, emitted
+  categories, calibration status, deterministic behavior, context/measurement
+  requirements, and default execution/display/triage policies.
+- Kept `analyzers/registry.py` responsible for analyzer execution order and
+  fresh analyzer instances.
+- Updated Inspection Manifest generation to use descriptor metadata while
+  preserving the existing `inspection_manifest.json` shape.
+- Added tests that every registered analyzer has one descriptor, every
+  descriptor points to a registered analyzer, descriptor identity matches
+  analyzer identity, default policies remain enabled / visible / included, and
+  current analyzers remain advisory / Technical Quality.
+- Did not add analyzer behavior changes, threshold changes, configurable review
+  signals, profile UI, review profiles, calibration metrics, plugin support, new
+  analyzers, new sidecars, cleanup, execution, export, repair, quarantine
+  behavior, or image modification.
+
 ## v0.25.0-alpha
 
 - Added Dataset Intelligence to the local Review Desk contract.

@@ -147,6 +147,18 @@ The local review server:
 
 ---
 
+## Analyzer Descriptor Metadata
+
+v0.26 adds internal Analyzer Descriptors as provenance metadata support. They
+do not add CLI flags, user configuration, analyzer toggles, profile UI,
+plugins, cleanup, execution, export, repair, or image modification.
+
+`dataset-forge inspect` still writes the same `inspection_manifest.json` shape,
+but analyzer rows are populated from the internal descriptor registry plus
+run-specific fields such as executed state, finding count, and image count.
+
+---
+
 ## Compare Command
 
 ```

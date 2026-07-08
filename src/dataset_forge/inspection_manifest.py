@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from dataset_forge import __version__
+from dataset_forge.analyzer_descriptors import (
+    AnalyzerDescriptor,
+    descriptor_for_analyzer,
+)
 from dataset_forge.analyzers.base import Analyzer
 from dataset_forge.finding import Finding
 from dataset_forge.recommendation_summary import RECOMMENDATION_SUMMARY_SCHEMA
@@ -18,21 +22,6 @@ from dataset_forge.triage_dossier import TRIAGE_DOSSIER_SCHEMA
 INSPECTION_MANIFEST_SCHEMA = "dataset-forge/inspection-manifest/v1"
 INSPECTION_MANIFEST_FILENAME = "inspection_manifest.json"
 MANIFEST_CONTRACT_VERSION = 1
-
-DEFAULT_EXECUTION_POLICY = "enabled"
-DEFAULT_DISPLAY_POLICY = "visible"
-DEFAULT_TRIAGE_POLICY = "included"
-DEFAULT_ANALYZER_FAMILY = "Technical Quality"
-DEFAULT_CALIBRATION_STATUS = "advisory"
-
-_DISPLAY_NAMES = {
-    "texture_analyzer": "Texture Analyzer",
-    "crystalline_faceting_analyzer": "Crystalline Faceting Analyzer",
-    "oversharpening_halo_analyzer": "Oversharpening Halo Analyzer",
-    "high_frequency_isolated_artifact_analyzer": (
-        "High Frequency Isolated Artifact Analyzer"
-    ),
-}
 
 
 @dataclass(frozen=True)
@@ -49,19 +38,6 @@ class InspectionProfile:
         }
 
 
-@dataclass(frozen=True)
-class AnalyzerDescriptor:
-    id: str
-    display_name: str
-    version: str
-    family: str
-    categories_emitted: tuple[str, ...]
-    calibration_status: str
-    default_execution_policy: str
-    default_display_policy: str
-    default_triage_policy: str
-
-
 DEFAULT_INSPECTION_PROFILE = InspectionProfile(
     id="default",
     display_name="Default Inspection",
@@ -73,27 +49,6 @@ def utc_now() -> str:
     """Return a UTC timestamp suitable for manifest provenance."""
 
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def descriptor_for_analyzer(analyzer: Analyzer) -> AnalyzerDescriptor:
-    """Build the current default descriptor for an analyzer instance."""
-
-    analyzer_id = str(analyzer.name)
-    categories = tuple(
-        str(category)
-        for category in getattr(analyzer, "supported_categories", ())
-    )
-    return AnalyzerDescriptor(
-        id=analyzer_id,
-        display_name=_DISPLAY_NAMES.get(analyzer_id, _display_name(analyzer_id)),
-        version=str(analyzer.version),
-        family=DEFAULT_ANALYZER_FAMILY,
-        categories_emitted=categories,
-        calibration_status=DEFAULT_CALIBRATION_STATUS,
-        default_execution_policy=DEFAULT_EXECUTION_POLICY,
-        default_display_policy=DEFAULT_DISPLAY_POLICY,
-        default_triage_policy=DEFAULT_TRIAGE_POLICY,
-    )
 
 
 def build_inspection_manifest(
@@ -226,10 +181,6 @@ def _analyzer_finding_counts(
         for analyzer, paths in images_by_analyzer.items()
     }
     return counts, image_counts
-
-
-def _display_name(analyzer_id: str) -> str:
-    return " ".join(part.capitalize() for part in analyzer_id.split("_"))
 
 
 __all__ = [

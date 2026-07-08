@@ -819,11 +819,48 @@ Constraints:
   movement, quarantine folders, training integration, cloud review, or database
   state.
 
-## v0.26+: Analyzer Descriptor System
+## v0.26.0-alpha: Analyzer Descriptor System
 
-Analyzer descriptor metadata should become the internal source of truth before
-Configurable Review Signals, Review Profiles, Calibration Infrastructure, and
-additional analyzers expand the product surface.
+**Goal:** Create an internal analyzer metadata contract without changing
+analyzer behavior.
+
+v0.26 makes Analyzer Descriptors the authoritative metadata source for built-in
+analyzers. The analyzer registry continues to own execution order and fresh
+analyzer instances.
+
+Scope:
+
+- Add `analyzer_descriptors.py`.
+- Define `AnalyzerDescriptor` with id, display name, description, version,
+  family, emitted categories, calibration status, deterministic flag,
+  context/measurement requirements, and default execution/display/triage
+  policies.
+- Keep policies stable as enabled/disabled, visible/hidden, and
+  included/excluded.
+- Keep current analyzers in family `Technical Quality` with calibration status
+  `advisory` and defaults `enabled` / `visible` / `included`.
+- Make `inspection_manifest.json` use descriptor metadata while preserving the
+  existing manifest shape.
+- Keep Review Desk and Dataset Intelligence consuming manifest snapshots.
+
+Constraints:
+
+- No analyzer behavior changes.
+- No threshold changes.
+- No new analyzers.
+- No configurable review signals.
+- No review profiles or profile UI.
+- No calibration metrics.
+- No plugin system.
+- No new sidecars.
+- No cleanup, execution, export, repair, transforms, quarantine behavior, source
+  image modification, or image handling changes.
+
+## v0.27+: Configurable Review Signals
+
+Configurable Review Signals should build on Analyzer Descriptors by resolving
+effective execution, display, and triage policies while keeping descriptor
+defaults separate from run-specific policy state.
 
 ---
 
