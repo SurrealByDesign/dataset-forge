@@ -752,10 +752,33 @@ Constraints:
 **Goal:** Teach comparison to explain when two inspect outputs were produced
 under different inspection manifests.
 
-Scope should remain read-only and sidecar-only: comparison may load optional
-`inspection_manifest.json` files and emit compatibility warnings, but it should
-not block comparison by default and should support older outputs without
-manifests.
+v0.24 keeps comparison read-only and sidecar-only. It loads optional
+`inspection_manifest.json` files and emits advisory compatibility status and
+warnings, but it does not block comparison by default and supports older outputs
+without manifests.
+
+Scope:
+
+- Add `inspection_compatibility` to `comparison_summary.json`.
+- Add an Inspection Compatibility section to `comparison_summary.md`.
+- Report missing manifests as `provenance_unavailable`.
+- Report differences in manifest schema, inspection profile, Dataset Forge
+  version, analyzer participation, analyzer versions, display policy, and
+  triage policy.
+- Preserve all existing comparison fields and behavior.
+
+Constraints:
+
+- No analyzer behavior changes.
+- No analyzer threshold changes.
+- No recommendation behavior changes.
+- No Review Desk behavior changes.
+- No review-decision schema changes.
+- No existing sidecar schema changes.
+- No cleanup, execution, export, repair, transforms, source-image handling, or
+  quarantine behavior.
+- No profile UI, analyzer toggles, configurable review signals, dataset
+  analytics, new analyzers, or blocking comparison behavior.
 
 ---
 

@@ -682,6 +682,18 @@ status `advisory`, execution policy `enabled`, display policy `visible`, and
 triage policy `included`. `disabled_analyzers` is empty until configurable
 review signals exist.
 
+v0.24 makes Dataset Comparison manifest-aware. When optional
+`inspection_manifest.json` sidecars are present, comparison adds an advisory
+`inspection_compatibility` section to `comparison_summary.json` and a short
+Inspection Compatibility section to `comparison_summary.md`. The compatibility
+section reports whether manifests are available and whether manifest schema,
+inspection profile, Dataset Forge version, analyzer participation, analyzer
+versions, display policy, or triage policy differ. Missing or different
+manifests do not block comparison. Comparison still reads existing sidecars
+only, does not rerun analyzers, does not inspect images, does not reinterpret
+findings, does not modify inputs, and does not implement configurable review
+signals.
+
 v0.10 adds `dataset-forge inspect --review-gallery`, which writes
 `review_gallery.html` from the existing `inspection_report.json` and
 `recommendation_summary.json` sidecars. The gallery is plain deterministic HTML

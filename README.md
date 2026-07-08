@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.23.0-alpha** -- adds an Inspection Manifest provenance sidecar while preserving the same read-only review workflow.
+**v0.24.0-alpha** -- makes comparison manifest-aware while preserving read-only review workflows.
 
 Dataset Forge helps you decide which images belong in your LoRA before you train.
 
@@ -26,12 +26,12 @@ Raw Dataset
 -> Train
 ```
 
-**v0.23.0-alpha is read-only decision support.** Dataset Forge reads your
+**v0.24.0-alpha is read-only decision support.** Dataset Forge reads your
 dataset and writes reports beside it. It never modifies source images. There is
 still no cleanup, repair, export, hosted web app, cloud service, plugins, or
-new analyzer family in this release. v0.23 adds `inspection_manifest.json` so
-each inspect run records provenance: tool version, default inspection profile,
-sidecars, analyzer versions, analyzer policies, and compatibility metadata.
+new analyzer family in this release. v0.24 makes `dataset-forge compare`
+manifest-aware: when `inspection_manifest.json` is present, comparison reports
+whether two inspect runs were produced under comparable conditions.
 
 ---
 
@@ -184,12 +184,12 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.23.0-alpha exposes `inspect`,
+- **No public recommendation command yet.** v0.24.0-alpha exposes `inspect`,
   local `review`, sidecar-only `compare`, advisory `plan`, and
   execution-free `preview`. There is no separate `dataset-forge recommend`
   command.
 
-- **No cleanup, repair, execution, or export.** v0.23.0-alpha is read-only.
+- **No cleanup, repair, execution, or export.** v0.24.0-alpha is read-only.
   Improvement Planning writes `improvement_plan.json` and
   `improvement_plan.md` only. Improvement Preview writes
   `improvement_preview.json` and `improvement_preview.md` only. Cleanup,
@@ -327,6 +327,28 @@ Implemented v0.23 focus:
 The manifest is descriptive only. It does not implement profile selection,
 analyzer toggles, configurable review signals, dataset analytics, cleanup,
 execution, export, repair, or manifest-aware comparison.
+
+---
+
+## v0.24 Manifest-Aware Comparison
+
+v0.24 makes `dataset-forge compare` read optional `inspection_manifest.json`
+sidecars and report whether two inspect outputs were produced under comparable
+conditions.
+
+Implemented v0.24 focus:
+
+- Add an advisory `inspection_compatibility` section to `comparison_summary.json`.
+- Show a short Inspection Compatibility section near the top of
+  `comparison_summary.md`.
+- Report compatible manifests, missing provenance, and differences in manifest
+  schema, inspection profile, Dataset Forge version, analyzer participation,
+  analyzer versions, display policy, and triage policy.
+- Continue comparing older outputs without manifests.
+
+Comparison remains advisory and sidecar-only. It does not block comparison,
+rerun analyzers, reinterpret findings, inspect images, modify source files,
+change recommendations, or implement configurable review signals.
 
 ---
 
@@ -513,12 +535,15 @@ uv run dataset-forge compare path/to/before/inspect_output/ path/to/after/inspec
 
 Writes `comparison_summary.json` and `comparison_summary.md`. The comparison
 uses existing `inspection_report.json`, `recommendation_summary.json`, and
-optional `review_decisions.json` sidecars only.
+optional `review_decisions.json` sidecars only. When `inspection_manifest.json`
+is present, comparison adds advisory compatibility status and warnings so users
+can see whether the two inspect runs used matching provenance.
 
 The comparison shows changed recommendations, new findings, resolved findings,
 recommendation count changes, finding category changes, and analyzer output
 changes. It does not rerun analyzers, inspect images, compare pixels, modify
-reports, modify review decisions, or classify changes as better or worse.
+reports, modify review decisions, block comparison, reinterpret findings, or
+classify changes as better or worse.
 
 ### Optional: recommendation contact sheets
 
@@ -683,7 +708,7 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.23.0-alpha.** There is no public flag or command that modifies, repairs,
+  v0.24.0-alpha.** There is no public flag or command that modifies, repairs,
   exports, rejects, or regenerates images. `dataset-forge plan` writes advisory
   Improvement Candidates only. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,

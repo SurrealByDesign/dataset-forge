@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.24.0-alpha
+
+- Made Dataset Comparison manifest-aware.
+- Added advisory `inspection_compatibility` to `comparison_summary.json`.
+- Added an Inspection Compatibility section near the top of
+  `comparison_summary.md`.
+- Comparison now reports compatible manifests, missing manifest provenance, and
+  differences in manifest schema, inspection profile, Dataset Forge version,
+  analyzer participation, analyzer versions, display policy, and triage policy.
+- Kept comparison non-blocking and sidecar-only. It does not rerun analyzers,
+  reinterpret findings, inspect source images, modify inputs, or change
+  existing comparison fields.
+- Kept analyzer behavior, thresholds, recommendations, Review Desk behavior,
+  review decision schema, existing sidecar schemas, cleanup, execution, export,
+  repair, transforms, quarantine behavior, image handling, profile UI, analyzer
+  toggles, configurable review signals, dataset analytics, and new analyzers
+  out of scope.
+
 ## v0.23.0-alpha
 
 - Added `inspection_manifest.json` from `dataset-forge inspect`.

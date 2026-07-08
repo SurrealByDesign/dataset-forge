@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-07. Reflects v0.23.0-alpha.*
+*Last updated: 2026-07-07. Reflects v0.24.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.23.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.24.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -56,6 +56,13 @@ current analyzer descriptors, current enabled/visible/included analyzer
 policies, and compatibility metadata. It does not implement profile selection,
 analyzer toggles, configurable review signals, manifest-aware comparison,
 dataset analytics, or any behavior change.
+v0.24 makes Dataset Comparison manifest-aware. When optional
+`inspection_manifest.json` sidecars are present, comparison emits advisory
+compatibility status and warnings for missing provenance or differences in
+manifest schema, inspection profile, Dataset Forge version, analyzer
+participation, analyzer versions, display policy, and triage policy. It does
+not block comparison, rerun analyzers, reinterpret findings, change existing
+comparison fields, or change any review workflow behavior.
 
 Current public behavior remains inspect-first:
 
@@ -63,7 +70,7 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.23.0-alpha:
+Supported in v0.24.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- local-only browser Review Desk
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
@@ -93,8 +100,10 @@ Supported in v0.23.0-alpha:
   next-action guidance
 - Dataset Comparison:
   compares existing `inspection_report.json`, `recommendation_summary.json`,
-  and optional `review_decisions.json` sidecars; writes
-  `comparison_summary.json` and `comparison_summary.md`
+  optional `review_decisions.json`, and optional `inspection_manifest.json`
+  sidecars; writes `comparison_summary.json` and `comparison_summary.md`;
+  includes advisory inspection compatibility when manifests are present or
+  missing
 - Improvement Planning:
   consumes existing `inspection_report.json`, `recommendation_summary.json`,
   optional `review_decisions.json`, and optional `comparison_summary.json`;
@@ -138,10 +147,10 @@ Supported in v0.23.0-alpha:
 - No Review Decisions coupling to recommendation rules or JSON schemas
 - No analyzer threshold changes
 - No improvement execution, cleanup, repair, export, hosted web app, plugins, or new analyzers
-- No configurable review signals, profile UI, analyzer toggles, manifest-aware
-  comparison, or dataset analytics
+- No configurable review signals, profile UI, analyzer toggles, blocking
+  comparison behavior, or dataset analytics
 
-Not supported in v0.23.0-alpha (planned for later releases):
+Not supported in v0.24.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -155,14 +164,13 @@ Not supported in v0.23.0-alpha (planned for later releases):
 - Additional analyzers beyond the current first-pass set (v1.x)
 - Calibrated thresholds (pending labeled benchmark ground truth)
 - Configurable Review Signals
-- Manifest-aware comparison
 - Dataset analytics
 
 ---
 
 ## Test suite
 
-**962 tests passing, 1 skipped.**
+**985 tests passing, 1 skipped.**
 
 The automated suite covers the full inspect pipeline plus internal evidence and
 review-decision/validation/corpus helpers.
@@ -360,28 +368,25 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-### v0.23.0-alpha Validation
+### v0.24.0-alpha Validation
 
-v0.23 is implemented as Inspection Manifest provenance, not configurable review
-signals. The remaining release-readiness task is to confirm the additive
-sidecar preserves existing behavior:
+v0.24 is implemented as Manifest-Aware Comparison, not configurable review
+signals. The remaining release-readiness task is to confirm comparison remains
+advisory and sidecar-only:
 
-1. Run the inspect manifest tests.
-2. Run `dataset-forge inspect`.
-3. Confirm `inspection_manifest.json` records default profile, sidecar schemas,
-   analyzer versions, analyzer policies, and dataset counts.
-4. Open `dataset-forge review <inspect_output>`.
-5. Confirm the Review Desk still makes Priority Review, Needs Review, and No
-   Findings Emitted images understandable at image-card level.
-6. Confirm the Dataset Overview still reports review progress, top categories,
-   analyzer coverage, and deterministic next-action guidance.
-7. Confirm comparison, plan, and preview continue to consume existing sidecars
-   without executing or modifying images.
+1. Run the comparison compatibility tests.
+2. Run `dataset-forge compare` on outputs with matching manifests.
+3. Confirm `inspection_compatibility.status` is `compatible`.
+4. Run comparison when one or both manifests are absent.
+5. Confirm comparison still succeeds with `provenance_unavailable`.
+6. Confirm manifest differences produce warnings without blocking comparison.
+7. Confirm Review Desk, inspect, recommendations, plan, and preview behavior
+   remain unchanged.
 
 Keep static `review_gallery.html` as a secondary read-only artifact. The local
 `dataset-forge review` command is now the primary human decision workflow.
 
-Explicitly out of scope for v0.23:
+Explicitly out of scope for v0.24:
 
 - deterministic execution
 - cleanup execution
@@ -393,7 +398,8 @@ Explicitly out of scope for v0.23:
 - network dependencies
 - cloud service, login, database, or hosted app
 - profile UI or analyzer toggles
-- manifest-aware comparison
+- configurable review signals
+- blocking comparison behavior
 
 ---
 

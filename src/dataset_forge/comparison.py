@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from dataset_forge import __version__
+from dataset_forge.inspection_manifest import INSPECTION_MANIFEST_FILENAME
 from dataset_forge.recommendation_summary import RECOMMENDATION_SUMMARY_SCHEMA
 from dataset_forge.report import REPORT_SCHEMA
 from dataset_forge.review_decisions import load_review_decisions
@@ -20,6 +21,18 @@ RECOMMENDATION_SUMMARY_FILENAME = "recommendation_summary.json"
 REVIEW_DECISIONS_FILENAME = "review_decisions.json"
 COMPARISON_JSON_FILENAME = "comparison_summary.json"
 COMPARISON_MARKDOWN_FILENAME = "comparison_summary.md"
+
+_COMPATIBILITY_STATUS_PRECEDENCE = (
+    "provenance_unavailable",
+    "different_manifest_schema",
+    "different_profile",
+    "different_analyzer_participation",
+    "different_analyzer_versions",
+    "different_display_policy",
+    "different_triage_policy",
+    "different_tool_version",
+    "compatible",
+)
 
 _RECOMMENDATION_COUNT_KEYS = (
     "ready_for_training_count",
@@ -95,6 +108,7 @@ def build_comparison_summary(before_output: Path, after_output: Path) -> dict[st
             "before_decision_count": before["review_decision_count"],
             "after_decision_count": after["review_decision_count"],
         },
+        "inspection_compatibility": _inspection_compatibility(before, after),
         "recommendation_counts": recommendation_counts,
         "finding_category_counts": category_counts,
         "analyzer_output_counts": analyzer_counts,
@@ -137,8 +151,16 @@ def render_comparison_markdown(summary: Mapping[str, Any]) -> str:
         f"- After inspect version: {summary['after']['inspect_version'] or 'not recorded'}",
         f"- Tool version: {summary['tool_version']}",
         "",
-        "Recommendation counts:",
+        "## Inspection Compatibility",
+        "",
     ]
+    lines.extend(_markdown_inspection_compatibility(summary["inspection_compatibility"]))
+    lines.extend([
+        "",
+        "## Recommendation Counts",
+        "",
+        "Recommendation counts:",
+    ])
     for key in _RECOMMENDATION_COUNT_KEYS:
         counts = summary["recommendation_counts"][key]
         lines.append(
@@ -220,11 +242,26 @@ def _load_inspect_output(output_dir: Path, label: str) -> dict[str, Any]:
     decision_count = 0
     if decisions_available:
         decision_count = len(load_review_decisions(decisions_path).decisions)
+    manifest_path = root / INSPECTION_MANIFEST_FILENAME
+    manifest_available = manifest_path.is_file()
+    manifest_error = ""
+    inspection_manifest = None
+    if manifest_available:
+        try:
+            inspection_manifest = _load_json_object(
+                manifest_path,
+                f"{label} inspection manifest",
+            )
+        except ComparisonError as exc:
+            manifest_error = str(exc)
 
     return {
         "path": root,
         "inspection_report": inspection_report,
         "recommendation_summary": recommendation_summary,
+        "inspection_manifest": inspection_manifest,
+        "inspection_manifest_available": manifest_available,
+        "inspection_manifest_error": manifest_error,
         "review_decisions_available": decisions_available,
         "review_decision_count": decision_count,
     }
@@ -261,6 +298,330 @@ def _validate_schema(payload: Mapping[str, Any], expected: str, label: str) -> N
         raise ComparisonError(
             f"Unsupported {label} schema {schema!r}; expected {expected!r}"
         )
+
+
+def _inspection_compatibility(
+    before: Mapping[str, Any],
+    after: Mapping[str, Any],
+) -> dict[str, Any]:
+    before_manifest = _manifest_or_none(before)
+    after_manifest = _manifest_or_none(after)
+    before_available = bool(before.get("inspection_manifest_available"))
+    after_available = bool(after.get("inspection_manifest_available"))
+    warnings: list[str] = []
+    differences: list[dict[str, Any]] = []
+
+    if not before_manifest or not after_manifest:
+        warnings.append(
+            "One or both inspect outputs do not include readable "
+            "inspection_manifest.json; provenance compatibility could not be verified."
+        )
+        for label, source in (("before", before), ("after", after)):
+            error = str(source.get("inspection_manifest_error", ""))
+            if error:
+                warnings.append(f"{label.capitalize()} inspection manifest could not be read: {error}")
+        status = "provenance_unavailable"
+        return _compatibility_payload(
+            status,
+            before_available,
+            after_available,
+            warnings,
+            differences,
+            before_manifest,
+            after_manifest,
+        )
+
+    before_schema = str(before_manifest.get("schema", ""))
+    after_schema = str(after_manifest.get("schema", ""))
+    if before_schema != after_schema:
+        differences.append({
+            "kind": "manifest_schema",
+            "before": before_schema,
+            "after": after_schema,
+        })
+        warnings.append(
+            f"Inspection manifest schemas differ: before {before_schema or 'not recorded'}, "
+            f"after {after_schema or 'not recorded'}."
+        )
+
+    _compare_profiles(before_manifest, after_manifest, warnings, differences)
+    _compare_analyzers(before_manifest, after_manifest, warnings, differences)
+    _compare_tool_versions(before_manifest, after_manifest, warnings, differences)
+    status = _compatibility_status(differences)
+    return _compatibility_payload(
+        status,
+        before_available,
+        after_available,
+        warnings,
+        differences,
+        before_manifest,
+        after_manifest,
+    )
+
+
+def _manifest_or_none(source: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    manifest = source.get("inspection_manifest")
+    return manifest if isinstance(manifest, Mapping) else None
+
+
+def _compatibility_payload(
+    status: str,
+    before_available: bool,
+    after_available: bool,
+    warnings: list[str],
+    differences: list[dict[str, Any]],
+    before_manifest: Mapping[str, Any] | None,
+    after_manifest: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    return {
+        "status": status,
+        "before_manifest_available": before_available,
+        "after_manifest_available": after_available,
+        "warnings": warnings,
+        "differences": differences,
+        "manifest_schemas": {
+            "before": _manifest_schema(before_manifest),
+            "after": _manifest_schema(after_manifest),
+        },
+        "profiles": {
+            "before": _profile_summary(before_manifest),
+            "after": _profile_summary(after_manifest),
+        },
+        "tool_versions": {
+            "before": _tool_version(before_manifest),
+            "after": _tool_version(after_manifest),
+        },
+    }
+
+
+def _manifest_schema(manifest: Mapping[str, Any] | None) -> str | None:
+    return str(manifest.get("schema", "")) if manifest else None
+
+
+def _profile_summary(manifest: Mapping[str, Any] | None) -> dict[str, str] | None:
+    if not manifest:
+        return None
+    profile = manifest.get("inspection", {}).get("profile", {})
+    if not isinstance(profile, Mapping):
+        return None
+    return {
+        "id": str(profile.get("id", "")),
+        "version": str(profile.get("version", "")),
+    }
+
+
+def _tool_version(manifest: Mapping[str, Any] | None) -> str | None:
+    if not manifest:
+        return None
+    tool = manifest.get("tool", {})
+    if not isinstance(tool, Mapping):
+        return None
+    return str(tool.get("version", ""))
+
+
+def _compare_profiles(
+    before_manifest: Mapping[str, Any],
+    after_manifest: Mapping[str, Any],
+    warnings: list[str],
+    differences: list[dict[str, Any]],
+) -> None:
+    before_profile = _profile_summary(before_manifest)
+    after_profile = _profile_summary(after_manifest)
+    if before_profile == after_profile:
+        return
+    differences.append({
+        "kind": "profile",
+        "before": before_profile,
+        "after": after_profile,
+    })
+    warnings.append(
+        "Inspection profiles differ: "
+        f"before {_format_profile(before_profile)}, after {_format_profile(after_profile)}."
+    )
+
+
+def _compare_tool_versions(
+    before_manifest: Mapping[str, Any],
+    after_manifest: Mapping[str, Any],
+    warnings: list[str],
+    differences: list[dict[str, Any]],
+) -> None:
+    before_version = _tool_version(before_manifest)
+    after_version = _tool_version(after_manifest)
+    if before_version == after_version:
+        return
+    differences.append({
+        "kind": "tool_version",
+        "before": before_version,
+        "after": after_version,
+    })
+    warnings.append(
+        f"Dataset Forge versions differ: before {before_version or 'not recorded'}, "
+        f"after {after_version or 'not recorded'}."
+    )
+
+
+def _compare_analyzers(
+    before_manifest: Mapping[str, Any],
+    after_manifest: Mapping[str, Any],
+    warnings: list[str],
+    differences: list[dict[str, Any]],
+) -> None:
+    before_analyzers = _analyzers_by_id(before_manifest)
+    after_analyzers = _analyzers_by_id(after_manifest)
+    before_ids = set(before_analyzers)
+    after_ids = set(after_analyzers)
+    for analyzer in sorted(before_ids - after_ids):
+        differences.append({
+            "kind": "analyzer_participation",
+            "analyzer": analyzer,
+            "before": "present",
+            "after": "missing",
+        })
+        warnings.append(f"Analyzer participation differs: {analyzer} is missing after.")
+    for analyzer in sorted(after_ids - before_ids):
+        differences.append({
+            "kind": "analyzer_participation",
+            "analyzer": analyzer,
+            "before": "missing",
+            "after": "present",
+        })
+        warnings.append(f"Analyzer participation differs: {analyzer} is missing before.")
+    for analyzer in sorted(before_ids & after_ids):
+        before_row = before_analyzers[analyzer]
+        after_row = after_analyzers[analyzer]
+        _compare_analyzer_participation(analyzer, before_row, after_row, warnings, differences)
+        _compare_analyzer_version(analyzer, before_row, after_row, warnings, differences)
+        _compare_policy(analyzer, "display", before_row, after_row, warnings, differences)
+        _compare_policy(analyzer, "triage", before_row, after_row, warnings, differences)
+
+
+def _analyzers_by_id(manifest: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    rows: dict[str, Mapping[str, Any]] = {}
+    analyzers = manifest.get("analyzers", [])
+    if not isinstance(analyzers, list):
+        return rows
+    for item in analyzers:
+        if isinstance(item, Mapping) and item.get("id"):
+            rows[str(item["id"])] = item
+    return rows
+
+
+def _compare_analyzer_participation(
+    analyzer: str,
+    before_row: Mapping[str, Any],
+    after_row: Mapping[str, Any],
+    warnings: list[str],
+    differences: list[dict[str, Any]],
+) -> None:
+    before_execution = _policy_summary(before_row, "execution")
+    after_execution = _policy_summary(after_row, "execution")
+    if before_execution == after_execution:
+        return
+    differences.append({
+        "kind": "analyzer_participation",
+        "analyzer": analyzer,
+        "before": before_execution,
+        "after": after_execution,
+    })
+    warnings.append(
+        f"Analyzer participation differs for {analyzer}: "
+        f"before {_format_policy(before_execution)}, after {_format_policy(after_execution)}."
+    )
+
+
+def _compare_analyzer_version(
+    analyzer: str,
+    before_row: Mapping[str, Any],
+    after_row: Mapping[str, Any],
+    warnings: list[str],
+    differences: list[dict[str, Any]],
+) -> None:
+    before_version = str(before_row.get("version", ""))
+    after_version = str(after_row.get("version", ""))
+    if before_version == after_version:
+        return
+    differences.append({
+        "kind": "analyzer_version",
+        "analyzer": analyzer,
+        "before": before_version,
+        "after": after_version,
+    })
+    warnings.append(
+        f"Analyzer versions differ for {analyzer}: "
+        f"before {before_version or 'not recorded'}, after {after_version or 'not recorded'}."
+    )
+
+
+def _compare_policy(
+    analyzer: str,
+    policy_name: str,
+    before_row: Mapping[str, Any],
+    after_row: Mapping[str, Any],
+    warnings: list[str],
+    differences: list[dict[str, Any]],
+) -> None:
+    before_policy = _policy_summary(before_row, policy_name)
+    after_policy = _policy_summary(after_row, policy_name)
+    if before_policy == after_policy:
+        return
+    differences.append({
+        "kind": f"{policy_name}_policy",
+        "analyzer": analyzer,
+        "before": before_policy,
+        "after": after_policy,
+    })
+    warnings.append(
+        f"{policy_name.capitalize()} policy differs for {analyzer}: "
+        f"before {_format_policy(before_policy)}, after {_format_policy(after_policy)}."
+    )
+
+
+def _policy_summary(row: Mapping[str, Any], policy_name: str) -> dict[str, Any]:
+    policy = row.get(policy_name, {})
+    if not isinstance(policy, Mapping):
+        return {}
+    summary = {"policy": str(policy.get("policy", ""))}
+    if policy_name == "execution":
+        summary["executed"] = bool(policy.get("executed", False))
+    return summary
+
+
+def _compatibility_status(differences: list[Mapping[str, Any]]) -> str:
+    if not differences:
+        return "compatible"
+    statuses = {_status_for_difference(item) for item in differences}
+    for status in _COMPATIBILITY_STATUS_PRECEDENCE:
+        if status in statuses:
+            return status
+    return "compatible"
+
+
+def _status_for_difference(difference: Mapping[str, Any]) -> str:
+    kind = difference.get("kind")
+    return {
+        "manifest_schema": "different_manifest_schema",
+        "profile": "different_profile",
+        "analyzer_participation": "different_analyzer_participation",
+        "analyzer_version": "different_analyzer_versions",
+        "display_policy": "different_display_policy",
+        "triage_policy": "different_triage_policy",
+        "tool_version": "different_tool_version",
+    }.get(str(kind), "compatible")
+
+
+def _format_profile(profile: Mapping[str, str] | None) -> str:
+    if not profile:
+        return "not recorded"
+    return f"{profile.get('id', '')}/{profile.get('version', '')}"
+
+
+def _format_policy(policy: Mapping[str, Any]) -> str:
+    if not policy:
+        return "not recorded"
+    if "executed" in policy:
+        return f"{policy.get('policy', '')}, executed={str(policy.get('executed')).lower()}"
+    return str(policy.get("policy", ""))
 
 
 def _recommendation_count_comparison(
@@ -437,6 +798,24 @@ def _markdown_count_changes(items: Mapping[str, Mapping[str, int]]) -> list[str]
         )
         for key, value in items.items()
     ]
+
+
+def _markdown_inspection_compatibility(compatibility: Mapping[str, Any]) -> list[str]:
+    lines = [
+        f"- Status: {compatibility.get('status', 'not recorded')}",
+        (
+            "- Manifests available: "
+            f"before {_yes_no(bool(compatibility.get('before_manifest_available')))}, "
+            f"after {_yes_no(bool(compatibility.get('after_manifest_available')))}"
+        ),
+    ]
+    warnings = compatibility.get("warnings", [])
+    if isinstance(warnings, list) and warnings:
+        lines.extend(["", "Warnings:"])
+        lines.extend(f"- {warning}" for warning in warnings)
+    else:
+        lines.append("- No manifest compatibility warnings.")
+    return lines
 
 
 def _markdown_named_count_changes(

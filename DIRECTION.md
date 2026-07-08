@@ -7,12 +7,12 @@
 
 ## Current Objective
 
-**v0.23.0-alpha** -- add an Inspection Manifest provenance sidecar while
-preserving the same user-facing behavior.
+**v0.24.0-alpha** -- make Dataset Comparison manifest-aware while preserving
+the same user-facing behavior.
 
-The Review Desk remains the primary human-facing interface. `inspect` now also
-writes `inspection_manifest.json` so future tools can understand how an
-inspection was performed without changing today's review workflow.
+The Review Desk remains the primary human-facing interface. `compare` now reads
+optional `inspection_manifest.json` sidecars and explains whether two inspect
+outputs were produced under comparable conditions.
 
 ---
 
@@ -34,12 +34,12 @@ The product reduces uncertainty. It does not automate judgment.
 
 ## What Is In Scope Now
 
-- `inspection_manifest.json`
-- default inspection profile metadata
-- analyzer descriptor metadata for existing analyzers
-- analyzer execution/display/triage policies recorded as current defaults
-- compatibility metadata for existing inspect and recommendation schemas
-- tests proving existing inspect, review, compare, and CLI behavior remain stable
+- advisory `inspection_compatibility` in `comparison_summary.json`
+- an Inspection Compatibility section in `comparison_summary.md`
+- warnings for missing manifests and manifest differences
+- compatibility checks for manifest schema, profile, tool version, analyzer
+  participation, analyzer versions, display policy, and triage policy
+- tests proving existing comparison fields and behavior remain stable
 
 ---
 
@@ -56,12 +56,12 @@ The product reduces uncertainty. It does not automate judgment.
 - new analyzer families
 - configurable review signals
 - profile UI or analyzer toggles
-- manifest-aware comparison
+- blocking comparison behavior
 - hosted/cloud review
 - database-backed state
 
 `cleanup/`, `execution/`, `transforms/`, and `exporters/` remain legacy or
-future-only code paths. They are not part of the public v0.23 workflow and
+future-only code paths. They are not part of the public v0.24 workflow and
 should not be expanded for this release.
 
 ---
