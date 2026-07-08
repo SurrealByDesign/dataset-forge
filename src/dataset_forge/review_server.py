@@ -733,6 +733,7 @@ dialog { border: 1px solid var(--line); max-width: 620px; }
     <label for="thumbSize">Thumbnail size</label>
     <input id="thumbSize" type="range" min="130" max="280" value="170">
     <span id="visibleCount" class="muted"></span>
+    <span id="filterSummary" class="muted"></span>
   </section>
   <section id="groups"></section>
 </main>
@@ -830,9 +831,9 @@ function renderCard(image) {
     <p>${escapeText(image.evidence_summary)}</p>
     <div class="actions">
       ${decisionButton('KEEP', 'Keep')}
-      ${decisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', 'Accepted')}
-      ${decisionButton('IMPROVEMENT_CANDIDATE', 'Improve')}
-      ${decisionButton('REMOVAL_CANDIDATE', 'Remove')}
+      ${decisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', 'Accepted Style')}
+      ${decisionButton('IMPROVEMENT_CANDIDATE', 'Improvement Candidate')}
+      ${decisionButton('REMOVAL_CANDIDATE', 'Removal Candidate')}
       ${decisionButton('UNDECIDED', 'Undecided')}
     </div>`;
   card.addEventListener('click', () => selectImage(image.id));
@@ -867,13 +868,14 @@ function renderGroups() {
     section.innerHTML = groupTitle(name, images.length) + '<div class="grid"></div>';
     const grid = section.querySelector('.grid');
     images.forEach(image => grid.appendChild(renderCard(image)));
-    if (!images.length) grid.innerHTML = '<p class="muted">No images in this group.</p>';
+    if (!images.length) grid.innerHTML = '<p class="muted">No images match this group with the current filters.</p>';
     root.appendChild(section);
   });
   if (!visible) {
     root.insertAdjacentHTML('afterbegin', '<p class="muted">No matching images. Clear filters or broaden the current review selection.</p>');
   }
   document.getElementById('visibleCount').textContent = `${visible} visible`;
+  document.getElementById('filterSummary').textContent = currentFilterSummary();
 }
 function renderCounts() {
   document.getElementById('counts').innerHTML =
@@ -893,11 +895,19 @@ function renderOverview() {
     ? categories.map(item => `<button type="button" data-category="${escapeText(item.category)}">${escapeText(item.category)} (${item.count})</button>`).join('')
     : '<span class="muted">No finding categories emitted.</span>';
   const analyzerRows = analyzers.length
-    ? analyzers.map(item => `<span class="badge">${escapeText(item.analyzer)}: ${item.finding_count} findings on ${item.image_count} images, ${escapeText(item.calibration_status || 'advisory')}</span>`).join('')
+    ? analyzers.map(item => `<span class="badge">${escapeText(item.analyzer)}: ${item.finding_count} findings on ${item.image_count} images, Advisory review signal</span>`).join('')
     : '<span class="muted">No analyzer coverage summary was recorded.</span>';
   document.getElementById('overview').innerHTML = `
     <h2>Dataset Overview</h2>
     <p>Review-first overview from existing sidecars only. The Review Desk does not run analyzers, modify images, move files, copy files, create quarantine folders, or export datasets.</p>
+    <h2>Next Action</h2>
+    <p><strong>${escapeText(next.label || 'Review dataset')}</strong></p>
+    <p>${escapeText(next.reason || '')}</p>
+    <p class="muted">This only changes filters and selection.</p>
+    <div class="overview-actions">
+      <button id="applyNextAction" type="button">Show Next Review Set</button>
+      <button id="overviewClearFilters" type="button">Clear Filters</button>
+    </div>
     <div class="overview-grid">
       ${countBox('Total images', overview.image_count || 0)}
       ${countBox('Priority Review', triage['Priority Review'] || 0)}
@@ -906,13 +916,6 @@ function renderOverview() {
       ${countBox('Reviewed', progress.reviewed_count || 0)}
       ${countBox('Pending', progress.pending_review_count || 0)}
       ${countBox('Complete', (progress.completion_percent || 0) + '%')}
-    </div>
-    <h2>Next Action</h2>
-    <p><strong>${escapeText(next.label || 'Review dataset')}</strong></p>
-    <p>${escapeText(next.reason || '')}</p>
-    <div class="overview-actions">
-      <button id="applyNextAction" type="button">Apply Next Action</button>
-      <button id="overviewClearFilters" type="button">Clear Filters</button>
     </div>
     <h2>Top Finding Categories</h2>
     <div class="overview-list">${categoryButtons}</div>
@@ -947,6 +950,22 @@ function selectImage(id) {
 function selectedImage() {
   return data.images.find(image => image.id === selectedId) || data.images[0];
 }
+function currentFilterSummary() {
+  const labels = [];
+  const decision = document.getElementById('decisionFilter').value;
+  const workflow = document.getElementById('workflowFilter').value;
+  const values = [
+    ['Search', document.getElementById('search').value],
+    ['Decision', decision ? label(decision, decisionLabels) : ''],
+    ['Workflow', workflow ? label(workflow, workflowLabels) : ''],
+    ['Triage', document.getElementById('triageFilter').value],
+    ['Category', document.getElementById('categoryFilter').value],
+    ['Severity', document.getElementById('severityFilter').value],
+    ['Confidence', document.getElementById('confidenceFilter').value ? document.getElementById('confidenceFilter').selectedOptions[0].textContent : '']
+  ];
+  values.forEach(([name, value]) => { if (value) labels.push(`${name}: ${value}`); });
+  return labels.length ? `Filters: ${labels.join(' | ')}` : 'Filters: none';
+}
 function renderDetail() {
   const image = selectedImage();
   if (!image) return;
@@ -965,6 +984,7 @@ function renderDetail() {
       ${detailDecisionButton('REMOVAL_CANDIDATE', '4 Removal Candidate')}
       ${detailDecisionButton('UNDECIDED', 'U Undecided')}
     </div>
+    <p class="muted">All decisions save to <code>review_decisions.json</code>.</p>
     <label for="workflowState">Workflow state</label>
     <select id="workflowState">${data.workflow_states.map(value => `<option value="${value}" ${value === image.workflow_state ? 'selected' : ''}>${escapeText(label(value, workflowLabels))}</option>`).join('')}</select>
     <label for="notes">Notes</label>
@@ -1000,7 +1020,7 @@ function renderFindings(image) {
 function renderCoverage() {
   const analyzers = (data.analyzer_coverage && data.analyzer_coverage.analyzers) || [];
   if (!analyzers.length) return '<p>No analyzer coverage summary was recorded.</p>';
-  return analyzers.map(item => `<p>${escapeText(item.analyzer || '')}: ${escapeText(item.finding_count || 0)} findings on ${escapeText(item.image_count || 0)} images.</p>`).join('');
+  return analyzers.map(item => `<p>${escapeText(item.analyzer || '')}: ${escapeText(item.finding_count || 0)} findings on ${escapeText(item.image_count || 0)} images. Advisory review signal.</p>`).join('');
 }
 async function saveDecision(image, decision, workflowState, notes) {
   const center = document.querySelector('.center');
