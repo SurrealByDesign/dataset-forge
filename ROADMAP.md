@@ -674,6 +674,38 @@ Constraints:
 
 ---
 
+## v0.22.0-alpha: Review Desk Maintainability & Contracts
+
+**Goal:** Preserve the current Review Desk experience while making its internal
+data contract explicit, tested, and easier to extend.
+
+v0.22 is maintainability work, not a user-visible capability release. It
+separates sidecar-derived Review Desk payload construction from the localhost
+server and documents the internal `dataset-forge/review-desk-data/v1` contract.
+
+Scope:
+
+- Keep `dataset-forge review` as the primary local browser workflow.
+- Move deterministic Review Desk payload builders into an internal contract
+  module.
+- Test overview, review progress, top finding category, analyzer coverage,
+  next-action, and full payload generation directly.
+- Preserve the existing Review Desk browser behavior and public command
+  surface.
+- Preserve `review_decisions.json` schema v2.
+
+Constraints:
+
+- No source-image modification.
+- No file movement, copying, deletion, export, or quarantine folder creation.
+- No cleanup, repair, execution, or automatic improvement action.
+- No analyzer threshold changes.
+- No new analyzer families.
+- No inspection profile UI or configurable review signal UI.
+- No hosted app, login, database, cloud service, or network dependency.
+
+---
+
 ## v1.0: Stable LoRA Dataset Decision Engine
 
 **Goal:** Ship a stable, read-only product that helps users decide what belongs

@@ -618,6 +618,42 @@ deterministic next action. It does not run analyzers, inspect pixels, modify
 images, move files, copy files, create quarantine folders, export datasets,
 change analyzer thresholds, or change the review-decision schema.
 
+v0.22 keeps the Review Desk behavior unchanged and separates the internal
+Review Desk data contract from the localhost server. `review_desk.py` owns
+sidecar loading, pure deterministic payload builders, overview/progress/top
+category/analyzer coverage/next-action construction. `review_server.py` owns
+HTTP routing, image serving, the browser shell, and the
+`review_decisions.json` save endpoint. This boundary exists so future dataset
+analytics and inspection manifests can build on stable sidecar-derived payloads
+without coupling analyzer execution, UI rendering, and review workflow logic.
+It does not add profiles, analyzer configuration, cleanup, execution, export,
+repair, source-image modification, file movement, or schema changes.
+
+The internal Review Desk payload schema is
+`dataset-forge/review-desk-data/v1`. Its stable top-level fields are:
+
+- `schema`
+- `review_decisions_schema`
+- `dataset_path`
+- `summary`
+- `overview`
+- `analyzer_coverage`
+- `decision_values`
+- `workflow_states`
+- `scope`
+- `images`
+- `rows`
+
+`images` and `rows` currently expose the same image-centered collection for
+backward compatibility with the existing browser code. Each image row includes
+identity, source image path, thumbnail route, filename, triage status,
+recommendation code, reason codes, analyzer/category/severity/confidence
+evidence, nested finding references, suggested human action, dossier anchor,
+current human decision, workflow state, notes, and decision history. The
+contract is derived only from generated sidecars and optional
+`review_decisions.json`; it must not assume every analyzer executed, every
+finding is displayed, or every finding affects triage.
+
 v0.10 adds `dataset-forge inspect --review-gallery`, which writes
 `review_gallery.html` from the existing `inspection_report.json` and
 `recommendation_summary.json` sidecars. The gallery is plain deterministic HTML

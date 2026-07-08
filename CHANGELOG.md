@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.22.0-alpha
+
+- Split Review Desk sidecar loading and deterministic payload construction into
+  `review_desk.py`.
+- Kept `review_server.py` focused on localhost HTTP routing, image serving, the
+  decision save endpoint, and the browser shell.
+- Documented the internal Review Desk data contract:
+  `dataset-forge/review-desk-data/v1`.
+- Added direct tests for Review Desk payload shape, deterministic overview,
+  review progress, top finding categories, analyzer coverage, and next-action
+  builders.
+- Preserved existing Review Desk behavior, public CLI surface,
+  `review_decisions.json` schema v2, and read-only guarantees.
+- Kept profiles, configurable review signals, cleanup, execution, export,
+  repair, source-image modification, file movement, analyzer threshold changes,
+  and new analyzer families out of scope.
+
 ## v0.21.0-alpha
 
 - Added a Dataset Overview to the local Review Desk.

@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-07. Reflects v0.21.0-alpha.*
+*Last updated: 2026-07-07. Reflects v0.22.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.21.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.22.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -44,6 +44,12 @@ coverage summaries, deterministic next-action guidance, and clearer read-only
 scope language. It keeps `review_decisions.json` on schema v2 and does not add
 cleanup, execution, export, new analyzers, threshold changes, file movement, or
 source-image modification.
+v0.22 separates the Review Desk data contract from the localhost server:
+`review_desk.py` builds deterministic sidecar-derived payloads, while
+`review_server.py` remains the local HTTP/browser shell and owns the
+`review_decisions.json` save endpoint. It preserves Review Desk behavior,
+public commands, review decision schema v2, analyzer thresholds, and all
+read-only guarantees.
 
 Current public behavior remains inspect-first:
 
@@ -51,7 +57,7 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.21.0-alpha:
+Supported in v0.22.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- local-only browser Review Desk
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
@@ -125,7 +131,7 @@ Supported in v0.21.0-alpha:
 - No analyzer threshold changes
 - No improvement execution, cleanup, repair, export, hosted web app, plugins, or new analyzers
 
-Not supported in v0.21.0-alpha (planned for later releases):
+Not supported in v0.22.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -341,29 +347,30 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-### v0.21.0-alpha Validation
+### v0.22.0-alpha Validation
 
-v0.21 is implemented as Review Desk Dataset Overview, not execution. The
-remaining release-readiness task is real-world validation on the anthropomorphic
-LoRA dataset:
+v0.22 is implemented as Review Desk Maintainability & Contracts, not a new
+user-visible workflow. The remaining release-readiness task is to confirm the
+internal split preserves Review Desk behavior:
 
-1. Run `dataset-forge inspect`.
-2. Open `dataset-forge review <inspect_output>`.
-3. Confirm the Review Desk makes Priority Review, Needs Review, and No Findings
-   Emitted images understandable at image-card level.
-4. Confirm the Dataset Overview reports review progress, top categories,
+1. Run the Review Desk data contract tests.
+2. Run `dataset-forge inspect`.
+3. Open `dataset-forge review <inspect_output>`.
+4. Confirm the Review Desk still makes Priority Review, Needs Review, and No
+   Findings Emitted images understandable at image-card level.
+5. Confirm the Dataset Overview still reports review progress, top categories,
    analyzer coverage, and deterministic next-action guidance.
-5. Record sample Keep, Accepted Style / False Positive, Improvement Candidate,
+6. Record sample Keep, Accepted Style / False Positive, Improvement Candidate,
    Removal Candidate, and Undecided decisions.
-6. Confirm `review_decisions.json` uses schema
+7. Confirm `review_decisions.json` uses schema
    `dataset-forge/review-decisions/v2`.
-7. Confirm comparison, plan, and preview continue to consume the v2 decisions
+8. Confirm comparison, plan, and preview continue to consume the v2 decisions
    without executing or modifying images.
 
 Keep static `review_gallery.html` as a secondary read-only artifact. The local
 `dataset-forge review` command is now the primary human decision workflow.
 
-Explicitly out of scope for v0.21:
+Explicitly out of scope for v0.22:
 
 - deterministic execution
 - cleanup execution

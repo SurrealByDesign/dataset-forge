@@ -12,6 +12,15 @@ import numpy as np
 from PIL import Image
 
 from dataset_forge.review_decisions import REVIEW_DECISIONS_SCHEMA
+from dataset_forge.review_desk import (
+    REVIEW_DESK_DATA_SCHEMA,
+    build_analyzer_coverage,
+    build_next_action,
+    build_overview,
+    build_review_payload,
+    build_review_progress,
+    build_top_categories,
+)
 from dataset_forge.review_server import (
     LOCAL_REVIEW_HOST,
     ReviewServerError,
@@ -155,6 +164,7 @@ class ReviewServerDataTests(unittest.TestCase):
 
             data = build_review_data(output)
 
+        self.assertEqual(data["schema"], REVIEW_DESK_DATA_SCHEMA)
         self.assertEqual(data["summary"]["review_image_count"], 2)
         self.assertEqual(data["summary"]["pending_review_count"], 2)
         self.assertEqual(
@@ -165,6 +175,99 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertEqual(priority["finding_count"], 2)
         self.assertIn("artifact.texture", priority["finding_categories"])
         self.assertIn("ready.png", json.dumps(data))
+
+    def test_review_payload_contract_has_stable_top_level_shape(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, _image = _write_workspace(Path(tmp), include_needs_review=True)
+            workspace = load_review_workspace(output)
+
+            data = build_review_payload(workspace)
+
+        self.assertEqual(
+            set(data),
+            {
+                "schema",
+                "review_decisions_schema",
+                "dataset_path",
+                "summary",
+                "overview",
+                "analyzer_coverage",
+                "decision_values",
+                "workflow_states",
+                "scope",
+                "images",
+                "rows",
+            },
+        )
+        self.assertIs(data["images"], data["rows"])
+        self.assertEqual(data["schema"], REVIEW_DESK_DATA_SCHEMA)
+        self.assertEqual(data["review_decisions_schema"], REVIEW_DECISIONS_SCHEMA)
+        self.assertEqual(
+            set(data["images"][0]),
+            {
+                "id",
+                "image_path",
+                "thumbnail_url",
+                "filename",
+                "triage_status",
+                "recommendation",
+                "primary_reason",
+                "reason_codes",
+                "finding_categories",
+                "analyzers",
+                "severities",
+                "max_confidence",
+                "finding_count",
+                "finding_refs",
+                "findings",
+                "evidence_summary",
+                "suggested_review_action",
+                "confidence_note",
+                "no_finding_semantics",
+                "dossier_anchor",
+                "decision",
+                "workflow_state",
+                "notes",
+                "decision_history",
+            },
+        )
+
+    def test_pure_review_builders_are_deterministic(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, _image = _write_workspace(Path(tmp), include_needs_review=True)
+            data = build_review_data(output)
+
+        images = data["images"]
+        source_summary = {
+            "image_count": 3,
+            "priority_review_count": 1,
+            "needs_review_count": 1,
+            "ready_for_training_count": 1,
+        }
+        coverage = data["analyzer_coverage"]
+
+        self.assertEqual(
+            build_review_progress(images),
+            {
+                "review_image_count": 3,
+                "reviewed_count": 0,
+                "pending_review_count": 3,
+                "completion_percent": 0.0,
+            },
+        )
+        self.assertEqual(
+            build_next_action(images)["target_filter"],
+            {"triage_status": "Priority Review", "decision": "UNDECIDED"},
+        )
+        self.assertEqual(build_top_categories(images), data["overview"]["top_finding_categories"])
+        self.assertEqual(
+            build_analyzer_coverage(coverage),
+            data["overview"]["analyzer_coverage_summary"],
+        )
+        self.assertEqual(
+            build_overview(images, source_summary, coverage),
+            data["overview"],
+        )
 
     def test_overview_counts_and_scope_are_computed_from_sidecars(self) -> None:
         with TemporaryDirectory() as tmp:

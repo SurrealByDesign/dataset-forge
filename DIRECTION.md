@@ -7,9 +7,9 @@
 
 ## Current Objective
 
-**v0.21.0-alpha** -- make the local Review Desk a clearer dataset curation
-workstation by adding a Dataset Overview and deterministic next-action
-guidance.
+**v0.22.0-alpha** -- strengthen the local Review Desk foundation by separating
+the Review Desk data contract from the localhost server while preserving the
+same user-facing behavior.
 
 The Review Desk remains the primary human-facing interface. It consumes
 existing inspect sidecars, shows review progress, explains which images need
@@ -35,13 +35,12 @@ The product reduces uncertainty. It does not automate judgment.
 
 ## What Is In Scope Now
 
-- Dataset Overview inside the localhost Review Desk
-- review progress counts and decision counts
-- next-action guidance based only on existing sidecars
-- top finding category summaries
-- analyzer coverage summaries
-- clearer read-only and sidecar-driven scope language
-- documentation cleanup that reflects the current review-first direction
+- stable internal Review Desk data contract
+- pure deterministic Review Desk payload builders
+- separated localhost server and sidecar-derived data construction
+- tests for overview, review progress, top category, analyzer coverage, and
+  next-action builders
+- architecture documentation for the Review Desk contract boundary
 
 ---
 
@@ -60,7 +59,7 @@ The product reduces uncertainty. It does not automate judgment.
 - database-backed state
 
 `cleanup/`, `execution/`, `transforms/`, and `exporters/` remain legacy or
-future-only code paths. They are not part of the public v0.21 workflow and
+future-only code paths. They are not part of the public v0.22 workflow and
 should not be expanded for this release.
 
 ---
