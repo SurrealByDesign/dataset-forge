@@ -115,6 +115,17 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertTrue(result.triage_dossier_markdown.exists())
         self.assertEqual(data["schema"], "dataset-forge/triage-dossiers/v1")
         self.assertEqual(data["summary"]["no_findings_emitted_count"], 2)
+        self.assertEqual(
+            data["policy_semantics"],
+            {
+                "dossier_basis": "triage_included_findings",
+                "visible_findings_basis": "display_visible_findings",
+                "executed_findings_source": "inspection_report.json",
+                "policy_source": "inspection_manifest.json",
+                "all_current_findings_visible": True,
+                "all_current_findings_triage_included": True,
+            },
+        )
         self.assertEqual(data["scope"]["execution"], "out_of_scope")
         self.assertEqual(data["scope"]["cleanup"], "out_of_scope")
         self.assertEqual(data["scope"]["export"], "out_of_scope")
@@ -458,6 +469,15 @@ class TestRunInspectBasic(unittest.TestCase):
         data = json.loads(result.json_report.read_text(encoding="utf-8"))
 
         self.assertEqual(data["schema"], "dataset-forge/inspection/v1")
+        self.assertEqual(
+            data["finding_policy_semantics"],
+            {
+                "findings_scope": "executed_findings",
+                "policy_source": "inspection_manifest.analyzers",
+                "all_current_findings_visible": True,
+                "all_current_findings_triage_included": True,
+            },
+        )
         self.assertNotIn("recommendation_summary", data)
         self.assertNotIn("review_gallery", data)
         self.assertNotIn("contact_sheets", data)

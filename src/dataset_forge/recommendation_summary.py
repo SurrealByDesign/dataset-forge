@@ -12,6 +12,14 @@ from dataset_forge.finding import Finding, Severity
 
 
 RECOMMENDATION_SUMMARY_SCHEMA = "dataset-forge/recommendation-summary/v1"
+POLICY_SEMANTICS = {
+    "recommendation_basis": "triage_included_findings",
+    "visible_findings_basis": "display_visible_findings",
+    "executed_findings_source": "inspection_report.json",
+    "policy_source": "inspection_manifest.json",
+    "all_current_findings_visible": True,
+    "all_current_findings_triage_included": True,
+}
 
 READY_FOR_TRAINING = "READY_FOR_TRAINING"
 NEEDS_REVIEW = "NEEDS_REVIEW"
@@ -127,6 +135,7 @@ class RecommendationSummary:
     priority_review_count: int
     analyzer_error_count: int
     analyzer_coverage: dict[str, Any]
+    finding_set_counts: dict[str, dict[str, int]]
     recommendations: tuple[ImageRecommendation, ...]
 
     def to_dict(self) -> dict[str, Any]:
@@ -142,6 +151,11 @@ class RecommendationSummary:
                 "analyzer_error_count": self.analyzer_error_count,
             },
             "analyzer_coverage": self.analyzer_coverage,
+            "policy_semantics": dict(POLICY_SEMANTICS),
+            "finding_set_counts": {
+                name: dict(counts)
+                for name, counts in self.finding_set_counts.items()
+            },
             "recommendations": [
                 recommendation.to_dict()
                 for recommendation in self.recommendations
@@ -183,6 +197,7 @@ def build_recommendation_summary(
         ),
         analyzer_error_count=sum(1 for finding in findings if _is_analyzer_error(finding)),
         analyzer_coverage=_analyzer_coverage(findings, context),
+        finding_set_counts=_finding_set_counts(findings),
         recommendations=recommendations,
     )
 
@@ -696,6 +711,19 @@ def _analyzer_coverage(
     }
 
 
+def _finding_set_counts(findings: list[Finding]) -> dict[str, dict[str, int]]:
+    affected = {str(finding.image_path) for finding in findings}
+    counts = {
+        "finding_count": len(findings),
+        "affected_image_count": len(affected),
+    }
+    return {
+        "executed": dict(counts),
+        "visible": dict(counts),
+        "triage": dict(counts),
+    }
+
+
 def _analyzer_versions_from_findings(findings: list[Finding]) -> dict[str, str]:
     versions: dict[str, str] = {}
     for finding in findings:
@@ -737,6 +765,7 @@ __all__ = [
     "DISPLAY_LABELS",
     "NEEDS_REVIEW",
     "PRIORITY_REVIEW",
+    "POLICY_SEMANTICS",
     "READY_FOR_TRAINING",
     "RECOMMENDATION_SUMMARY_SCHEMA",
     "FindingRef",

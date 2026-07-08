@@ -17,6 +17,7 @@ from dataset_forge.context import (
 )
 from dataset_forge.finding import Finding, Severity
 from dataset_forge.report import (
+    FINDING_POLICY_SEMANTICS,
     REPORT_SCHEMA,
     write_inspection_report,
     write_json_report,
@@ -162,6 +163,11 @@ class TestJSONReportSchema(unittest.TestCase):
             d["review_queue"]["schema"],
             "dataset-forge/review-queue/v1",
         )
+
+    def test_additive_policy_semantics_section_present(self):
+        d = self._write([_finding()])
+
+        self.assertEqual(d["finding_policy_semantics"], FINDING_POLICY_SEMANTICS)
 
     def test_existing_report_fields_remain_present_with_additive_sections(self):
         d = self._write([_finding()])

@@ -20,6 +20,12 @@ from dataset_forge.finding import Finding, Severity
 from dataset_forge.post_inspection import build_post_inspection_sections
 
 REPORT_SCHEMA = "dataset-forge/inspection/v1"
+FINDING_POLICY_SEMANTICS = {
+    "findings_scope": "executed_findings",
+    "policy_source": "inspection_manifest.analyzers",
+    "all_current_findings_visible": True,
+    "all_current_findings_triage_included": True,
+}
 
 # Severities shown in summary counts, in display order.
 _COUNTED_SEVERITIES = (Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW)
@@ -98,6 +104,7 @@ def _build_json(
         "findings": [
             f.to_dict() for f in sorted(findings, key=_sort_key)
         ],
+        "finding_policy_semantics": dict(FINDING_POLICY_SEMANTICS),
         "summary": {
             "total_findings": len(findings),
             "images_with_findings": len(affected),

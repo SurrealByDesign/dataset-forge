@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from dataset_forge.comparison import (
+    COMPARISON_SEMANTICS,
     COMPARISON_SUMMARY_SCHEMA,
     ComparisonError,
     build_comparison_summary,
@@ -247,6 +248,7 @@ class ComparisonSummaryTests(unittest.TestCase):
 
         self.assertEqual(summary["schema"], COMPARISON_SUMMARY_SCHEMA)
         self.assertIn("inspection_compatibility", summary)
+        self.assertEqual(summary["comparison_semantics"], COMPARISON_SEMANTICS)
         self.assertEqual(summary["recommendation_counts"]["priority_review_count"]["delta"], 2)
         self.assertEqual(json.loads(json.dumps(summary)), summary)
 
@@ -601,6 +603,7 @@ class ComparisonSummaryTests(unittest.TestCase):
         self.assertIn("## Inspection Compatibility", markdown)
         self.assertIn("Status: provenance_unavailable", markdown)
         self.assertIn("provenance compatibility could not be verified", markdown)
+        self.assertIn("Finding deltas use executed findings", markdown)
 
     def test_deterministic_ordering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

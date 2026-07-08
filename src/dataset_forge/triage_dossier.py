@@ -15,6 +15,14 @@ from dataset_forge.recommendation_summary import RecommendationSummary
 TRIAGE_DOSSIER_SCHEMA = "dataset-forge/triage-dossiers/v1"
 TRIAGE_DOSSIER_JSON = "triage_dossiers.json"
 TRIAGE_DOSSIER_MARKDOWN = "triage_dossiers.md"
+TRIAGE_POLICY_SEMANTICS = {
+    "dossier_basis": "triage_included_findings",
+    "visible_findings_basis": "display_visible_findings",
+    "executed_findings_source": "inspection_report.json",
+    "policy_source": "inspection_manifest.json",
+    "all_current_findings_visible": True,
+    "all_current_findings_triage_included": True,
+}
 
 
 def write_triage_dossier_files(
@@ -72,6 +80,7 @@ def build_triage_dossiers(
             "dossier_count": len(summary.recommendations),
         },
         "analyzer_coverage": summary.analyzer_coverage,
+        "policy_semantics": dict(TRIAGE_POLICY_SEMANTICS),
         "scope": {
             "read_only": True,
             "advisory": True,
@@ -250,6 +259,7 @@ __all__ = [
     "TRIAGE_DOSSIER_JSON",
     "TRIAGE_DOSSIER_MARKDOWN",
     "TRIAGE_DOSSIER_SCHEMA",
+    "TRIAGE_POLICY_SEMANTICS",
     "build_triage_dossiers",
     "render_triage_dossiers_markdown",
     "write_triage_dossier_files",

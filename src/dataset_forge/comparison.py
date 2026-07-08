@@ -15,6 +15,11 @@ from dataset_forge.review_decisions import load_review_decisions
 
 
 COMPARISON_SUMMARY_SCHEMA = "dataset-forge/comparison-summary/v1"
+COMPARISON_SEMANTICS = {
+    "finding_deltas": "executed_findings",
+    "recommendation_deltas": "triage_included_findings",
+    "policy_aware": True,
+}
 
 INSPECTION_REPORT_FILENAME = "inspection_report.json"
 RECOMMENDATION_SUMMARY_FILENAME = "recommendation_summary.json"
@@ -109,6 +114,7 @@ def build_comparison_summary(before_output: Path, after_output: Path) -> dict[st
             "after_decision_count": after["review_decision_count"],
         },
         "inspection_compatibility": _inspection_compatibility(before, after),
+        "comparison_semantics": dict(COMPARISON_SEMANTICS),
         "recommendation_counts": recommendation_counts,
         "finding_category_counts": category_counts,
         "analyzer_output_counts": analyzer_counts,
@@ -156,6 +162,11 @@ def render_comparison_markdown(summary: Mapping[str, Any]) -> str:
     ]
     lines.extend(_markdown_inspection_compatibility(summary["inspection_compatibility"]))
     lines.extend([
+        "",
+        (
+            "Finding deltas use executed findings; recommendation deltas use "
+            "triage-included recommendation semantics."
+        ),
         "",
         "## Recommendation Counts",
         "",
@@ -855,6 +866,7 @@ def _yes_no(value: bool) -> str:
 __all__ = [
     "COMPARISON_JSON_FILENAME",
     "COMPARISON_MARKDOWN_FILENAME",
+    "COMPARISON_SEMANTICS",
     "COMPARISON_SUMMARY_SCHEMA",
     "ComparisonError",
     "build_comparison_summary",

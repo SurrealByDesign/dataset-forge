@@ -16,6 +16,7 @@ from dataset_forge.context import (
 from dataset_forge.finding import Finding, Severity
 from dataset_forge.recommendation_summary import (
     NEEDS_REVIEW,
+    POLICY_SEMANTICS,
     PRIORITY_REVIEW,
     READY_FOR_TRAINING,
     RECOMMENDATION_SUMMARY_SCHEMA,
@@ -187,6 +188,8 @@ class RecommendationContractTests(unittest.TestCase):
                 "source_report_schema",
                 "summary",
                 "analyzer_coverage",
+                "policy_semantics",
+                "finding_set_counts",
                 "recommendations",
             },
         )
@@ -215,6 +218,32 @@ class RecommendationContractTests(unittest.TestCase):
                 "confidence_note",
             },
         )
+
+    def test_policy_semantics_are_recorded(self) -> None:
+        payload = build_recommendation_summary(
+            [_finding("img_0.png", severity=Severity.MEDIUM)],
+            _context(),
+        ).to_dict()
+
+        self.assertEqual(payload["policy_semantics"], POLICY_SEMANTICS)
+
+    def test_finding_set_counts_are_currently_identical(self) -> None:
+        payload = build_recommendation_summary(
+            [
+                _finding("img_0.png", severity=Severity.HIGH),
+                _finding("img_0.png", severity=Severity.MEDIUM),
+                _finding("img_1.png", severity=Severity.LOW),
+            ],
+            _context(),
+        ).to_dict()
+
+        expected = {
+            "finding_count": 3,
+            "affected_image_count": 2,
+        }
+        self.assertEqual(payload["finding_set_counts"]["executed"], expected)
+        self.assertEqual(payload["finding_set_counts"]["visible"], expected)
+        self.assertEqual(payload["finding_set_counts"]["triage"], expected)
 
     def test_finding_refs_expose_only_analyzer_category_and_severity(self) -> None:
         item = _recommendations_by_name([
