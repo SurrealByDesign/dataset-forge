@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.26.0-alpha** -- adds internal Analyzer Descriptors while preserving read-only review workflows.
+**v0.27.0-alpha** -- adds internal review signal policy resolution while preserving read-only review workflows.
 
 Dataset Forge helps you decide which images belong in your LoRA before you train.
 
@@ -26,13 +26,14 @@ Raw Dataset
 -> Train
 ```
 
-**v0.26.0-alpha is read-only decision support.** Dataset Forge reads your
+**v0.27.0-alpha is read-only decision support.** Dataset Forge reads your
 dataset and writes reports beside it. It never modifies source images. There is
 still no cleanup, repair, export, hosted web app, cloud service, plugins, or
-new analyzer family in this release. v0.26 adds an internal Analyzer Descriptor
-System so inspection provenance, Dataset Intelligence, and future review-signal
-work share one analyzer metadata source. This is not user configuration, a
-plugin system, profile UI, or analyzer behavior change.
+new analyzer family in this release. v0.27 adds internal review signal policy
+resolution so future configuration can separate analyzer execution, display,
+and triage participation without changing current behavior. This is not user
+configuration, analyzer toggles, a plugin system, profile UI, or an analyzer
+behavior change.
 
 ---
 
@@ -185,12 +186,12 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.26.0-alpha exposes `inspect`,
+- **No public recommendation command yet.** v0.27.0-alpha exposes `inspect`,
   local `review`, sidecar-only `compare`, advisory `plan`, and
   execution-free `preview`. There is no separate `dataset-forge recommend`
   command.
 
-- **No cleanup, repair, execution, or export.** v0.26.0-alpha is read-only.
+- **No cleanup, repair, execution, or export.** v0.27.0-alpha is read-only.
   Improvement Planning writes `improvement_plan.json` and
   `improvement_plan.md` only. Improvement Preview writes
   `improvement_preview.json` and `improvement_preview.md` only. Cleanup,
@@ -398,6 +399,30 @@ Analyzer Descriptors are internal metadata and provenance support. They are not
 user configuration, configurable review signals, review profiles, a plugin
 system, calibration metrics, analyzer threshold changes, new analyzers, cleanup,
 execution, export, repair, or image modification.
+
+---
+
+## v0.27 Review Signal Policy Resolution
+
+v0.27 adds an internal policy-resolution foundation for future Configurable
+Review Signals. It resolves effective analyzer policy from Analyzer Descriptor
+defaults only.
+
+Implemented v0.27 focus:
+
+- Add internal `ReviewSignalPolicy`, `ResolvedReviewSignalPolicy`, and
+  `PolicyResolution` helpers.
+- Keep policy fields limited to execution, display, and triage:
+  `enabled` / `disabled`, `visible` / `hidden`, and `included` / `excluded`.
+- Resolve all current analyzers to `enabled` / `visible` / `included`.
+- Make `inspection_manifest.json` policy values come from resolved effective
+  policy while preserving the existing manifest shape and current values.
+- Keep analyzers unaware of policies.
+
+This is internal architecture only. v0.27 does not add profile UI, analyzer
+toggles, user configuration, review profiles, new analyzers, calibration,
+threshold changes, cleanup, execution, export, repair, quarantine folders, or
+image modification.
 
 ---
 
@@ -757,7 +782,7 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.26.0-alpha.** There is no public flag or command that modifies, repairs,
+  v0.27.0-alpha.** There is no public flag or command that modifies, repairs,
   exports, rejects, or regenerates images. `dataset-forge plan` writes advisory
   Improvement Candidates only. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,

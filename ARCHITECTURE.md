@@ -709,6 +709,21 @@ run-specific fields such as `execution.executed`, `finding_count`, and
 snapshots, not live descriptors, so older runs remain meaningful even if future
 descriptor metadata changes.
 
+v0.27 adds internal review signal policy resolution in
+`src/dataset_forge/review_signal_policy.py`. The policy model is deliberately
+small: execution (`enabled` / `disabled`), display (`visible` / `hidden`), and
+triage (`included` / `excluded`). For v0.27, effective policy resolves from
+Analyzer Descriptor defaults only, so all current analyzers remain
+`enabled` / `visible` / `included`. `inspection_manifest.json` policy fields
+are now resolver-derived while preserving the existing manifest shape and
+current values.
+
+Policy resolution sits outside analyzer implementations. Analyzers do not read
+policy, change thresholds, alter behavior, or know about future Review
+Profiles. v0.27 does not add profile UI, analyzer toggles, user configuration,
+new analyzers, calibration, cleanup, execution, export, repair, quarantine
+folders, or image modification.
+
 v0.24 makes Dataset Comparison manifest-aware. When optional
 `inspection_manifest.json` sidecars are present, comparison adds an advisory
 `inspection_compatibility` section to `comparison_summary.json` and a short

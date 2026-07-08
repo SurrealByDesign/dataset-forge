@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-07. Reflects v0.26.0-alpha.*
+*Last updated: 2026-07-08. Reflects v0.27.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.26.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.27.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -77,6 +77,14 @@ execution/display/triage policies. The Inspection Manifest snapshots descriptor
 metadata while preserving its existing sidecar shape. This release does not add
 configuration UI, configurable review signals, review profiles, calibration
 metrics, plugins, new analyzers, threshold changes, or behavior changes.
+v0.27 adds an internal review signal policy-resolution foundation. Effective
+policy currently resolves from Analyzer Descriptor defaults only, so all current
+analyzers remain enabled / visible / included and behavior is unchanged. The
+Inspection Manifest now receives policy values from the resolver while
+preserving the existing manifest shape and values. This release does not add
+profile UI, analyzer toggles, user configuration, Review Profiles, new
+analyzers, calibration, threshold changes, cleanup, execution, export, repair,
+quarantine folders, image modification, or behavior changes.
 
 Current public behavior remains inspect-first:
 
@@ -84,7 +92,7 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.26.0-alpha:
+Supported in v0.27.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- local-only browser Review Desk
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
@@ -102,6 +110,8 @@ Supported in v0.26.0-alpha:
   metadata only
 - Internal Analyzer Descriptor System for built-in analyzer metadata and
   manifest provenance snapshots
+- Internal Review Signal Policy Resolution for deterministic effective
+  execution/display/triage policy snapshots
 - Optional static review gallery (`review_gallery.html`) from
   `dataset-forge inspect --review-gallery`
 - Optional Recommendation Contact Sheets (`priority_review_contact_sheet.png`,
@@ -166,7 +176,7 @@ Supported in v0.26.0-alpha:
 - No configurable review signals, profile UI, analyzer toggles, blocking
   comparison behavior, quality scoring, or generic dataset analytics
 
-Not supported in v0.26.0-alpha (planned for later releases):
+Not supported in v0.27.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -179,7 +189,7 @@ Not supported in v0.26.0-alpha (planned for later releases):
 - Plugin system (v2+)
 - Additional analyzers beyond the current first-pass set (v1.x)
 - Calibrated thresholds (pending labeled benchmark ground truth)
-- Configurable Review Signals
+- User-facing Configurable Review Signals
 - Generic dataset analytics beyond deterministic Dataset Intelligence
 
 ---

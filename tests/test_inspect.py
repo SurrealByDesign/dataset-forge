@@ -23,6 +23,10 @@ from dataset_forge.inspect import InspectResult, run_inspect
 from dataset_forge.finding import Finding, Severity
 from dataset_forge.measurements import measure_image as real_measure_image
 from dataset_forge.review_decisions import REVIEW_DECISIONS_SCHEMA
+from dataset_forge.review_signal_policy import (
+    ResolvedReviewSignalPolicy,
+    ReviewSignalPolicy,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -244,6 +248,38 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertEqual(data["analyzers"][0]["version"], "v1")
         self.assertEqual(data["analyzers"][0]["finding_count"], 2)
         self.assertEqual(data["analyzers"][0]["image_count"], 2)
+
+    def test_inspection_manifest_policy_values_are_resolver_derived(self):
+        _write_smooth(self.dataset, n=1)
+
+        def fake_resolution(descriptor):
+            return type(
+                "Resolution",
+                (),
+                {
+                    "effective_policy": ResolvedReviewSignalPolicy(
+                        analyzer_id=descriptor.id,
+                        policy=ReviewSignalPolicy(
+                            execution="disabled",
+                            display="hidden",
+                            triage="excluded",
+                        ),
+                        source="test_override",
+                    )
+                },
+            )()
+
+        with patch(
+            "dataset_forge.inspection_manifest.resolve_review_signal_policy",
+            side_effect=fake_resolution,
+        ):
+            result = run_inspect(self.dataset, self.output)
+        data = json.loads(result.inspection_manifest.read_text(encoding="utf-8"))
+
+        for row in data["analyzers"]:
+            self.assertEqual(row["execution"], {"policy": "disabled", "executed": True})
+            self.assertEqual(row["display"], {"policy": "hidden"})
+            self.assertEqual(row["triage"], {"policy": "excluded"})
 
     def test_review_decisions_template_written_when_absent(self):
         _write_smooth(self.dataset, n=2)

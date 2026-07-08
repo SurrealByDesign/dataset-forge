@@ -17,6 +17,10 @@ from dataset_forge.analyzers.base import Analyzer
 from dataset_forge.finding import Finding
 from dataset_forge.recommendation_summary import RECOMMENDATION_SUMMARY_SCHEMA
 from dataset_forge.report import REPORT_SCHEMA
+from dataset_forge.review_signal_policy import (
+    ResolvedReviewSignalPolicy,
+    resolve_review_signal_policy,
+)
 from dataset_forge.triage_dossier import TRIAGE_DOSSIER_SCHEMA
 
 INSPECTION_MANIFEST_SCHEMA = "dataset-forge/inspection-manifest/v1"
@@ -145,6 +149,21 @@ def _analyzer_manifest_row(
     finding_counts: Mapping[str, int],
     finding_image_counts: Mapping[str, int],
 ) -> dict[str, Any]:
+    policy = resolve_review_signal_policy(descriptor).effective_policy
+    return _analyzer_manifest_row_from_policy(
+        descriptor,
+        policy,
+        finding_counts,
+        finding_image_counts,
+    )
+
+
+def _analyzer_manifest_row_from_policy(
+    descriptor: AnalyzerDescriptor,
+    policy: ResolvedReviewSignalPolicy,
+    finding_counts: Mapping[str, int],
+    finding_image_counts: Mapping[str, int],
+) -> dict[str, Any]:
     analyzer_id = f"{descriptor.id}/{descriptor.version}"
     return {
         "id": descriptor.id,
@@ -154,14 +173,14 @@ def _analyzer_manifest_row(
         "categories_emitted": list(descriptor.categories_emitted),
         "calibration_status": descriptor.calibration_status,
         "execution": {
-            "policy": descriptor.default_execution_policy,
+            "policy": policy.execution,
             "executed": True,
         },
         "display": {
-            "policy": descriptor.default_display_policy,
+            "policy": policy.display,
         },
         "triage": {
-            "policy": descriptor.default_triage_policy,
+            "policy": policy.triage,
         },
         "finding_count": finding_counts.get(analyzer_id, 0),
         "image_count": finding_image_counts.get(analyzer_id, 0),

@@ -856,11 +856,43 @@ Constraints:
 - No cleanup, execution, export, repair, transforms, quarantine behavior, source
   image modification, or image handling changes.
 
-## v0.27+: Configurable Review Signals
+## v0.27.0-alpha: Configurable Review Signals Foundation
 
-Configurable Review Signals should build on Analyzer Descriptors by resolving
-effective execution, display, and triage policies while keeping descriptor
-defaults separate from run-specific policy state.
+**Goal:** Add internal policy resolution without changing current behavior.
+
+v0.27 creates the foundation that future Configurable Review Signals and Review
+Profiles can build on. It is not a user-facing configuration release.
+
+Scope:
+
+- Add internal `ReviewSignalPolicy`, `ResolvedReviewSignalPolicy`, and
+  `PolicyResolution` helpers.
+- Keep policy fields limited to execution, display, and triage.
+- Resolve effective policy from Analyzer Descriptor defaults only.
+- Keep all current analyzers resolving to enabled / visible / included.
+- Make Inspection Manifest analyzer policy fields resolver-derived while
+  preserving the existing `inspection_manifest.json` shape and current values.
+- Keep analyzers unaware of policy.
+
+Constraints:
+
+- No analyzer behavior changes.
+- No threshold changes.
+- No recommendation behavior changes.
+- No Review Desk behavior changes.
+- No comparison behavior changes.
+- No Dataset Intelligence behavior changes.
+- No existing sidecar schema changes.
+- No public CLI surface changes beyond version metadata.
+- No profile UI, analyzer toggles, user configuration, Review Profiles, new
+  analyzers, calibration, cleanup, execution, export, repair, transforms,
+  quarantine behavior, source image modification, or image handling changes.
+
+## v0.28+: Review Profile Contract
+
+Future Review Profiles should build on the v0.27 resolver by layering profile
+policy overrides on top of Analyzer Descriptor defaults. This remains future
+work; v0.27 does not expose profile selection or analyzer toggles.
 
 ---
 

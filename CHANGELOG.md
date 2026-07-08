@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.27.0-alpha
+
+- Added an internal Review Signal Policy Resolution foundation.
+- Added `review_signal_policy.py` with `ReviewSignalPolicy`,
+  `ResolvedReviewSignalPolicy`, and `PolicyResolution`.
+- Kept policy fields limited to execution, display, and triage:
+  enabled / disabled, visible / hidden, and included / excluded.
+- Resolved v0.27 effective policy from Analyzer Descriptor defaults only, so
+  all current analyzers remain enabled / visible / included.
+- Updated Inspection Manifest generation so analyzer policy values come from
+  resolved effective policy while preserving the existing
+  `inspection_manifest.json` shape and current values.
+- Kept analyzers unaware of policies.
+- Did not add profile UI, analyzer toggles, user configuration, Review Profiles,
+  new analyzers, calibration, analyzer behavior changes, threshold changes,
+  recommendation changes, Review Desk changes, comparison changes, Dataset
+  Intelligence changes, cleanup, execution, export, repair, quarantine folders,
+  image handling changes, or image modification.
+
 ## v0.26.0-alpha
 
 - Added an internal Analyzer Descriptor System.
