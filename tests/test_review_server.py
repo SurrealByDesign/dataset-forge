@@ -154,7 +154,7 @@ def _write_workspace(
                 "schema": "dataset-forge/inspection-manifest/v1",
                 "tool": {
                     "name": "dataset-forge",
-                    "version": "0.28.0a0",
+                    "version": "0.29.0a0",
                 },
                 "inspection": {
                     "profile": {
@@ -522,7 +522,7 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertEqual(coverage["error_count"], 0)
         characteristics = intelligence["dataset_characteristics"]
         self.assertEqual(characteristics["inspection_profile"]["id"], "default")
-        self.assertEqual(characteristics["dataset_forge_version"], "0.28.0a0")
+        self.assertEqual(characteristics["dataset_forge_version"], "0.29.0a0")
         self.assertEqual(characteristics["inspection_completed_at"], "2026-07-07T00:00:01Z")
         provenance = intelligence["provenance"]
         self.assertTrue(provenance["manifest_available"])
@@ -783,14 +783,23 @@ class ReviewServerHttpTests(unittest.TestCase):
 
         self.assertIn("Dataset Forge Review Desk", html)
         self.assertIn("Dataset Intelligence", html)
-        self.assertIn("does not grade, score, pass, fail", html)
+        self.assertIn("Overview from existing sidecars. No scoring, no automation.", html)
+        self.assertIn("<summary>Review Status</summary>", html)
+        self.assertIn("<summary>Evidence Summary</summary>", html)
+        self.assertIn("<summary>Analyzer Contribution</summary>", html)
+        self.assertIn("<summary>Dataset Coverage</summary>", html)
+        self.assertIn("<summary>Dataset Characteristics</summary>", html)
+        self.assertIn("<summary>Unresolved Evidence Categories</summary>", html)
         self.assertIn("Show Next Review Set", html)
         self.assertIn("This only changes filters and selection.", html)
         self.assertIn("Clear Filters", html)
+        self.assertIn("Review Queue", html)
         self.assertIn("Accepted Style", html)
         self.assertIn("Improvement Candidate", html)
-        self.assertIn("Removal Candidate", html)
+        self.assertIn("Exclude Candidate", html)
         self.assertIn("All decisions save to <code>review_decisions.json</code>", html)
+        self.assertIn('id="saveStatus"', html)
+        self.assertIn("Saving...", html)
         self.assertIn("No images match this group with the current filters.", html)
         self.assertIn("Advisory review signal", html)
         self.assertIn('id="filterSummary"', html)
@@ -800,7 +809,9 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Dataset Coverage", html)
         self.assertIn("Dataset Intelligence scope", html)
         self.assertIn("no quality score", html)
-        self.assertIn("Quarantine Planned is workflow intent only", html)
+        self.assertIn("Set Aside Intent (no files moved)", html)
+        self.assertIn("Set Aside Intent is workflow intent only", html)
+        self.assertIn("No current review finding. Not a guarantee.", html)
         self.assertIn("review_decisions.json", html)
         self.assertIn('id="zoomViewer"', html)
         self.assertIn("Actual size: 100% pixels", html)
@@ -808,6 +819,8 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Space: larger preview", html)
         self.assertIn("export datasets", html)
         self.assertIn("does not create quarantine folders or move files", html)
+        self.assertNotIn("Quarantine Planned (workflow note only)", html)
+        self.assertNotIn(">Removal Candidate<", html)
         for forbidden in ("repair", "<form", "localStorage"):
             self.assertNotIn(forbidden, html)
         self.assertEqual(data["summary"]["review_image_count"], 2)

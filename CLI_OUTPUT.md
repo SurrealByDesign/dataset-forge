@@ -1,102 +1,83 @@
 # Dataset Forge -- CLI Output Specification
 
-This file defines what success looks like for the public command-line
-experience.
+The public command-line experience should make the read-only workflow obvious.
 
-The CLI should answer a new user's first questions quickly:
+The CLI should quickly answer:
 
-- What should I run first?
-- Where were the reports written?
-- Which file should I open first?
-- Were my source images changed?
-
-Dataset Forge should use user workflow language before architecture language.
+- What happened?
+- Where were outputs written?
+- What should I open first?
+- Where are human decisions saved?
+- Were source images changed?
 
 ---
 
-## v0.20 Direction: Browser Review Desk Discoverability
+## Public Commands
 
-v0.20 should make the browser-based review desk the primary post-inspect
-handoff. After `inspect`, terminal output should clearly show:
+The public v1.0 surface is:
 
-- the output directory
-- the local review gallery / review desk to open first
-- the triage dossiers for detailed evidence
-- where browser review decisions are saved: `review_decisions.json`
+```text
+dataset-forge inspect <dataset>
+dataset-forge review <inspect_output>
+dataset-forge compare <before> <after> --output <comparison_output>
+dataset-forge plan <inspect_output>
+dataset-forge preview <improvement_plan.json>
+dataset-forge --help
+dataset-forge --version
+```
 
-The review desk should show images grouped by Priority Review, Needs Review,
-and No Findings Emitted, and should support local decision-making without
-modifying source images, executing cleanup, exporting datasets, adding
-automatic repair, or using network dependencies.
+Cleanup, export, execution, repair, profile selection, analyzer toggles,
+plugins, cloud features, databases, and image modification are not public
+v1.0 commands.
 
 ---
 
-## Command
+## Inspect Success Output
 
-```
-dataset-forge inspect path/to/dataset/
-```
+Expected shape:
 
----
-
-## Expected Terminal Output
-
-```
+```text
 Dataset Forge Inspect
 =====================
-Dataset:    path/to/dataset/
-Images:     100
-Analyzed:   100
-Errors:     0
+Dataset:  path/to/dataset
+Output:   path/to/dataset/inspect_output
 
-Building dataset context...
-  Resolution:      512x512 -- 1024x1536  (mean 768x1024)
-  Aspect ratios:   portrait 72%  square 18%  landscape 10%
-  Microtexture:    mean=39.9  stddev=11.6  p10=24.1  p90=55.2
-  Frequency:       baseline established (100 images)
-  Duplicates:      0 exact  2 near-duplicate pairs flagged
-
-Running analyzers...
-  [texture]                    100/100   8 findings
-  [crystalline_faceting]        100/100   6 findings
-  [oversharpening_halo]         100/100   3 findings
-  [high_frequency_isolated]     100/100   6 findings
+Images:   100
+Analyzed: 100
+Errors:   0
 
 Summary
 -------
-Total findings:     23
-  HIGH severity:     3
-  MEDIUM severity:  14
-  LOW severity:      6
+Total findings:  19
+  HIGH severity:  2
+  MEDIUM severity: 11
+  LOW severity:   6
 
-Images with findings:        19 / 100
-No Findings Emitted:         81 / 100
+Images with findings:        15 / 100
+No Findings Emitted:         85 / 100
 
-Recommendation: 81 images emitted no current review findings.
-                19 images deserve human review before training.
+85 images emitted no current review findings.
+15 images have findings. Review report for details.
 
 Recommendation Summary
 ----------------------
-  No Findings Emitted: 81
-  Needs Review:        16
-  Priority Review:     3
+  No Findings Emitted: 85
+  Needs Review:        13
+  Priority Review:     2
 
 Recommendations are advisory and based only on existing findings.
 Execution, cleanup, export, and source-image modification are out of scope.
 Source images were not modified.
 
-Reports written:
-  inspection_report.json
-  inspection_report.txt
-  recommendation_summary.json
-  recommendation_summary.md
-  triage_dossiers.json
-  triage_dossiers.md
-  inspection_manifest.json
-  review_decisions_template.json
-  review_gallery.html  # only with --review-gallery
-  priority_review_contact_sheet.png  # only with --contact-sheets
-  needs_review_contact_sheet.png     # only with --contact-sheets
+Report written:
+  path/to/dataset/inspect_output/inspection_report.json
+  path/to/dataset/inspect_output/inspection_report.txt
+  path/to/dataset/inspect_output/recommendation_summary.json
+  path/to/dataset/inspect_output/recommendation_summary.md
+  path/to/dataset/inspect_output/triage_dossiers.json
+  path/to/dataset/inspect_output/triage_dossiers.md
+  path/to/dataset/inspect_output/inspection_manifest.json
+  path/to/dataset/inspect_output/review_decisions_template.json
 
 Start Here
 ----------
@@ -110,17 +91,16 @@ Open first:
   inspection_report.json
 ```
 
+`No Findings Emitted` must not be described as training-ready, clean, approved,
+artifact-free, or guaranteed safe for training.
+
 ---
 
-## Review Command
+## Review Command Output
 
-```
-dataset-forge review path/to/dataset/inspect_output/
-```
+Expected shape:
 
-Expected terminal output:
-
-```
+```text
 Dataset Forge Review Desk
 =========================
 Inspect output: path/to/dataset/inspect_output
@@ -131,565 +111,59 @@ Source images and reports will not be modified.
 Press Ctrl+C to stop.
 ```
 
-The local review server:
+The Review Desk must communicate that it:
 
-- binds only to `127.0.0.1`
-- reads `inspection_report.json`, `recommendation_summary.json`, and optional
-- `triage_dossiers.json`, optional `inspection_manifest.json`, optional
-  `comparison_summary.json`, and optional `review_decisions.json`
-- computes Dataset Intelligence inside the Review Desk data contract from
-  existing sidecars only
+- serves localhost only
+- consumes generated sidecars
 - writes only `review_decisions.json`
-- does not modify source images, inspection reports, recommendation summaries,
-  static galleries, or contact sheets
-- does not change recommendation rules or analyzer behavior
-- does not score, grade, pass, or fail datasets
+- does not run analyzers
+- does not modify source images or reports
+- does not move files or create quarantine folders
+- does not clean, repair, export, or execute improvements
+- does not produce a quality score or readiness score
 
 ---
 
-## Analyzer Descriptor Metadata
+## Compare / Plan / Preview Wording
 
-v0.26 adds internal Analyzer Descriptors as provenance metadata support. v0.27
-adds internal review signal policy resolution from descriptor defaults. v0.28
-adds the internal Inspection Profile contract with the default no-override
-profile. They do not add CLI flags, user configuration, analyzer toggles,
-profile UI, profile selection, plugins, cleanup, execution, export, repair, or
-image modification.
+Comparison is advisory and sidecar-only. It should not imply that one run is
+better or worse unless the sidecars themselves directly say so.
 
-`dataset-forge inspect` still writes the same `inspection_manifest.json` shape,
-but analyzer rows are populated from the internal descriptor registry,
-profile-aware resolver-derived policy values, and run-specific fields such as
-executed state, finding count, and image count. The manifest also snapshots the
-default profile identity and profile content.
+Improvement Planning is advisory and planning-only. It writes plan sidecars; it
+does not execute changes.
+
+Improvement Preview is execution-free. It explains plan entries; it does not
+process images, modify files, or trigger cleanup.
 
 ---
 
-## Compare Command
+## Analyzer Trust Wording
 
-```
-dataset-forge compare path/to/before/inspect_output/ path/to/after/inspect_output/ --output path/to/comparison/
-```
+Findings should be described as advisory review signals. Confidence and
+severity should not be presented as certainty.
 
-Expected terminal output:
+Known false-positive contexts that may need human judgment:
 
-```
-Dataset Forge Compare
-=====================
-Before: path/to/before/inspect_output
-After:  path/to/after/inspect_output
-Output: path/to/comparison
+- JPEG compression, ringing, mosquito noise, chroma artifacts, or banding
+- natural paper, pencil, watercolor, canvas, or scan grain
+- intentional highlights, glitter, stars, freckles, or decorative specks
+- hard-edge line art, ink outlines, or crisp transitions
+- mixed-media and intentionally rough texture
 
-Comparison written:
-  comparison_summary.json
-  comparison_summary.md
-```
-
-The comparison command:
-
-- reads `inspection_report.json`, `recommendation_summary.json`, and optional
-  `review_decisions.json` from each inspect output folder
-- reads optional `inspection_manifest.json` from each inspect output folder and
-  reports advisory compatibility status when present or missing
-- writes only `comparison_summary.json` and `comparison_summary.md`
-- validates sidecar schemas before comparison
-- does not inspect images, compare pixels, rerun analyzers, modify existing
-  reports, modify recommendations, or modify review decisions
-- does not block comparison when manifests are missing or different
-- does not classify changes as better or worse
-
-`comparison_summary.md` is ordered for human review:
-
-1. Dataset Summary
-2. Inspection Compatibility
-3. Images With Changed Recommendations
-4. Images With New Findings
-5. Images With Resolved Findings
-6. Recommendation Count Changes
-7. Finding Category Changes
-8. Analyzer Output Changes
-
-`comparison_summary.json` uses schema
-`dataset-forge/comparison-summary/v1`.
+Dataset Forge does not include a JPEG/compression analyzer in v1.0.
 
 ---
 
-## Plan Command
+## Release Checks
 
-```
-dataset-forge plan path/to/dataset/inspect_output/
-```
+Before v1.0, run:
 
-Expected terminal output:
-
-```
-Dataset Forge Plan
-==================
-Inspect output: path/to/dataset/inspect_output
-Output:         path/to/dataset/inspect_output
-
-Improvement Plan written:
-  improvement_plan.json
-  improvement_plan.md
-
-Improvement Planning is advisory and planning-only.
-Source images and existing sidecars were not modified.
+```text
+python -m pytest tests/test_cli_surface.py -q
+python -m pytest tests/test_review_server.py -q
+python -m pytest -q
+git diff --check
 ```
 
-The plan command:
-
-- reads `inspection_report.json`, `recommendation_summary.json`, optional
-  `review_decisions.json`, and optional `comparison_summary.json`
-- writes only `improvement_plan.json` and `improvement_plan.md`
-- validates sidecar schemas before planning
-- maps existing findings to abstract Suggested Improvements only
-- respects human review decisions
-- does not inspect images, rerun analyzers, modify reports, modify
-  recommendations, modify review decisions, execute improvements, or modify
-  source images
-
-`improvement_plan.json` uses schema
-`dataset-forge/improvement-plan/v1`.
-
----
-
-## Preview Command
-
-```
-dataset-forge preview path/to/dataset/inspect_output/improvement_plan.json
-```
-
-Expected terminal output:
-
-```
-Dataset Forge Preview
-=====================
-Improvement plan: path/to/dataset/inspect_output/improvement_plan.json
-
-Improvement Preview written:
-  improvement_preview.json
-  improvement_preview.md
-
-Execution availability: Not Implemented.
-Source images and existing sidecars were not modified.
-```
-
-The preview command:
-
-- reads `improvement_plan.json`
-- optionally validates `review_decisions.json` and `comparison_summary.json`
-  from the same folder when present
-- writes only `improvement_preview.json` and `improvement_preview.md`
-- explains each Improvement Candidate, Suggested Improvement, triggering
-  finding, review decision, planning status, execution availability, and
-  expected outcome
-- does not inspect images, process pixels, rerun analyzers, change
-  recommendations, modify plans, modify reports, execute improvements, export
-  datasets, or modify source images
-
-`improvement_preview.json` uses schema
-`dataset-forge/improvement-preview/v1`.
-
----
-
-## JSON Report Structure
-
-```json
-{
-  "schema": "dataset-forge/inspection/v1",
-  "generated_at": "2026-06-16T14:23:00Z",
-  "dataset_path": "path/to/dataset",
-  "context": {
-    "total_images": 100,
-    "analyzed_images": 100,
-    "error_images": 0,
-    "resolution_stats": { "min_w": 512, "max_w": 1024, "mean_w": 768, "stddev_w": 112 },
-    "texture_distributions": { "mean": 39.9, "stddev": 11.6, "p10": 24.1, "p90": 55.2 },
-    "duplicate_hashes": [],
-    "near_duplicate_pairs": [["image_014.png", "image_087.png"]],
-    "analyzer_versions": {
-      "texture_analyzer": "v1",
-      "crystalline_faceting_analyzer": "v1",
-      "oversharpening_halo_analyzer": "v1",
-      "high_frequency_isolated_artifact_analyzer": "v1"
-    }
-  },
-  "findings": [
-    {
-      "image_path": "image_023.png",
-      "analyzer": "high_frequency_isolated_artifact_analyzer/v1",
-      "category": "artifact.high_frequency_isolated",
-      "severity": "MEDIUM",
-      "confidence": 0.42,
-      "false_positive_rate": 0.40,
-      "benchmark_version": "uncalibrated",
-      "evidence": {
-        "isolated_component_count": 22,
-        "component_density_per_megapixel": 335.69,
-        "median_component_residual": 81.1,
-        "edge_adjacent_component_ratio": 0.14,
-        "calibrated": false
-      },
-      "explanation": "Small isolated high-frequency residual components were detected above the local background.",
-      "recommendation": "Candidate for human review. Leave the image alone if these marks are intentional highlights or decorative details."
-    }
-  ],
-  "summary": {
-    "total_findings": 23,
-    "images_with_findings": 19,
-    "images_clean": 81,
-    "severity_counts": { "HIGH": 3, "MEDIUM": 14, "LOW": 6, "NONE": 0 }
-  },
-  "dataset_summary": {
-    "schema": "dataset-forge/dataset-summary/v1",
-    "image_count": 100,
-    "images_with_findings": 19,
-    "images_without_findings": 81,
-    "findings_by_category": {
-      "artifact.high_frequency_isolated": 6
-    },
-    "findings_by_severity": {
-      "HIGH": 3,
-      "MEDIUM": 14,
-      "LOW": 6
-    },
-    "analyzer_error_count": 0,
-    "calibrated_finding_count": 0,
-    "uncalibrated_finding_count": 23,
-    "dominant_artifact_families": [
-      "artifact.high_frequency_isolated"
-    ]
-  },
-  "review_queue": {
-    "schema": "dataset-forge/review-queue/v1",
-    "outcomes": {
-      "no_attention_needed": 81,
-      "review_recommended": 16,
-      "priority_review": 3
-    },
-    "items": []
-  }
-}
-```
-
-`inspection_report.json` does not embed Recommendation Summary. The sidecar
-`recommendation_summary.json` is reproducible from the Inspection Report alone.
-
----
-
-## Recommendation Summary Structure
-
-```json
-{
-  "schema": "dataset-forge/recommendation-summary/v1",
-  "source_report_schema": "dataset-forge/inspection/v1",
-  "summary": {
-    "image_count": 100,
-    "no_findings_emitted_count": 81,
-    "ready_for_training_count": 81,
-    "needs_review_count": 16,
-    "priority_review_count": 3,
-    "analyzer_error_count": 0
-  },
-  "recommendations": [
-    {
-      "image_path": "image_023.png",
-      "recommendation": "PRIORITY_REVIEW",
-      "display_label": "Priority Review",
-      "primary_reason": "High-severity finding detected.",
-      "reason_codes": ["finding.high_severity"],
-      "finding_refs": [
-        {
-          "analyzer": "high_frequency_isolated_artifact_analyzer/v1",
-          "category": "artifact.high_frequency_isolated",
-          "severity": "HIGH"
-        }
-      ],
-      "guidance": "Review this image early before deciding whether to include it in training.",
-      "confidence_note": "Recommendations are advisory and based only on existing findings. Uncalibrated analyzers are review signals, not final judgments. No finding means no current analyzer emitted a review signal; it is not a guarantee that the image is artifact-free or training-ready."
-    }
-  ]
-}
-```
-
-The sidecar must not contain numeric quality scores or serialized priority
-fields. No Findings Emitted means Dataset Forge emitted no current findings
-requiring review. It does not guarantee the image is artifact-free,
-caption-ready, or suitable for LoRA training.
-
----
-
-## Static Review Gallery
-
-When `dataset-forge inspect path/to/dataset/ --review-gallery` is used, inspect
-writes `review_gallery.html` alongside the existing inspection and
-recommendation sidecars.
-
-The static gallery:
-
-- is generated from `inspection_report.json` and `recommendation_summary.json`
-- shows Recommendation Summary counts
-- shows most common finding categories
-- shows Priority Review and Needs Review image cards
-- summarizes No Findings Emitted images without listing every image
-- explains each review card with recommendation label, primary reason, finding
-  categories, severity, analyzer names, and finding count
-- includes advisory wording that recommendations are review priorities, source
-  images were not modified, and No Findings Emitted is not a guarantee of
-  artifact-free or training-ready images
-- does not add buttons, checkboxes, forms, scripts, review-decision editing,
-  cleanup, repair, export, or server behavior
-
-The JSON sidecars remain the source of truth.
-
----
-
-## Recommendation Contact Sheets
-
-When `dataset-forge inspect path/to/dataset/ --contact-sheets` is used, inspect
-writes recommendation-oriented PNG contact sheets alongside the existing
-inspection and recommendation sidecars:
-
-- `priority_review_contact_sheet.png`
-- `needs_review_contact_sheet.png`
-
-The contact sheets:
-
-- are generated from `inspection_report.json` and `recommendation_summary.json`
-- use Recommendation Summary ordering
-- show image thumbnail, filename, recommendation label, and primary reason or
-  finding category
-- use fixed thumbnail sizing and plain labels
-- write deterministic empty-state sheets when Priority Review or Needs Review
-  groups are empty
-- do not create No Findings Emitted sheets by default
-- show at most the first 100 images per sheet
-- do not rerun analyzers, recompute recommendations, write thumbnails beside
-  source images, edit review decisions, cleanup, repair, export, web app, or
-  server behavior
-
-The JSON sidecars remain the source of truth.
-
----
-
-## Image-Level Triage Dossiers
-
-`dataset-forge inspect` writes:
-
-- `triage_dossiers.json`
-- `triage_dossiers.md`
-
-The triage dossiers are image-centered. Each image contains:
-
-- recommendation label
-- primary reason
-- review status and recorded decision, when available
-- suggested human action
-- confidence note
-- nested findings with analyzer, category, severity, benchmark version,
-  evidence values, explanation, and human review note
-
-The dossier also includes analyzer coverage: which analyzers ran, which emitted
-findings, which categories they emitted, and which artifact families remain
-uncovered.
-
-Triage dossiers are read-only, advisory, deterministic, and sidecar-based.
-Execution, cleanup, export, source-image modification, and pixel modification
-are out of scope.
-
----
-
-## Recommendation Markdown Structure
-
-`recommendation_summary.md` is a plain Markdown review report:
-
-```
-# Dataset Recommendation Summary
-
-## Dataset Summary
-
-- Images inspected: 100
-- No Findings Emitted: 81
-- Needs Review: 16
-- Priority Review: 3
-- Most common finding categories:
-  - artifact.high_frequency_isolated: 6
-
-# Recommended Review Order
-
-## Priority Review
-
-### artifact.high_frequency_isolated
-
----
-
-#### image_023.png
-
-Recommendation:
-Priority Review
-
-Review Status:
-Already Reviewed
-
-Decision:
-Acceptable Style
-
-Primary reason:
-High-severity finding detected.
-
-Finding categories:
-- artifact.high_frequency_isolated
-
-Analyzer:
-- high_frequency_isolated_artifact_analyzer/v1
-
-Severity:
-HIGH
-
-Finding count:
-1
-
-## Needs Review
-
-### artifact.oversharpening_halo
-
----
-
-#### image_041.png
-
-Recommendation:
-Needs Review
-
-Review Status:
-Pending Review
-
-Decision:
-None recorded
-
-Primary reason:
-Measurable finding detected.
-
-Finding categories:
-- artifact.oversharpening_halo
-
-Analyzer:
-- oversharpening_halo_analyzer/v1
-
-Severity:
-MEDIUM
-
-Finding count:
-1
-
-# No Findings Emitted
-
-81 images emitted no current findings requiring review.
-
-# Important Notes
-
-No Findings Emitted means Dataset Forge emitted no current findings requiring
-review.
-
-Recommendations are based only on current deterministic findings.
-
-It does not guarantee the image is artifact-free, caption-ready, or suitable
-for LoRA training.
-
-Recommendations are advisory.
-
-Dataset Forge never modifies source images.
-
-Dataset Forge does not execute cleanup, export datasets, or modify pixels in
-this workflow.
-
-# Next Step
-
-Review Priority Review images first.
-
-Then review Needs Review images if appropriate.
-
-After review, decide whether each image belongs in your training dataset.
-```
-
-The Markdown report does not list every No Findings Emitted image. It is a
-review order document, not a gallery or an action system.
-
-Each Priority Review and Needs Review item explains why it appears in the
-review order using existing finding references only: primary reason, finding
-categories, severity, analyzer names, and finding count. It does not add
-scores, confidence tiers, validation coupling, or new recommendation logic.
-
----
-
-## TXT Report Structure
-
-```
-Dataset Forge Inspection Report
-================================
-Generated:  2026-06-16 14:23:00
-Dataset:    path/to/dataset/
-Images:     100 analyzed, 0 errors
-
-FINDINGS BY IMAGE
------------------
-
-image_023.png
-  [MEDIUM] artifact.high_frequency_isolated  --  confidence 0.42 (FP rate ~40%)
-  Benchmark: uncalibrated
-  Evidence: isolated_component_count=22, component_density_per_megapixel=335.69
-  Why: Small isolated high-frequency residual components were detected above
-       the local background.
-  Action: Candidate for human review. Leave the image alone if these marks are
-          intentional highlights or decorative details.
-
-image_041.png
-  [MEDIUM] artifact.oversharpening_halo  --  confidence 0.45 (FP rate ~35%)
-  ...
-
-CLEAN IMAGES (no findings)
---------------------------
-81 images produced no findings at any severity level.
-These images emitted no current review findings. This does not guarantee they
-are artifact-free or training-ready.
-
-DATASET SUMMARY
----------------
-Images with findings:       19
-Images without findings:    81
-Analyzer errors:            0
-Calibrated findings:        0
-Uncalibrated findings:      23
-Dominant artifact families: artifact.high_frequency_isolated
-
-REVIEW QUEUE
-------------
-Review Queue is advisory only. Dataset Forge does not delete, modify,
-repair, reject, regenerate, or export images.
-No attention needed: 81
-Review recommended:  16
-Priority review:     3
-
-SUMMARY
--------
-Findings:         23 total (3 HIGH, 14 MEDIUM, 6 LOW)
-Images affected:  19 / 100
-Images clean:     81 / 100
-
-Recommendation: Review findings before making any dataset changes.
-                Dataset Forge inspect is read-only and does not modify images.
-```
-
----
-
-## Design Notes
-
-- The "clean" images section is not a fallback  --  it is a primary result.
-- Every finding includes its benchmark status. `uncalibrated` means synthetic
-  fixtures may validate the rule shape, but real-world calibration is pending.
-- Confidence and false-positive rate are always shown together.
-- The report never says "fix everything." It explains each finding.
-- A report with 100 clean images and 0 findings is a successful run.
-- Dataset Summary and Review Queue are additive report sections. They organize
-  existing findings for human review and do not hide or replace findings.
-- Recommendation Summary sidecars are additive outputs. They organize existing
-  findings into No Findings Emitted, Needs Review, and Priority Review groups
-  without changing `inspection_report.json`.
+Also confirm source image hashes are unchanged after inspect, review, compare,
+plan, and preview smoke tests.

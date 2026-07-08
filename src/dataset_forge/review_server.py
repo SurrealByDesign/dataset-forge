@@ -266,6 +266,8 @@ textarea { min-height: 90px; resize: vertical; }
 .overview-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .overview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .overview-actions button { padding: 7px 9px; }
+.overview details { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 10px; }
+.overview summary { cursor: pointer; font-weight: 700; }
 .intelligence-table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: .86rem; }
 .intelligence-table th, .intelligence-table td { border: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
 .intelligence-table th { background: #eef2f6; color: var(--muted); }
@@ -290,6 +292,7 @@ textarea { min-height: 90px; resize: vertical; }
 .preview { width: 100%; max-height: 360px; object-fit: contain; background: #eef2f6; border: 1px solid var(--line); cursor: zoom-in; }
 .finding { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
 .muted { color: var(--muted); }
+.save-status { min-height: 1.2em; }
 .shortcut { font-size: .78rem; color: var(--muted); }
 .hidden { display: none !important; }
 dialog { border: 1px solid var(--line); max-width: 620px; }
@@ -387,7 +390,7 @@ const decisionLabels = {
 };
 const workflowLabels = {
   IN_DATASET: 'In Dataset',
-  QUARANTINE_PLANNED: 'Quarantine Planned (workflow note only)',
+  QUARANTINE_PLANNED: 'Set Aside Intent (no files moved)',
   REVIEWED: 'Reviewed'
 };
 const shortcutDecision = { '1': 'KEEP', '2': 'ACCEPTED_STYLE_FALSE_POSITIVE', '3': 'IMPROVEMENT_CANDIDATE', '4': 'REMOVAL_CANDIDATE', 'u': 'UNDECIDED' };
@@ -444,7 +447,7 @@ function renderCard(image) {
       ${decisionButton('KEEP', 'Keep')}
       ${decisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', 'Accepted Style')}
       ${decisionButton('IMPROVEMENT_CANDIDATE', 'Improvement Candidate')}
-      ${decisionButton('REMOVAL_CANDIDATE', 'Removal Candidate')}
+      ${decisionButton('REMOVAL_CANDIDATE', 'Exclude Candidate')}
       ${decisionButton('UNDECIDED', 'Undecided')}
     </div>`;
   card.addEventListener('click', () => selectImage(image.id));
@@ -472,6 +475,7 @@ function renderGroups() {
   ];
   const root = document.getElementById('groups');
   root.innerHTML = '';
+  root.insertAdjacentHTML('beforeend', '<h2>Review Queue</h2>');
   let visible = 0;
   groups.forEach(([name, images]) => {
     visible += images.length;
@@ -550,7 +554,7 @@ function renderOverview() {
     : '<span class="muted">No unresolved evidence categories emitted by current filters.</span>';
   document.getElementById('overview').innerHTML = `
     <h2>Dataset Intelligence</h2>
-    <p>Descriptive, evidence-first overview from existing sidecars only. Dataset Intelligence organizes evidence; it does not grade, score, pass, fail, or summarize dataset quality.</p>
+    <p>Overview from existing sidecars. No scoring, no automation.</p>
     <h2>Next Action</h2>
     <p><strong>${escapeText(next.label || 'Review dataset')}</strong></p>
     <p>${escapeText(next.reason || '')}</p>
@@ -568,37 +572,49 @@ function renderOverview() {
       ${countBox('Pending', progress.pending_review_count || 0)}
       ${countBox('Complete', (progress.completion_percent || 0) + '%')}
     </div>
-    <h2>Review Status</h2>
-    <div class="overview-grid">
-      ${countBox('Remaining Priority Review', remaining['Priority Review'] || 0)}
-      ${countBox('Remaining Needs Review', remaining['Needs Review'] || 0)}
-      ${countBox('Remaining No Findings Emitted', remaining['No Findings Emitted'] || 0)}
-      ${countBox('Decision completion', percent(reviewStatus.decision_completion_percent))}
-    </div>
-    <h2>Evidence Summary</h2>
-    <p class="intelligence-note">Top category: ${escapeText(concentration.top_category || 'none')} on ${concentration.top_category_image_count || 0} images (${percent(concentration.top_category_percentage)}).</p>
-    ${evidenceTable}
-    <h2>Top Finding Category Filters</h2>
-    <div class="overview-list">${categoryButtons}</div>
-    <h2>Analyzer Contribution</h2>
-    ${analyzerTable}
-    <h2>Analyzer Coverage</h2>
-    <div class="overview-list">${analyzerRows}</div>
-    <h2>Dataset Coverage</h2>
-    <div class="overview-grid">
-      ${countBox('Manifest', coverage.manifest_available ? 'yes' : 'no')}
-      ${countBox('Review decisions', coverage.review_decisions_available ? 'yes' : 'no')}
-      ${countBox('Comparison', coverage.comparison_available ? 'yes' : 'no')}
-      ${countBox('Analyzer errors', coverage.error_count || 0)}
-    </div>
-    <p class="muted">Optional sidecars: triage dossiers ${sidecars['triage_dossiers.json'] ? 'present' : 'missing'}, manifest ${sidecars['inspection_manifest.json'] ? 'present' : 'missing'}, review decisions ${sidecars['review_decisions.json'] ? 'present' : 'missing'}, comparison ${sidecars['comparison_summary.json'] ? 'present' : 'missing'}.</p>
-    <h2>Dataset Characteristics</h2>
-    <p class="muted">Profile: ${escapeText((profile && profile.id) || 'not recorded')} ${escapeText((profile && profile.version) || '')}. Dataset Forge version: ${escapeText(provenance.dataset_forge_version || characteristics.dataset_forge_version || 'not recorded')}. Inspection completed: ${escapeText(characteristics.inspection_completed_at || 'not recorded')}.</p>
-    <h2>Unresolved Evidence Categories</h2>
-    <div class="overview-list">${unresolved}</div>
-    <p class="muted">${escapeText(overview.no_finding_semantics || '')}</p>
+    <details>
+      <summary>Review Status</summary>
+      <div class="overview-grid">
+        ${countBox('Remaining Priority Review', remaining['Priority Review'] || 0)}
+        ${countBox('Remaining Needs Review', remaining['Needs Review'] || 0)}
+        ${countBox('Remaining No Findings Emitted', remaining['No Findings Emitted'] || 0)}
+        ${countBox('Decision completion', percent(reviewStatus.decision_completion_percent))}
+      </div>
+    </details>
+    <details>
+      <summary>Evidence Summary</summary>
+      <p class="intelligence-note">Top category: ${escapeText(concentration.top_category || 'none')} on ${concentration.top_category_image_count || 0} images (${percent(concentration.top_category_percentage)}).</p>
+      ${evidenceTable}
+      <h3>Top Finding Category Filters</h3>
+      <div class="overview-list">${categoryButtons}</div>
+    </details>
+    <details>
+      <summary>Analyzer Contribution</summary>
+      ${analyzerTable}
+      <h3>Analyzer Coverage</h3>
+      <div class="overview-list">${analyzerRows}</div>
+    </details>
+    <details>
+      <summary>Dataset Coverage</summary>
+      <div class="overview-grid">
+        ${countBox('Manifest', coverage.manifest_available ? 'yes' : 'no')}
+        ${countBox('Review decisions', coverage.review_decisions_available ? 'yes' : 'no')}
+        ${countBox('Comparison', coverage.comparison_available ? 'yes' : 'no')}
+        ${countBox('Analyzer errors', coverage.error_count || 0)}
+      </div>
+      <p class="muted">Optional sidecars: triage dossiers ${sidecars['triage_dossiers.json'] ? 'present' : 'missing'}, manifest ${sidecars['inspection_manifest.json'] ? 'present' : 'missing'}, review decisions ${sidecars['review_decisions.json'] ? 'present' : 'missing'}, comparison ${sidecars['comparison_summary.json'] ? 'present' : 'missing'}.</p>
+    </details>
+    <details>
+      <summary>Dataset Characteristics</summary>
+      <p class="muted">Profile: ${escapeText((profile && profile.id) || 'not recorded')} ${escapeText((profile && profile.version) || '')}. Dataset Forge version: ${escapeText(provenance.dataset_forge_version || characteristics.dataset_forge_version || 'not recorded')}. Inspection completed: ${escapeText(characteristics.inspection_completed_at || 'not recorded')}.</p>
+    </details>
+    <details>
+      <summary>Unresolved Evidence Categories</summary>
+      <div class="overview-list">${unresolved}</div>
+    </details>
+    <p class="muted">No current review finding. Not a guarantee.</p>
     <p class="muted">Dataset Intelligence scope: descriptive only ${scope.descriptive_only ? 'yes' : 'no'}; no quality score ${scope.no_quality_score ? 'yes' : 'no'}; does not run analyzers ${scope.does_not_run_analyzers ? 'yes' : 'no'}; does not modify images ${scope.does_not_modify_images ? 'yes' : 'no'}.</p>
-    <p class="muted">Quarantine Planned is workflow intent only. Dataset Forge does not create quarantine folders or move files.</p>`;
+    <p class="muted">Set Aside Intent is workflow intent only. Dataset Forge does not create quarantine folders or move files.</p>`;
   document.getElementById('applyNextAction').addEventListener('click', applyNextAction);
   document.getElementById('overviewClearFilters').addEventListener('click', clearFilters);
   document.querySelectorAll('#overview [data-category]').forEach(button => {
@@ -657,10 +673,11 @@ function renderDetail() {
       ${detailDecisionButton('KEEP', '1 Keep')}
       ${detailDecisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', '2 Accepted Style / False Positive')}
       ${detailDecisionButton('IMPROVEMENT_CANDIDATE', '3 Improvement Candidate')}
-      ${detailDecisionButton('REMOVAL_CANDIDATE', '4 Removal Candidate')}
+      ${detailDecisionButton('REMOVAL_CANDIDATE', '4 Exclude Candidate')}
       ${detailDecisionButton('UNDECIDED', 'U Undecided')}
     </div>
     <p class="muted">All decisions save to <code>review_decisions.json</code>.</p>
+    <p id="saveStatus" class="muted save-status" role="status" aria-live="polite">Saved</p>
     <label for="workflowState">Workflow state</label>
     <select id="workflowState">${data.workflow_states.map(value => `<option value="${value}" ${value === image.workflow_state ? 'selected' : ''}>${escapeText(label(value, workflowLabels))}</option>`).join('')}</select>
     <label for="notes">Notes</label>
@@ -671,7 +688,7 @@ function renderDetail() {
     ${renderCoverage()}
     <h2>Triage Dossier</h2>
     <p><a href="${escapeText(image.dossier_anchor)}">Dossier anchor</a></p>
-    <p class="muted">${escapeText(image.no_finding_semantics || image.confidence_note)}</p>`;
+    <p class="muted">No current review finding. Not a guarantee.</p>`;
   document.querySelectorAll('.decision-buttons button').forEach(button => button.addEventListener('click', () => {
     saveDecision(image, button.dataset.decision, document.getElementById('workflowState').value, document.getElementById('notes').value);
   }));
@@ -701,6 +718,7 @@ function renderCoverage() {
 async function saveDecision(image, decision, workflowState, notes) {
   const center = document.querySelector('.center');
   const previousScroll = center ? center.scrollTop : 0;
+  setSaveStatus('Saving...');
   const response = await fetch('/api/decision', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -708,6 +726,7 @@ async function saveDecision(image, decision, workflowState, notes) {
   });
   if (!response.ok) {
     const error = await response.json();
+    setSaveStatus('Save failed');
     alert(error.error || 'Could not save decision');
     return;
   }
@@ -717,6 +736,11 @@ async function saveDecision(image, decision, workflowState, notes) {
   renderGroups();
   renderDetail();
   if (center) center.scrollTop = previousScroll;
+  setSaveStatus('Saved');
+}
+function setSaveStatus(text) {
+  const status = document.getElementById('saveStatus');
+  if (status) status.textContent = text;
 }
 function moveSelection(offset) {
   const visible = currentImages();

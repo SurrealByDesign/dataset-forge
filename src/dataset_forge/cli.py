@@ -87,10 +87,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.28.0-alpha: decide which LoRA dataset images "
-            "have no current review findings, need review, deserve priority "
-            "attention, and record evidence-backed human decisions in the "
-            "local Review Desk."
+            "Dataset Forge: inspect LoRA/image datasets, review deterministic "
+            "evidence, and record evidence-backed human decisions in the "
+            "local read-only Review Desk."
         ),
     )
     parser.add_argument(
@@ -233,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.28.0-alpha CLI. "
+            "Error: this command is not part of the public Dataset Forge CLI. "
             "Use 'dataset-forge inspect', 'review', 'compare', 'plan', 'preview', "
             "'--help', or '--version'.",
             file=sys.stderr,
@@ -557,7 +556,7 @@ def _inspect_main(argv: list[str]) -> int:
     if result.images_clean == result.image_count:
         print(
             "No current review findings were emitted. This does not guarantee "
-            "the images are artifact-free or training-ready."
+            "the images are artifact-free, caption-ready, or suitable for training."
         )
     else:
         print(

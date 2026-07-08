@@ -23,7 +23,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Dataset Forge v0.28.0-alpha", stdout)
+        self.assertIn("Dataset Forge: inspect LoRA/image datasets", stdout)
         self.assertIn("inspect", stdout)
         self.assertIn("review", stdout)
         self.assertIn("compare", stdout)
@@ -63,7 +63,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 0.28.0a0")
+        self.assertEqual(stdout.strip(), "dataset-forge 0.29.0a0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -81,7 +81,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
                 self.assertEqual(exit_code, 2)
                 self.assertEqual(stdout, "")
-                self.assertIn("not part of the public v0.28.0-alpha CLI", stderr)
+                self.assertIn("not part of the public Dataset Forge CLI", stderr)
 
     def test_review_help_is_local_only_help(self) -> None:
         exit_code, stdout, stderr = self._run(["review", "--help"])

@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.0 hardening pass
+
+- Rewrote v1.0-facing documentation around the current read-only curation
+  workstation workflow instead of the historical alpha roadmap.
+- Clarified that the Review Desk is the primary human-facing interface and
+  writes only `review_decisions.json`.
+- Clarified that findings are advisory review signals, not cleanup,
+  exclusion, export, or training-readiness decisions.
+- Added explicit analyzer trust wording for known false-positive contexts:
+  JPEG compression/ringing, natural grain, watercolor/pencil texture,
+  intentional highlights/glitter, and hard-edge line art.
+- Added a concise v1.0 release checklist covering tests, CLI surface, expected
+  sidecars, Review Desk write scope, source-image hash preservation, and
+  execution-free plan/preview behavior.
+- Did not add analyzers, sidecars, schemas, architecture, public commands,
+  cleanup, execution, export, repair, profile UI, analyzer toggles, quarantine
+  folders, or image modification.
+
+## v0.29.0-alpha
+
+- Added policy-aware sidecar semantics as additive contract metadata.
+- Kept `inspection_report.json` as the canonical executed-finding record and
+  added `finding_policy_semantics`.
+- Kept `recommendation_summary.json` triage-based and added
+  `policy_semantics` plus executed / visible / triage `finding_set_counts`.
+- Added `policy_semantics` to `triage_dossiers.json`.
+- Added advisory `comparison_semantics` to comparison output to state that
+  finding deltas use executed findings and recommendation deltas use
+  triage-included recommendation semantics.
+- Preserved current behavior: all current analyzers remain enabled / visible /
+  included, so executed, visible, and triage counts are identical.
+- Did not add UI, profile editing, profile selection, analyzer toggles, user
+  configuration, new analyzers, calibration, analyzer behavior changes,
+  threshold changes, recommendation behavior changes, Review Desk behavior
+  changes, Dataset Intelligence behavior changes, cleanup, execution, export,
+  repair, quarantine folders, image handling changes, or image modification.
+
 ## v0.28.0-alpha
 
 - Added an internal Inspection Profile contract.
