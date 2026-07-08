@@ -1,12 +1,12 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-07. Reflects v0.22.0-alpha.*
+*Last updated: 2026-07-07. Reflects v0.23.0-alpha.*
 
 ---
 
 ## Release
 
-**Dataset Forge v0.22.0-alpha** implements the inspect-first foundation for a
+**Dataset Forge v0.23.0-alpha** implements the inspect-first foundation for a
 LoRA Dataset Decision Engine and writes additive Recommendation Summary
 sidecars from `dataset-forge inspect`. v0.9 polishes
 `recommendation_summary.md` as a human-facing review-order report without
@@ -50,6 +50,12 @@ v0.22 separates the Review Desk data contract from the localhost server:
 `review_decisions.json` save endpoint. It preserves Review Desk behavior,
 public commands, review decision schema v2, analyzer thresholds, and all
 read-only guarantees.
+v0.23 adds `inspection_manifest.json`, a provenance-only sidecar that records
+the tool version, default inspection profile, inspect inputs, sidecar schemas,
+current analyzer descriptors, current enabled/visible/included analyzer
+policies, and compatibility metadata. It does not implement profile selection,
+analyzer toggles, configurable review signals, manifest-aware comparison,
+dataset analytics, or any behavior change.
 
 Current public behavior remains inspect-first:
 
@@ -57,7 +63,7 @@ Current public behavior remains inspect-first:
 Findings -> Aggregation -> Dataset Summary -> Review Queue -> Report
 ```
 
-Supported in v0.22.0-alpha:
+Supported in v0.23.0-alpha:
 - `dataset-forge inspect <path>` -- full inspect pipeline
 - `dataset-forge review <inspect_output>` -- local-only browser Review Desk
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
@@ -71,6 +77,8 @@ Supported in v0.22.0-alpha:
   `recommendation_summary.md`)
 - Image-level Triage Dossier sidecars (`triage_dossiers.json`,
   `triage_dossiers.md`)
+- Inspection Manifest sidecar (`inspection_manifest.json`) with provenance
+  metadata only
 - Optional static review gallery (`review_gallery.html`) from
   `dataset-forge inspect --review-gallery`
 - Optional Recommendation Contact Sheets (`priority_review_contact_sheet.png`,
@@ -130,8 +138,10 @@ Supported in v0.22.0-alpha:
 - No Review Decisions coupling to recommendation rules or JSON schemas
 - No analyzer threshold changes
 - No improvement execution, cleanup, repair, export, hosted web app, plugins, or new analyzers
+- No configurable review signals, profile UI, analyzer toggles, manifest-aware
+  comparison, or dataset analytics
 
-Not supported in v0.22.0-alpha (planned for later releases):
+Not supported in v0.23.0-alpha (planned for later releases):
 - Cleanup (v2+)
 - Repair planning (future)
 - Improvement execution (future)
@@ -144,6 +154,9 @@ Not supported in v0.22.0-alpha (planned for later releases):
 - Plugin system (v2+)
 - Additional analyzers beyond the current first-pass set (v1.x)
 - Calibrated thresholds (pending labeled benchmark ground truth)
+- Configurable Review Signals
+- Manifest-aware comparison
+- Dataset analytics
 
 ---
 
@@ -347,30 +360,28 @@ oversharpening and speck/glitter probes remain in `benchmarks/results/`.
 
 ## Next recommended tasks
 
-### v0.22.0-alpha Validation
+### v0.23.0-alpha Validation
 
-v0.22 is implemented as Review Desk Maintainability & Contracts, not a new
-user-visible workflow. The remaining release-readiness task is to confirm the
-internal split preserves Review Desk behavior:
+v0.23 is implemented as Inspection Manifest provenance, not configurable review
+signals. The remaining release-readiness task is to confirm the additive
+sidecar preserves existing behavior:
 
-1. Run the Review Desk data contract tests.
+1. Run the inspect manifest tests.
 2. Run `dataset-forge inspect`.
-3. Open `dataset-forge review <inspect_output>`.
-4. Confirm the Review Desk still makes Priority Review, Needs Review, and No
+3. Confirm `inspection_manifest.json` records default profile, sidecar schemas,
+   analyzer versions, analyzer policies, and dataset counts.
+4. Open `dataset-forge review <inspect_output>`.
+5. Confirm the Review Desk still makes Priority Review, Needs Review, and No
    Findings Emitted images understandable at image-card level.
-5. Confirm the Dataset Overview still reports review progress, top categories,
+6. Confirm the Dataset Overview still reports review progress, top categories,
    analyzer coverage, and deterministic next-action guidance.
-6. Record sample Keep, Accepted Style / False Positive, Improvement Candidate,
-   Removal Candidate, and Undecided decisions.
-7. Confirm `review_decisions.json` uses schema
-   `dataset-forge/review-decisions/v2`.
-8. Confirm comparison, plan, and preview continue to consume the v2 decisions
+7. Confirm comparison, plan, and preview continue to consume existing sidecars
    without executing or modifying images.
 
 Keep static `review_gallery.html` as a secondary read-only artifact. The local
 `dataset-forge review` command is now the primary human decision workflow.
 
-Explicitly out of scope for v0.22:
+Explicitly out of scope for v0.23:
 
 - deterministic execution
 - cleanup execution
@@ -381,6 +392,8 @@ Explicitly out of scope for v0.22:
 - automatic exclude/delete/move/rename decisions
 - network dependencies
 - cloud service, login, database, or hosted app
+- profile UI or analyzer toggles
+- manifest-aware comparison
 
 ---
 

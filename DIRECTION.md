@@ -7,13 +7,12 @@
 
 ## Current Objective
 
-**v0.22.0-alpha** -- strengthen the local Review Desk foundation by separating
-the Review Desk data contract from the localhost server while preserving the
-same user-facing behavior.
+**v0.23.0-alpha** -- add an Inspection Manifest provenance sidecar while
+preserving the same user-facing behavior.
 
-The Review Desk remains the primary human-facing interface. It consumes
-existing inspect sidecars, shows review progress, explains which images need
-attention, and records human decisions in `review_decisions.json`.
+The Review Desk remains the primary human-facing interface. `inspect` now also
+writes `inspection_manifest.json` so future tools can understand how an
+inspection was performed without changing today's review workflow.
 
 ---
 
@@ -35,12 +34,12 @@ The product reduces uncertainty. It does not automate judgment.
 
 ## What Is In Scope Now
 
-- stable internal Review Desk data contract
-- pure deterministic Review Desk payload builders
-- separated localhost server and sidecar-derived data construction
-- tests for overview, review progress, top category, analyzer coverage, and
-  next-action builders
-- architecture documentation for the Review Desk contract boundary
+- `inspection_manifest.json`
+- default inspection profile metadata
+- analyzer descriptor metadata for existing analyzers
+- analyzer execution/display/triage policies recorded as current defaults
+- compatibility metadata for existing inspect and recommendation schemas
+- tests proving existing inspect, review, compare, and CLI behavior remain stable
 
 ---
 
@@ -55,11 +54,14 @@ The product reduces uncertainty. It does not automate judgment.
 - quarantine folder creation
 - analyzer threshold changes
 - new analyzer families
+- configurable review signals
+- profile UI or analyzer toggles
+- manifest-aware comparison
 - hosted/cloud review
 - database-backed state
 
 `cleanup/`, `execution/`, `transforms/`, and `exporters/` remain legacy or
-future-only code paths. They are not part of the public v0.22 workflow and
+future-only code paths. They are not part of the public v0.23 workflow and
 should not be expanded for this release.
 
 ---

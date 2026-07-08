@@ -1,6 +1,6 @@
 # Dataset Forge
 
-**v0.22.0-alpha** -- stabilizes the internal Review Desk data contract while preserving the same read-only browser workflow.
+**v0.23.0-alpha** -- adds an Inspection Manifest provenance sidecar while preserving the same read-only review workflow.
 
 Dataset Forge helps you decide which images belong in your LoRA before you train.
 
@@ -26,12 +26,12 @@ Raw Dataset
 -> Train
 ```
 
-**v0.22.0-alpha is read-only decision support.** Dataset Forge reads your
+**v0.23.0-alpha is read-only decision support.** Dataset Forge reads your
 dataset and writes reports beside it. It never modifies source images. There is
 still no cleanup, repair, export, hosted web app, cloud service, plugins, or
-new analyzer family in this release. v0.22 keeps `dataset-forge review` as the
-primary human-facing workflow and separates its sidecar-derived data contract
-from the localhost server for maintainability.
+new analyzer family in this release. v0.23 adds `inspection_manifest.json` so
+each inspect run records provenance: tool version, default inspection profile,
+sidecars, analyzer versions, analyzer policies, and compatibility metadata.
 
 ---
 
@@ -67,6 +67,7 @@ Expected outputs:
 | `recommendation_summary.json` | Machine-readable No Findings Emitted / Needs Review / Priority Review sidecar. |
 | `triage_dossiers.md` | Image-level triage dossiers with findings nested under each image. |
 | `triage_dossiers.json` | Machine-readable triage dossier sidecar. |
+| `inspection_manifest.json` | Provenance sidecar describing how inspect ran. |
 | `review_decisions_template.json` | Optional starter file for v2 human review decisions. |
 | `review_decisions.json` | Persistent local Review Desk decisions, workflow state, and notes. |
 | `review_gallery.html` | Optional visual review page from `--review-gallery`. |
@@ -183,12 +184,12 @@ edge halos.
   high-frequency analyzers are conservative first-pass detectors backed by
   synthetic fixtures, not published real-world calibration.
 
-- **No public recommendation command yet.** v0.22.0-alpha exposes `inspect`,
+- **No public recommendation command yet.** v0.23.0-alpha exposes `inspect`,
   local `review`, sidecar-only `compare`, advisory `plan`, and
   execution-free `preview`. There is no separate `dataset-forge recommend`
   command.
 
-- **No cleanup, repair, execution, or export.** v0.22.0-alpha is read-only.
+- **No cleanup, repair, execution, or export.** v0.23.0-alpha is read-only.
   Improvement Planning writes `improvement_plan.json` and
   `improvement_plan.md` only. Improvement Preview writes
   `improvement_preview.json` and `improvement_preview.md` only. Cleanup,
@@ -308,6 +309,27 @@ export, repair, image modification, or new analyzers.
 
 ---
 
+## v0.23 Inspection Manifest
+
+v0.23 adds `inspection_manifest.json` as a provenance sidecar for inspect runs.
+It records how inspection was performed without changing analyzer execution,
+recommendation rules, Review Desk behavior, or existing sidecar schemas.
+
+Implemented v0.23 focus:
+
+- Record Dataset Forge version and default inspection profile.
+- Record inspect inputs such as dataset path, recursion, limit, and counts.
+- Record sidecar schema references.
+- Record current analyzer versions, families, emitted categories, advisory
+  calibration status, and default enabled / visible / included policies.
+- Leave `disabled_analyzers` empty until configurable review signals exist.
+
+The manifest is descriptive only. It does not implement profile selection,
+analyzer toggles, configurable review signals, dataset analytics, cleanup,
+execution, export, repair, or manifest-aware comparison.
+
+---
+
 ## What To Read First
 
 New users should read these first:
@@ -414,6 +436,7 @@ Report written:
   my_dataset/inspect_output/recommendation_summary.md
   my_dataset/inspect_output/triage_dossiers.json
   my_dataset/inspect_output/triage_dossiers.md
+  my_dataset/inspect_output/inspection_manifest.json
 ```
 
 Reports are written to the output directory (default: a folder named
@@ -660,7 +683,7 @@ Images with no findings are listed separately. They are not an afterthought.
 - **Reports are written separately.** All output goes to the directory you specify,
   not inside your dataset.
 - **Cleanup, repair planning, repair, and export are not implemented in
-  v0.22.0-alpha.** There is no public flag or command that modifies, repairs,
+  v0.23.0-alpha.** There is no public flag or command that modifies, repairs,
   exports, rejects, or regenerates images. `dataset-forge plan` writes advisory
   Improvement Candidates only. This is by design.
 - **Every finding is explainable.** No finding is emitted without an evidence dict,

@@ -706,6 +706,70 @@ Constraints:
 
 ---
 
+## v0.23.0-alpha: Inspection Manifest
+
+**Goal:** Record how an inspection was performed without changing current
+behavior.
+
+v0.23 adds `inspection_manifest.json` as an additive provenance sidecar written
+by `dataset-forge inspect`. It prepares Dataset Forge for future configurable
+review signals, analyzer families, calibration, and manifest-aware comparison
+without implementing those features yet.
+
+Scope:
+
+- Write `inspection_manifest.json` with schema
+  `dataset-forge/inspection-manifest/v1`.
+- Record Dataset Forge tool name/version.
+- Record the default inspection profile only:
+  `default` / `Default Inspection` / `v1`.
+- Record dataset path, recursive flag, limit, image count, analyzed count, and
+  error count.
+- Record sidecar schema references for `inspection_report.json`,
+  `recommendation_summary.json`, and `triage_dossiers.json`.
+- Record existing analyzer descriptors: id, display name, version, family,
+  categories emitted, advisory calibration status, and current default
+  enabled / visible / included policies.
+- Record finding count and affected image count per analyzer.
+- Keep `disabled_analyzers` empty.
+
+Constraints:
+
+- No analyzer execution changes.
+- No analyzer threshold changes.
+- No recommendation behavior changes.
+- No Review Desk behavior changes.
+- No comparison behavior changes.
+- No existing sidecar schema changes.
+- No profile UI, analyzer toggles, configurable review signals, dataset
+  analytics, cleanup, execution, export, repair, source-image modification, or
+  quarantine behavior.
+
+---
+
+## v0.24.0-alpha: Manifest-Aware Comparison
+
+**Goal:** Teach comparison to explain when two inspect outputs were produced
+under different inspection manifests.
+
+Scope should remain read-only and sidecar-only: comparison may load optional
+`inspection_manifest.json` files and emit compatibility warnings, but it should
+not block comparison by default and should support older outputs without
+manifests.
+
+---
+
+## v0.25+: Dataset Analytics Foundation
+
+Dataset-level analytics should come after manifests are available, so analytics
+can explain which analyzers, versions, and policies produced the evidence.
+
+Configurable Review Signals, analyzer families as user-visible filters,
+calibration-driven threshold changes, and additional analyzers should remain
+later milestones.
+
+---
+
 ## v1.0: Stable LoRA Dataset Decision Engine
 
 **Goal:** Ship a stable, read-only product that helps users decide what belongs

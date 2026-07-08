@@ -17,7 +17,9 @@ import numpy as np
 from PIL import Image
 
 from dataset_forge.analyzers.registry import analyzer_versions
+from dataset_forge.inspection_manifest import INSPECTION_MANIFEST_SCHEMA
 from dataset_forge.inspect import InspectResult, run_inspect
+from dataset_forge.finding import Finding, Severity
 from dataset_forge.measurements import measure_image as real_measure_image
 from dataset_forge.review_decisions import REVIEW_DECISIONS_SCHEMA
 
@@ -112,6 +114,117 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertEqual(data["scope"]["export"], "out_of_scope")
         self.assertEqual(len(data["dossiers"]), 2)
 
+    def test_inspection_manifest_written(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+        data = json.loads(result.inspection_manifest.read_text(encoding="utf-8"))
+
+        self.assertTrue(result.inspection_manifest.exists())
+        self.assertEqual(result.inspection_manifest.name, "inspection_manifest.json")
+        self.assertEqual(data["schema"], INSPECTION_MANIFEST_SCHEMA)
+        self.assertEqual(data["tool"]["name"], "dataset-forge")
+        self.assertEqual(data["inspection"]["profile"]["id"], "default")
+        self.assertEqual(
+            data["inspection"]["profile"]["display_name"],
+            "Default Inspection",
+        )
+        self.assertEqual(data["inspection"]["profile"]["version"], "v1")
+        self.assertTrue(data["inspection"]["deterministic"])
+        self.assertTrue(data["inspection"]["read_only"])
+
+    def test_inspection_manifest_records_dataset_and_sidecars(self):
+        _write_smooth(self.dataset, n=3)
+        result = run_inspect(self.dataset, self.output, recursive=True, limit=3)
+        data = json.loads(result.inspection_manifest.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["dataset"]["path"], str(self.dataset.resolve()))
+        self.assertTrue(data["dataset"]["recursive"])
+        self.assertEqual(data["dataset"]["limit"], 3)
+        self.assertEqual(data["dataset"]["image_count"], result.image_count)
+        self.assertEqual(data["dataset"]["analyzed_count"], result.analyzed_count)
+        self.assertEqual(data["dataset"]["error_count"], result.error_count)
+        self.assertEqual(
+            data["sidecars"]["inspection_report"],
+            {
+                "path": "inspection_report.json",
+                "schema": "dataset-forge/inspection/v1",
+            },
+        )
+        self.assertEqual(
+            data["sidecars"]["recommendation_summary"],
+            {
+                "path": "recommendation_summary.json",
+                "schema": "dataset-forge/recommendation-summary/v1",
+            },
+        )
+        self.assertEqual(
+            data["sidecars"]["triage_dossiers"],
+            {
+                "path": "triage_dossiers.json",
+                "schema": "dataset-forge/triage-dossiers/v1",
+            },
+        )
+        self.assertEqual(data["compatibility"]["manifest_contract_version"], 1)
+
+    def test_inspection_manifest_records_current_analyzers_and_policies(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+        data = json.loads(result.inspection_manifest.read_text(encoding="utf-8"))
+
+        analyzers = {item["id"]: item for item in data["analyzers"]}
+        self.assertEqual(set(analyzers), set(analyzer_versions()))
+        for analyzer_id, version in analyzer_versions().items():
+            row = analyzers[analyzer_id]
+            self.assertEqual(row["version"], version)
+            self.assertEqual(row["family"], "Technical Quality")
+            self.assertEqual(row["calibration_status"], "advisory")
+            self.assertEqual(row["execution"], {"policy": "enabled", "executed": True})
+            self.assertEqual(row["display"], {"policy": "visible"})
+            self.assertEqual(row["triage"], {"policy": "included"})
+            self.assertIsInstance(row["categories_emitted"], list)
+        self.assertEqual(data["disabled_analyzers"], [])
+
+    def test_inspection_manifest_finding_counts_are_deterministic(self):
+        class FindingAnalyzer:
+            name = "recording_analyzer"
+            version = "v1"
+            supported_categories = ("artifact.recording",)
+
+            @property
+            def analyzer_id(self):
+                return f"{self.name}/{self.version}"
+
+            def analyze(self, image_path, context, measurements=None):
+                del context, measurements
+                return [
+                    Finding(
+                        image_path=image_path,
+                        analyzer=self.analyzer_id,
+                        category="artifact.recording",
+                        severity=Severity.MEDIUM,
+                        confidence=0.5,
+                        false_positive_rate=0.1,
+                        benchmark_version="fixture",
+                        evidence={"fixture": True},
+                        explanation="fixture finding",
+                        recommendation="review fixture finding",
+                    )
+                ]
+
+        _write_smooth(self.dataset, n=2)
+        with patch(
+            "dataset_forge.inspect.create_analyzers",
+            return_value=[FindingAnalyzer()],
+        ):
+            result = run_inspect(self.dataset, self.output)
+        data = json.loads(result.inspection_manifest.read_text(encoding="utf-8"))
+
+        self.assertEqual(len(data["analyzers"]), 1)
+        self.assertEqual(data["analyzers"][0]["id"], "recording_analyzer")
+        self.assertEqual(data["analyzers"][0]["version"], "v1")
+        self.assertEqual(data["analyzers"][0]["finding_count"], 2)
+        self.assertEqual(data["analyzers"][0]["image_count"], 2)
+
     def test_review_decisions_template_written_when_absent(self):
         _write_smooth(self.dataset, n=2)
         run_inspect(self.dataset, self.output)
@@ -192,6 +305,7 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertTrue(result.txt_report.exists())
         self.assertTrue(result.recommendation_json.exists())
         self.assertTrue(result.recommendation_markdown.exists())
+        self.assertTrue(result.inspection_manifest.exists())
 
     def test_review_gallery_not_written_by_default(self):
         _write_smooth(self.dataset, n=2)
@@ -282,6 +396,24 @@ class TestRunInspectBasic(unittest.TestCase):
         self.assertNotIn("review_gallery", data)
         self.assertNotIn("contact_sheets", data)
         self.assertNotIn("review_decisions", data)
+        self.assertNotIn("inspection_manifest", data)
+
+    def test_existing_sidecar_schemas_are_unchanged_by_manifest(self):
+        _write_smooth(self.dataset, n=2)
+        result = run_inspect(self.dataset, self.output)
+
+        inspection = json.loads(result.json_report.read_text(encoding="utf-8"))
+        recommendations = json.loads(
+            result.recommendation_json.read_text(encoding="utf-8")
+        )
+        dossiers = json.loads(result.triage_dossier_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(inspection["schema"], "dataset-forge/inspection/v1")
+        self.assertEqual(
+            recommendations["schema"],
+            "dataset-forge/recommendation-summary/v1",
+        )
+        self.assertEqual(dossiers["schema"], "dataset-forge/triage-dossiers/v1")
 
     def test_inspect_uses_analyzer_registry(self):
         class RecordingAnalyzer:

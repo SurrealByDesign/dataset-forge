@@ -87,7 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dataset-forge",
         description=(
-            "Dataset Forge v0.22.0-alpha: decide which LoRA dataset images "
+            "Dataset Forge v0.23.0-alpha: decide which LoRA dataset images "
             "have no current review findings, need review, deserve priority "
             "attention, and record evidence-backed human decisions in the "
             "local Review Desk."
@@ -233,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
             return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
-            "Error: this command is not part of the public v0.22.0-alpha CLI. "
+            "Error: this command is not part of the public v0.23.0-alpha CLI. "
             "Use 'dataset-forge inspect', 'review', 'compare', 'plan', 'preview', "
             "'--help', or '--version'.",
             file=sys.stderr,
@@ -594,6 +594,7 @@ def _inspect_main(argv: list[str]) -> int:
     print(f"  {result.recommendation_markdown}")
     print(f"  {result.triage_dossier_json}")
     print(f"  {result.triage_dossier_markdown}")
+    print(f"  {result.inspection_manifest}")
     if result.review_decisions_template:
         print(f"  {result.review_decisions_template}")
     if result.review_gallery_path:

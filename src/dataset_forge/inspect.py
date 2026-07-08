@@ -20,6 +20,11 @@ from dataset_forge.context_builder import build_dataset_context
 from dataset_forge.discovery import discover_images
 from dataset_forge.finding import Finding
 from dataset_forge.inspect_gallery import write_inspection_gallery
+from dataset_forge.inspection_manifest import (
+    build_inspection_manifest,
+    utc_now,
+    write_inspection_manifest,
+)
 from dataset_forge.measurements import ImageMeasurements
 from dataset_forge.recommendation_contact_sheets import (
     write_recommendation_contact_sheets,
@@ -52,6 +57,7 @@ class InspectResult:
     recommendation_markdown: Path
     triage_dossier_json: Path
     triage_dossier_markdown: Path
+    inspection_manifest: Path
     review_decisions_template: Path | None
     image_count: int
     analyzed_count: int
@@ -112,6 +118,7 @@ def run_inspect(
     4. Write JSON + TXT reports.
     5. Return InspectResult for the CLI to display.
     """
+    started_at = utc_now()
     dataset_path = dataset_path.expanduser().resolve()
     output_dir = output_dir.expanduser().resolve()
 
@@ -159,6 +166,25 @@ def run_inspect(
         recommendation_summary,
         output_dir,
         review_statuses=review_statuses,
+    )
+    completed_at = utc_now()
+    inspection_manifest = write_inspection_manifest(
+        output_dir,
+        build_inspection_manifest(
+            dataset_path=dataset_path,
+            recursive=recursive,
+            limit=limit,
+            image_count=context.image_count,
+            analyzed_count=context.analyzed_count,
+            error_count=context.error_count,
+            analyzers=analyzers,
+            findings=findings,
+            started_at=started_at,
+            completed_at=completed_at,
+            inspection_report_path=json_path,
+            recommendation_summary_path=recommendation_json,
+            triage_dossiers_path=triage_dossier_json,
+        ),
     )
     review_decisions_template = write_review_decisions_template_if_absent(
         recommendation_summary,
@@ -210,6 +236,7 @@ def run_inspect(
         recommendation_markdown=recommendation_markdown,
         triage_dossier_json=triage_dossier_json,
         triage_dossier_markdown=triage_dossier_markdown,
+        inspection_manifest=inspection_manifest,
         review_decisions_template=review_decisions_template,
         image_count=context.image_count,
         analyzed_count=context.analyzed_count,

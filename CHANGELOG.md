@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.23.0-alpha
+
+- Added `inspection_manifest.json` from `dataset-forge inspect`.
+- Added schema `dataset-forge/inspection-manifest/v1`.
+- Recorded Dataset Forge tool version, default inspection profile, inspect
+  inputs, sidecar schema references, analyzer descriptors, analyzer versions,
+  analyzer families, advisory calibration status, current enabled / visible /
+  included policies, per-analyzer finding counts, and compatibility metadata.
+- Kept `disabled_analyzers` empty; configurable review signals are not
+  implemented.
+- Preserved analyzer execution, analyzer thresholds, recommendation behavior,
+  Review Desk behavior, comparison behavior, review decision schema, existing
+  sidecar schemas, CLI command surface, and all read-only guarantees.
+- Kept cleanup, execution, export, repair, transforms, quarantine behavior,
+  profile UI, analyzer toggles, dataset analytics, and new analyzers out of
+  scope.
+
 ## v0.22.0-alpha
 
 - Split Review Desk sidecar loading and deterministic payload construction into

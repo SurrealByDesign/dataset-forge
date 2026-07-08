@@ -654,6 +654,34 @@ contract is derived only from generated sidecars and optional
 `review_decisions.json`; it must not assume every analyzer executed, every
 finding is displayed, or every finding affects triage.
 
+v0.23 adds `inspection_manifest.json` as an additive provenance sidecar written
+by `dataset-forge inspect`. The manifest schema is
+`dataset-forge/inspection-manifest/v1`. It records the Dataset Forge version,
+default inspection profile, inspect inputs, sidecar schemas, current analyzer
+descriptors, current analyzer execution/display/triage policies, finding counts
+per analyzer, and compatibility metadata. It is descriptive only. It does not
+change analyzer execution, analyzer thresholds, recommendation rules,
+inspection report schema, recommendation summary schema, Review Desk behavior,
+comparison behavior, review decision schema, cleanup, execution, export,
+repair, source-image handling, quarantine behavior, or profile UI.
+
+The v0.23 Inspection Manifest top-level fields are:
+
+- `schema`
+- `tool`
+- `inspection`
+- `dataset`
+- `sidecars`
+- `analyzers`
+- `disabled_analyzers`
+- `compatibility`
+
+The only inspection profile in v0.23 is `default` / `Default Inspection` / `v1`.
+All current analyzers are recorded with family `Technical Quality`, calibration
+status `advisory`, execution policy `enabled`, display policy `visible`, and
+triage policy `included`. `disabled_analyzers` is empty until configurable
+review signals exist.
+
 v0.10 adds `dataset-forge inspect --review-gallery`, which writes
 `review_gallery.html` from the existing `inspection_report.json` and
 `recommendation_summary.json` sidecars. The gallery is plain deterministic HTML

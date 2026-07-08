@@ -92,6 +92,7 @@ Reports written:
   recommendation_summary.md
   triage_dossiers.json
   triage_dossiers.md
+  inspection_manifest.json
   review_decisions_template.json
   review_gallery.html  # only with --review-gallery
   priority_review_contact_sheet.png  # only with --contact-sheets
