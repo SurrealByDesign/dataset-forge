@@ -154,13 +154,15 @@ def _write_workspace(
                 "schema": "dataset-forge/inspection-manifest/v1",
                 "tool": {
                     "name": "dataset-forge",
-                    "version": "0.27.0a0",
+                    "version": "0.28.0a0",
                 },
                 "inspection": {
                     "profile": {
                         "id": "default",
                         "display_name": "Default Inspection",
                         "version": "v1",
+                        "description": "Default Dataset Forge inspection profile.",
+                        "analyzer_policy_overrides": [],
                     },
                     "started_at": "2026-07-07T00:00:00Z",
                     "completed_at": "2026-07-07T00:00:01Z",
@@ -520,7 +522,7 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertEqual(coverage["error_count"], 0)
         characteristics = intelligence["dataset_characteristics"]
         self.assertEqual(characteristics["inspection_profile"]["id"], "default")
-        self.assertEqual(characteristics["dataset_forge_version"], "0.27.0a0")
+        self.assertEqual(characteristics["dataset_forge_version"], "0.28.0a0")
         self.assertEqual(characteristics["inspection_completed_at"], "2026-07-07T00:00:01Z")
         provenance = intelligence["provenance"]
         self.assertTrue(provenance["manifest_available"])

@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.28.0-alpha
+
+- Added an internal Inspection Profile contract.
+- Added `inspection_profiles.py` with `InspectionProfile`,
+  `AnalyzerPolicyOverride`, the immutable default built-in profile, and profile
+  lookup helpers.
+- Kept the only built-in profile as `default` / `Default Inspection` / `v1`
+  with no analyzer policy overrides.
+- Updated Review Signal Policy resolution to resolve effective policy from
+  Analyzer Descriptor defaults plus Inspection Profile overrides.
+- Preserved current analyzer policy behavior: all current analyzers still
+  resolve to enabled / visible / included.
+- Updated Inspection Manifest generation to snapshot profile identity and
+  profile content additively while continuing to snapshot effective
+  per-analyzer policy in analyzer rows.
+- Kept Review Desk and Dataset Intelligence consuming manifest snapshots only.
+- Did not add UI, profile editing, profile selection, analyzer toggles, user
+  configuration, user-authored profiles, new analyzers, threshold policy,
+  calibration, analyzer behavior changes, recommendation changes, Review Desk
+  changes, comparison changes, Dataset Intelligence changes, cleanup,
+  execution, export, repair, quarantine folders, image handling changes, or
+  image modification.
+
 ## v0.27.0-alpha
 
 - Added an internal Review Signal Policy Resolution foundation.

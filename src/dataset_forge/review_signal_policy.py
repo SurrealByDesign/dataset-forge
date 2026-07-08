@@ -18,6 +18,11 @@ from dataset_forge.analyzer_descriptors import (
     TRIAGE_INCLUDED,
     AnalyzerDescriptor,
 )
+from dataset_forge.inspection_profiles import (
+    DEFAULT_INSPECTION_PROFILE,
+    InspectionProfile,
+    validate_inspection_profile,
+)
 
 EXECUTION_POLICIES = (EXECUTION_ENABLED, EXECUTION_DISABLED)
 DISPLAY_POLICIES = (DISPLAY_VISIBLE, DISPLAY_HIDDEN)
@@ -54,6 +59,7 @@ class ResolvedReviewSignalPolicy:
 class PolicyResolution:
     analyzer_id: str
     descriptor_defaults: ReviewSignalPolicy
+    profile_id: str
     effective_policy: ResolvedReviewSignalPolicy
 
 
@@ -73,17 +79,32 @@ def policy_from_descriptor_defaults(
 
 def resolve_review_signal_policy(
     descriptor: AnalyzerDescriptor,
+    *,
+    profile: InspectionProfile = DEFAULT_INSPECTION_PROFILE,
 ) -> PolicyResolution:
-    """Resolve effective policy for v0.27 from descriptor defaults only."""
+    """Resolve effective policy from descriptor defaults and profile overrides."""
 
     defaults = policy_from_descriptor_defaults(descriptor)
+    validate_inspection_profile(profile)
+    override = profile.override_for_analyzer(descriptor.id)
+    effective = defaults
+    source = "descriptor_defaults"
+    if override is not None:
+        effective = ReviewSignalPolicy(
+            execution=override.execution or defaults.execution,
+            display=override.display or defaults.display,
+            triage=override.triage or defaults.triage,
+        )
+        validate_review_signal_policy(effective)
+        source = f"inspection_profile:{profile.id}"
     return PolicyResolution(
         analyzer_id=descriptor.id,
         descriptor_defaults=defaults,
+        profile_id=profile.id,
         effective_policy=ResolvedReviewSignalPolicy(
             analyzer_id=descriptor.id,
-            policy=defaults,
-            source="descriptor_defaults",
+            policy=effective,
+            source=source,
         ),
     )
 

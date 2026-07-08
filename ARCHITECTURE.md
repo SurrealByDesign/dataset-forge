@@ -724,6 +724,22 @@ Profiles. v0.27 does not add profile UI, analyzer toggles, user configuration,
 new analyzers, calibration, cleanup, execution, export, repair, quarantine
 folders, or image modification.
 
+v0.28 adds an internal Inspection Profile contract in
+`src/dataset_forge/inspection_profiles.py`. Inspection Profiles are the future
+source of analyzer policy overrides, but v0.28 ships only the immutable
+`default` / `Default Inspection` / `v1` profile with no overrides. Effective
+policy now resolves from Analyzer Descriptor defaults plus Inspection Profile
+overrides, preserving the current `enabled` / `visible` / `included` behavior.
+
+The Inspection Manifest snapshots profile identity and content additively:
+profile id, display name, description, version, and analyzer policy overrides.
+It also continues to snapshot effective per-analyzer policy in analyzer rows.
+The Review Desk and Dataset Intelligence consume these manifest snapshots only;
+they do not read live Inspection Profiles. v0.28 does not add profile
+selection, profile editing, analyzer toggles, user-authored profiles, threshold
+policy, calibration, cleanup, execution, export, repair, quarantine folders, or
+image modification.
+
 v0.24 makes Dataset Comparison manifest-aware. When optional
 `inspection_manifest.json` sidecars are present, comparison adds an advisory
 `inspection_compatibility` section to `comparison_summary.json` and a short

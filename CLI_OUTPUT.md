@@ -150,14 +150,17 @@ The local review server:
 ## Analyzer Descriptor Metadata
 
 v0.26 adds internal Analyzer Descriptors as provenance metadata support. v0.27
-adds internal review signal policy resolution from descriptor defaults. They do
-not add CLI flags, user configuration, analyzer toggles, profile UI, plugins,
-cleanup, execution, export, repair, or image modification.
+adds internal review signal policy resolution from descriptor defaults. v0.28
+adds the internal Inspection Profile contract with the default no-override
+profile. They do not add CLI flags, user configuration, analyzer toggles,
+profile UI, profile selection, plugins, cleanup, execution, export, repair, or
+image modification.
 
 `dataset-forge inspect` still writes the same `inspection_manifest.json` shape,
 but analyzer rows are populated from the internal descriptor registry,
-resolver-derived policy values, and run-specific fields such as executed state,
-finding count, and image count.
+profile-aware resolver-derived policy values, and run-specific fields such as
+executed state, finding count, and image count. The manifest also snapshots the
+default profile identity and profile content.
 
 ---
 

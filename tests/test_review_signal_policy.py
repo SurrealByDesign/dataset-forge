@@ -5,12 +5,20 @@ from __future__ import annotations
 import unittest
 
 from dataset_forge.analyzer_descriptors import (
+    DISPLAY_HIDDEN,
     DISPLAY_VISIBLE,
+    EXECUTION_DISABLED,
     EXECUTION_ENABLED,
+    TRIAGE_EXCLUDED,
     TRIAGE_INCLUDED,
     built_in_descriptors,
 )
 from dataset_forge.analyzers.registry import create_analyzers
+from dataset_forge.inspection_profiles import (
+    AnalyzerPolicyOverride,
+    DEFAULT_INSPECTION_PROFILE,
+    InspectionProfile,
+)
 from dataset_forge.review_signal_policy import (
     ReviewSignalPolicy,
     policy_from_descriptor_defaults,
@@ -38,10 +46,42 @@ class TestReviewSignalPolicy(unittest.TestCase):
         for analyzer in create_analyzers():
             resolution = resolve_review_signal_policy(descriptors[analyzer.name])
             self.assertEqual(resolution.analyzer_id, analyzer.name)
+            self.assertEqual(resolution.profile_id, DEFAULT_INSPECTION_PROFILE.id)
             self.assertEqual(resolution.effective_policy.execution, EXECUTION_ENABLED)
             self.assertEqual(resolution.effective_policy.display, DISPLAY_VISIBLE)
             self.assertEqual(resolution.effective_policy.triage, TRIAGE_INCLUDED)
             self.assertEqual(resolution.effective_policy.source, "descriptor_defaults")
+
+    def test_profile_override_changes_effective_policy_only(self) -> None:
+        descriptor = built_in_descriptors()[0]
+        profile = InspectionProfile(
+            id="test_profile",
+            display_name="Test Profile",
+            description="Test profile override.",
+            version="v1",
+            analyzer_policy_overrides=(
+                AnalyzerPolicyOverride(
+                    analyzer_id=descriptor.id,
+                    execution=EXECUTION_DISABLED,
+                    display=DISPLAY_HIDDEN,
+                    triage=TRIAGE_EXCLUDED,
+                ),
+            ),
+        )
+
+        resolution = resolve_review_signal_policy(descriptor, profile=profile)
+
+        self.assertEqual(resolution.profile_id, "test_profile")
+        self.assertEqual(resolution.descriptor_defaults.execution, EXECUTION_ENABLED)
+        self.assertEqual(resolution.descriptor_defaults.display, DISPLAY_VISIBLE)
+        self.assertEqual(resolution.descriptor_defaults.triage, TRIAGE_INCLUDED)
+        self.assertEqual(resolution.effective_policy.execution, EXECUTION_DISABLED)
+        self.assertEqual(resolution.effective_policy.display, DISPLAY_HIDDEN)
+        self.assertEqual(resolution.effective_policy.triage, TRIAGE_EXCLUDED)
+        self.assertEqual(
+            resolution.effective_policy.source,
+            "inspection_profile:test_profile",
+        )
 
     def test_descriptor_default_policy_object_matches_descriptor_fields(self) -> None:
         for descriptor in built_in_descriptors():

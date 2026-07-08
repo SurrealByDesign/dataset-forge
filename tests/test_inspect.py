@@ -18,6 +18,7 @@ from PIL import Image
 
 from dataset_forge.analyzers.registry import analyzer_versions
 from dataset_forge.analyzer_descriptors import descriptor_for_id
+from dataset_forge.inspection_profiles import DEFAULT_INSPECTION_PROFILE
 from dataset_forge.inspection_manifest import INSPECTION_MANIFEST_SCHEMA
 from dataset_forge.inspect import InspectResult, run_inspect
 from dataset_forge.finding import Finding, Severity
@@ -133,9 +134,18 @@ class TestRunInspectBasic(unittest.TestCase):
             data["inspection"]["profile"]["display_name"],
             "Default Inspection",
         )
+        self.assertEqual(
+            data["inspection"]["profile"]["description"],
+            "Default Dataset Forge inspection profile.",
+        )
         self.assertEqual(data["inspection"]["profile"]["version"], "v1")
+        self.assertEqual(data["inspection"]["profile"]["analyzer_policy_overrides"], [])
         self.assertTrue(data["inspection"]["deterministic"])
         self.assertTrue(data["inspection"]["read_only"])
+        self.assertEqual(
+            data["inspection"]["profile"],
+            DEFAULT_INSPECTION_PROFILE.to_dict(),
+        )
 
     def test_inspection_manifest_records_dataset_and_sidecars(self):
         _write_smooth(self.dataset, n=3)
@@ -252,7 +262,7 @@ class TestRunInspectBasic(unittest.TestCase):
     def test_inspection_manifest_policy_values_are_resolver_derived(self):
         _write_smooth(self.dataset, n=1)
 
-        def fake_resolution(descriptor):
+        def fake_resolution(descriptor, *, profile):
             return type(
                 "Resolution",
                 (),

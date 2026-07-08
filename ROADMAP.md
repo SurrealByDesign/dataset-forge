@@ -888,11 +888,50 @@ Constraints:
   analyzers, calibration, cleanup, execution, export, repair, transforms,
   quarantine behavior, source image modification, or image handling changes.
 
-## v0.28+: Review Profile Contract
+## v0.28.0-alpha: Inspection Profile Contract
 
-Future Review Profiles should build on the v0.27 resolver by layering profile
-policy overrides on top of Analyzer Descriptor defaults. This remains future
-work; v0.27 does not expose profile selection or analyzer toggles.
+**Goal:** Add the internal Inspection Profile contract without changing current
+behavior.
+
+v0.28 makes Inspection Profiles the future source of analyzer policy overrides.
+It is not a user-facing profile or configuration release.
+
+Scope:
+
+- Add `inspection_profiles.py`.
+- Define `InspectionProfile` with id, display name, description, version, and
+  analyzer policy overrides.
+- Define `AnalyzerPolicyOverride` with analyzer id and optional
+  execution/display/triage overrides.
+- Ship only the immutable default profile with no overrides.
+- Resolve effective policy from Analyzer Descriptor defaults plus Inspection
+  Profile overrides.
+- Snapshot profile identity and content in `inspection_manifest.json`.
+- Continue snapshotting effective per-analyzer policy in manifest analyzer rows.
+- Keep Review Desk and Dataset Intelligence consuming manifest snapshots only.
+
+Constraints:
+
+- No analyzer behavior changes.
+- No threshold changes.
+- No recommendation behavior changes.
+- No Review Desk behavior changes.
+- No comparison behavior changes.
+- No Dataset Intelligence behavior changes.
+- No review decision schema changes.
+- No existing sidecar schema changes except additive manifest profile snapshot.
+- No public CLI surface changes beyond version metadata.
+- No UI, profile editor, profile selection, analyzer toggles, user
+  configuration, user-authored profiles, new analyzers, threshold policy,
+  calibration, cleanup, execution, export, repair, transforms, quarantine
+  folders, source image modification, or image handling changes.
+
+## v0.29+: Policy-Aware Sidecar Semantics
+
+Future policy-aware sidecar work should prepare Recommendation Summary, Review
+Desk, Dataset Intelligence, and comparison contracts for meaningful differences
+between executed, visible, and triage-included findings. This remains future
+work; v0.28 does not expose profile selection or analyzer toggles.
 
 ---
 

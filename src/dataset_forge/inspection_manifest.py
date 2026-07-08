@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -15,6 +14,10 @@ from dataset_forge.analyzer_descriptors import (
 )
 from dataset_forge.analyzers.base import Analyzer
 from dataset_forge.finding import Finding
+from dataset_forge.inspection_profiles import (
+    DEFAULT_INSPECTION_PROFILE,
+    InspectionProfile,
+)
 from dataset_forge.recommendation_summary import RECOMMENDATION_SUMMARY_SCHEMA
 from dataset_forge.report import REPORT_SCHEMA
 from dataset_forge.review_signal_policy import (
@@ -26,27 +29,6 @@ from dataset_forge.triage_dossier import TRIAGE_DOSSIER_SCHEMA
 INSPECTION_MANIFEST_SCHEMA = "dataset-forge/inspection-manifest/v1"
 INSPECTION_MANIFEST_FILENAME = "inspection_manifest.json"
 MANIFEST_CONTRACT_VERSION = 1
-
-
-@dataclass(frozen=True)
-class InspectionProfile:
-    id: str
-    display_name: str
-    version: str
-
-    def to_dict(self) -> dict[str, str]:
-        return {
-            "id": self.id,
-            "display_name": self.display_name,
-            "version": self.version,
-        }
-
-
-DEFAULT_INSPECTION_PROFILE = InspectionProfile(
-    id="default",
-    display_name="Default Inspection",
-    version="v1",
-)
 
 
 def utc_now() -> str:
@@ -80,6 +62,7 @@ def build_inspection_manifest(
             descriptor_for_analyzer(analyzer),
             finding_counts,
             finding_image_counts,
+            profile,
         )
         for analyzer in analyzers
     ]
@@ -148,8 +131,12 @@ def _analyzer_manifest_row(
     descriptor: AnalyzerDescriptor,
     finding_counts: Mapping[str, int],
     finding_image_counts: Mapping[str, int],
+    profile: InspectionProfile,
 ) -> dict[str, Any]:
-    policy = resolve_review_signal_policy(descriptor).effective_policy
+    policy = resolve_review_signal_policy(
+        descriptor,
+        profile=profile,
+    ).effective_policy
     return _analyzer_manifest_row_from_policy(
         descriptor,
         policy,
