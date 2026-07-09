@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 
+from dataset_forge.analyzers.caption_metadata import CaptionMetadataAnalyzer
 from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
 from dataset_forge.analyzers.duplicates import DuplicateDetectionAnalyzer
 from dataset_forge.analyzers.high_frequency_isolated import (
@@ -31,6 +32,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 HighFrequencyIsolatedArtifactAnalyzer,
                 DuplicateDetectionAnalyzer,
                 ImageEncodingAnalyzer,
+                CaptionMetadataAnalyzer,
             ),
         )
 
@@ -47,6 +49,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "high_frequency_isolated_artifact_analyzer/v1",
                 "duplicate_detection_analyzer/v1",
                 "image_encoding_analyzer/v1",
+                "caption_metadata_analyzer/v1",
             ],
         )
         self.assertIsNot(first[0], second[0])
@@ -61,6 +64,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "high_frequency_isolated_artifact_analyzer": "v1",
                 "duplicate_detection_analyzer": "v1",
                 "image_encoding_analyzer": "v1",
+                "caption_metadata_analyzer": "v1",
             },
         )
 
@@ -74,6 +78,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "high_frequency_isolated_artifact_analyzer/v1",
                 "duplicate_detection_analyzer/v1",
                 "image_encoding_analyzer/v1",
+                "caption_metadata_analyzer/v1",
             ),
         )
 

@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-09. v1.2.0 image encoding analyzer prep.*
+*Last updated: 2026-07-09. v1.3.0 caption / metadata analyzer prep.*
 
 ---
 
@@ -91,6 +91,7 @@ Plan and preview are advisory and execution-free.
 | `high_frequency_isolated_artifact_analyzer/v1` | `artifact.high_frequency_isolated` | Advisory; synthetic-fixture-backed. |
 | `duplicate_detection_analyzer/v1` | `dataset.duplicate.exact` | Advisory; exact/content duplicate only. |
 | `image_encoding_analyzer/v1` | `source_encoding.*` | Advisory; source-encoding context only. |
+| `caption_metadata_analyzer/v1` | `caption.*` | Advisory; metadata consistency only. |
 
 Current analyzers are useful review signals, not final judgments. They are
 deterministic and emit evidence, but they are not published real-world
@@ -111,6 +112,12 @@ presence alone is not a finding, and high-quality JPEGs should not be flagged
 only because they are JPEG files. Encoding findings can help explain texture,
 halo, crystalline, or high-frequency findings, but they are not quality scores,
 readiness labels, repair instructions, or automatic exclusion decisions.
+
+Caption / Metadata Analyzer findings are metadata consistency review signals.
+They inspect common image-adjacent `.txt` caption sidecars for missing, empty,
+exact duplicate, very short, very long, or repeated-boilerplate captions. They
+do not judge caption writing quality, optimize prompts, rewrite captions,
+generate captions, use ML/LLMs, or make training-readiness claims.
 
 Duplicate detection is limited to byte-identical and decoded pixel-identical
 images. Dataset Forge does not detect near-duplicates, resized matches, cropped
@@ -146,6 +153,7 @@ Not yet validated enough to claim calibrated public reliability:
 
 - real-world precision/recall for all analyzers
 - JPEG/compression separation beyond conservative v1.2 context signals
+- public caption-quality calibration or semantic caption evaluation
 - cross-style performance beyond current fixtures and private review data
 - perceptual near-duplicate review
 

@@ -413,7 +413,13 @@ const categoryLabels = {
   'source_encoding.jpeg_ringing': 'JPEG Ringing / Mosquito Noise',
   'source_encoding.chroma_artifact': 'Chroma Encoding Artifact',
   'source_encoding.banding': 'Banding / Posterization',
-  'source_encoding.low_source_quality': 'Low Source-Quality Context'
+  'source_encoding.low_source_quality': 'Low Source-Quality Context',
+  'caption.missing': 'Missing Caption Sidecar',
+  'caption.empty': 'Empty Caption Sidecar',
+  'caption.duplicate': 'Duplicate Caption Text',
+  'caption.short': 'Very Short Caption',
+  'caption.long': 'Very Long Caption',
+  'caption.token_imbalance': 'Repeated Caption Boilerplate'
 };
 const analyzerLabels = {
   'crystalline_faceting_analyzer': 'Crystal-like Surface Pattern Analyzer',
@@ -427,7 +433,9 @@ const analyzerLabels = {
   'duplicate_detection_analyzer': 'Duplicate Detection Analyzer',
   'duplicate_detection_analyzer/v1': 'Duplicate Detection Analyzer',
   'image_encoding_analyzer': 'Image Encoding Analyzer',
-  'image_encoding_analyzer/v1': 'Image Encoding Analyzer'
+  'image_encoding_analyzer/v1': 'Image Encoding Analyzer',
+  'caption_metadata_analyzer': 'Caption / Metadata Analyzer',
+  'caption_metadata_analyzer/v1': 'Caption / Metadata Analyzer'
 };
 const shortcutDecision = { '1': 'KEEP', '2': 'ACCEPTED_STYLE_FALSE_POSITIVE', '3': 'IMPROVEMENT_CANDIDATE', '4': 'REMOVAL_CANDIDATE', 'u': 'UNDECIDED' };
 async function loadData() {

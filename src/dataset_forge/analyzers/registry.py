@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TypeAlias
 
 from dataset_forge.analyzers.base import Analyzer
+from dataset_forge.analyzers.caption_metadata import CaptionMetadataAnalyzer
 from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
 from dataset_forge.analyzers.duplicates import DuplicateDetectionAnalyzer
 from dataset_forge.analyzers.high_frequency_isolated import (
@@ -27,6 +28,7 @@ ANALYZER_CLASSES: tuple[AnalyzerClass, ...] = (
     HighFrequencyIsolatedArtifactAnalyzer,
     DuplicateDetectionAnalyzer,
     ImageEncodingAnalyzer,
+    CaptionMetadataAnalyzer,
 )
 
 

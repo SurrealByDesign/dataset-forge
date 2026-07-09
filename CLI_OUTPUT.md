@@ -158,6 +158,11 @@ only because they are JPEG files. Encoding evidence may explain texture, halo,
 crystalline, or high-frequency findings, but Dataset Forge does not repair,
 denoise, upscale, clean, exclude, export, move, or modify images.
 
+Caption / Metadata Analyzer findings are advisory metadata consistency
+signals. They inspect common image-adjacent `.txt` caption sidecars only. They
+do not judge caption quality, optimize prompts, rewrite captions, generate
+captions, use ML/LLMs, or make training-readiness claims.
+
 Exact duplicate detection is advisory and limited to byte-identical and
 decoded pixel-identical images; it does not detect perceptual near-duplicates.
 

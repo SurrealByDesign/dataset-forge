@@ -171,6 +171,31 @@ BUILT_IN_ANALYZER_DESCRIPTORS: tuple[AnalyzerDescriptor, ...] = (
         default_display_policy=DISPLAY_VISIBLE,
         default_triage_policy=TRIAGE_INCLUDED,
     ),
+    AnalyzerDescriptor(
+        id="caption_metadata_analyzer",
+        display_name="Caption / Metadata Analyzer",
+        description=(
+            "Inspects image-adjacent caption sidecars for deterministic "
+            "metadata consistency signals."
+        ),
+        version="v1",
+        family=FAMILY_METADATA,
+        categories_emitted=(
+            "caption.missing",
+            "caption.empty",
+            "caption.duplicate",
+            "caption.short",
+            "caption.long",
+            "caption.token_imbalance",
+        ),
+        calibration_status=CALIBRATION_ADVISORY,
+        deterministic=True,
+        requires_dataset_context=True,
+        requires_image_measurements=False,
+        default_execution_policy=EXECUTION_ENABLED,
+        default_display_policy=DISPLAY_VISIBLE,
+        default_triage_policy=TRIAGE_INCLUDED,
+    ),
 )
 
 _DESCRIPTORS_BY_ID: Mapping[str, AnalyzerDescriptor] = {

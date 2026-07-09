@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3.0
+
+- Added `caption_metadata_analyzer/v1` for advisory caption/metadata
+  consistency inspection.
+- Detects missing `.txt` caption sidecars, empty caption files, exact duplicate
+  caption text, very short captions, very long captions, and repeated
+  boilerplate terms such as `masterpiece`, `best quality`, or `8k`.
+- Added Review Desk labels for caption metadata categories while preserving raw
+  category IDs and the existing review workflow.
+- Did not add caption quality scoring, spelling or grammar analysis, semantic
+  similarity, embeddings, CLIP, ML/LLMs, caption rewriting, suggested captions,
+  prompt optimization, schema changes, new sidecars, or source-image
+  modification.
+
 ## v1.2.0
 
 - Added `image_encoding_analyzer/v1` for advisory source-encoding context.

@@ -127,6 +127,7 @@ model.
 | `high_frequency_isolated_artifact_analyzer/v1` | Sparse isolated high-frequency residual components such as bright or dark specks. | Advisory; synthetic-fixture-backed. |
 | `duplicate_detection_analyzer/v1` | Byte-identical and decoded pixel-identical duplicate images. | Advisory; exact/content duplicates only. |
 | `image_encoding_analyzer/v1` | Source-encoding context such as obvious JPEG compression, blocking, ringing, chroma artifacts, banding, or tiny compressed sources. | Advisory; context only. |
+| `caption_metadata_analyzer/v1` | Image-adjacent `.txt` caption sidecar presence and consistency. | Advisory; metadata consistency only. |
 
 All current analyzers are deterministic and read-only. They emit evidence,
 severity, confidence, false-positive-rate estimates, and plain-language
@@ -159,6 +160,21 @@ are not quality scores or automatic defects.
 
 Dataset Forge does not repair, denoise, upscale, clean, exclude, export, move,
 or modify images.
+
+---
+
+### Caption / Metadata
+
+Dataset Forge v1.3 includes `caption_metadata_analyzer/v1` as an advisory
+metadata consistency signal. It inspects common image-adjacent `.txt` caption
+sidecars such as `image.png` plus `image.txt`.
+
+It may emit findings for missing caption sidecars, empty caption files, exact
+duplicate caption text, very short captions, very long captions, or repeated
+caption boilerplate such as `masterpiece`, `best quality`, or `8k`.
+
+It does not judge writing quality, optimize prompts, suggest captions, rewrite
+captions, use ML/LLMs, or make training-readiness claims.
 
 ---
 

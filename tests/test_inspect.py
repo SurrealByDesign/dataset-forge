@@ -44,6 +44,10 @@ def _write_smooth(path: Path, n: int = 1) -> list[Path]:
         value = 96 + (i % 64)
         arr = np.full((256, 256, 3), value, dtype=np.uint8)
         Image.fromarray(arr).save(p)
+        p.with_suffix(".txt").write_text(
+            f"smooth fixture image {i} neutral caption",
+            encoding="utf-8",
+        )
         written.append(p)
     return written
 
@@ -56,6 +60,10 @@ def _write_noisy(path: Path, n: int = 1) -> list[Path]:
         p = path / f"noisy_{i:03d}.png"
         arr = rng.integers(0, 255, size=(256, 256, 3), dtype=np.uint8)
         Image.fromarray(arr).save(p)
+        p.with_suffix(".txt").write_text(
+            f"noisy fixture image {i} neutral caption",
+            encoding="utf-8",
+        )
         written.append(p)
     return written
 

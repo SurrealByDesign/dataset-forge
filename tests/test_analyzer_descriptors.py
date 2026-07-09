@@ -9,6 +9,7 @@ from dataset_forge.analyzer_descriptors import (
     DISPLAY_VISIBLE,
     EXECUTION_ENABLED,
     FAMILY_DATASET_STRUCTURE,
+    FAMILY_METADATA,
     FAMILY_TECHNICAL_QUALITY,
     TRIAGE_INCLUDED,
     built_in_descriptors,
@@ -85,9 +86,31 @@ class TestAnalyzerDescriptors(unittest.TestCase):
         self.assertFalse(descriptor.requires_dataset_context)
         self.assertFalse(descriptor.requires_image_measurements)
 
+    def test_caption_metadata_descriptor_uses_metadata_family(self):
+        descriptor = descriptor_for_id("caption_metadata_analyzer")
+
+        self.assertIsNotNone(descriptor)
+        self.assertEqual(descriptor.family, FAMILY_METADATA)
+        self.assertEqual(
+            descriptor.categories_emitted,
+            (
+                "caption.missing",
+                "caption.empty",
+                "caption.duplicate",
+                "caption.short",
+                "caption.long",
+                "caption.token_imbalance",
+            ),
+        )
+        self.assertTrue(descriptor.requires_dataset_context)
+        self.assertFalse(descriptor.requires_image_measurements)
+
     def test_current_quality_descriptors_keep_technical_quality_family(self):
         for descriptor in built_in_descriptors():
-            if descriptor.id == "duplicate_detection_analyzer":
+            if descriptor.id in {
+                "duplicate_detection_analyzer",
+                "caption_metadata_analyzer",
+            }:
                 continue
             self.assertEqual(descriptor.family, FAMILY_TECHNICAL_QUALITY)
 

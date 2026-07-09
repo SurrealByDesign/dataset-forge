@@ -120,16 +120,34 @@ exclusion decisions.
 Post-v1.2 work should be driven by evidence and user review friction, not by
 architecture expansion.
 
-Likely v1.3 priorities:
+## v1.3: Caption / Metadata Analyzer
 
-- strengthen analyzer validation and calibration notes
-- add legally safe real-world validation fixtures if available
-- caption / metadata review signals if they can remain deterministic and
-  sidecar-only
-- improve Review Desk ergonomics only where real review sessions show friction
+v1.3 adds `caption_metadata_analyzer/v1` as conservative metadata consistency
+inspection:
+
+- missing image-adjacent `.txt` caption sidecars
+- empty caption files
+- exact duplicate caption text
+- very short captions
+- very long captions
+- repeated caption boilerplate such as `masterpiece`, `best quality`, or `8k`
+
+This is not caption quality analysis. Dataset Forge does not judge writing
+quality, infer image content, optimize prompts, rewrite captions, generate
+captions, use ML/LLMs, or make training-readiness claims.
+
+---
+
+## Post-v1.3 Direction
+
+Post-v1.3 work should be driven by evidence and user review friction, not by
+architecture expansion.
 
 Likely v1.4 priorities:
 
+- strengthen analyzer validation and calibration notes
+- add legally safe real-world validation fixtures if available
+- improve Review Desk ergonomics only where real review sessions show friction
 - conservative perceptual near-duplicate review only after exact duplicate and
   encoding-context validation
 

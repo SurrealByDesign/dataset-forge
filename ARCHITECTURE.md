@@ -86,6 +86,7 @@ cleanup, export, or training-readiness decisions.
 | `high_frequency_isolated_artifact_analyzer/v1` | `artifact.high_frequency_isolated`, error category | Advisory; synthetic-fixture-backed. |
 | `duplicate_detection_analyzer/v1` | `dataset.duplicate.exact` | Advisory; exact/content duplicate only. |
 | `image_encoding_analyzer/v1` | `source_encoding.jpeg_compression`, `source_encoding.jpeg_blocking`, `source_encoding.jpeg_ringing`, `source_encoding.chroma_artifact`, `source_encoding.banding`, `source_encoding.low_source_quality` | Advisory; source-encoding context only. |
+| `caption_metadata_analyzer/v1` | `caption.missing`, `caption.empty`, `caption.duplicate`, `caption.short`, `caption.long`, `caption.token_imbalance` | Advisory; metadata consistency only. |
 
 Known false-positive contexts include JPEG compression/ringing, low-resolution
 JPEG artifacts, natural paper or pencil grain, watercolor/canvas texture,
@@ -97,6 +98,12 @@ a finding, and high-quality JPEGs should not be flagged only because they are
 JPEG files. Encoding findings may explain what other analyzers are seeing, but
 they are not quality scores, readiness labels, repair instructions, or cleanup
 recommendations.
+
+Caption metadata analysis is intentionally non-semantic. It reads common
+image-adjacent `.txt` caption sidecars and reports observable metadata
+consistency evidence. It does not judge caption writing quality, infer image
+content, optimize prompts, rewrite captions, generate captions, use ML/LLMs,
+or make training-readiness claims.
 
 Duplicate detection is intentionally narrow. It emits advisory findings for
 byte-identical files and decoded pixel-identical images only. It does not use
@@ -225,8 +232,9 @@ Before a v1.x release:
 
 ## Future Work Boundary
 
-Perceptual near-duplicate detection, metadata/caption review, public
+Perceptual near-duplicate detection, semantic caption evaluation, public
 configurable review signals, profile editing, export, cleanup, repair, and
 execution are future possibilities only. JPEG cleanup, denoising, upscaling,
-and image repair remain out of scope. Future work should be considered only
-when the read-only workstation remains stable and trusted.
+image repair, caption rewriting, and prompt generation remain out of scope.
+Future work should be considered only when the read-only workstation remains
+stable and trusted.
