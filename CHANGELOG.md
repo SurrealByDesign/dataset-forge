@@ -199,7 +199,7 @@
   `dataset-forge/review-decisions/v2`.
 - Added v1 review decision migration on load.
 - Added human decisions: Keep, Accepted Style / False Positive, Improvement
-  Candidate, Removal Candidate, and Undecided.
+  Candidate, Exclude Candidate, and Undecided.
 - Added separate workflow state: In Dataset, Quarantine Planned, and Reviewed.
 - Added notes persistence in `review_decisions.json`.
 - Added read-only zoom/lightbox viewing with fit, actual size, zoom in/out,
@@ -211,7 +211,7 @@
 
 ## v0.19.0-alpha
 
-- Replaced user-facing `Ready for Training` language with
+- Replaced user-facing legacy training-ready language with
   `No Findings Emitted`.
 - Added image-centered recommendation evidence: each recommendation now nests
   finding evidence under the image while retaining stable finding references.
@@ -338,8 +338,8 @@
   `needs_review_contact_sheet.png`, read-only visual review aids generated from
   existing `inspection_report.json` and `recommendation_summary.json` sidecars.
 - Empty Priority Review or Needs Review groups produce deterministic
-  empty-state sheets. Ready for Training images do not get contact sheets by
-  default.
+  empty-state sheets. Images without emitted findings do not get contact
+  sheets by default.
 - Kept recommendation rules, `recommendation_summary.json`, inspect schema,
   analyzer behavior, public CLI command surface, review-decision coupling,
   validation coupling, cleanup, repair, export, plugins, web app behavior, and
@@ -360,7 +360,8 @@
 - Polished `recommendation_summary.md` into a human-facing review report.
 - Added Markdown sections for dataset counts, recommended review order,
   artifact-family grouping, important notes, and next steps.
-- Summarized Ready for Training images instead of listing every ready image.
+- Summarized images without emitted findings instead of listing every such
+  image.
 - Kept recommendation rules, `recommendation_summary.json`, inspect schema,
   CLI surface, analyzer behavior, validation coupling, review-decision
   coupling, repair, cleanup, export, plugins, UI, and analyzer set unchanged.
@@ -370,8 +371,8 @@
 - Made Recommendation Summary user-visible from `dataset-forge inspect` via
   additive `recommendation_summary.json` and `recommendation_summary.md`
   sidecar outputs.
-- Added concise terminal aggregate counts for Ready for Training, Needs Review,
-  and Priority Review.
+- Added concise terminal aggregate counts for images without emitted findings,
+  Needs Review, and Priority Review.
 - Preserved the four-rule recommendation engine exactly and kept
   recommendations reproducible from `inspection_report.json` alone.
 - Kept `inspection_report.json`, analyzer behavior, thresholds, public CLI
@@ -382,8 +383,8 @@
 
 - Added an internal Recommendation Summary layer with schema
   `dataset-forge/recommendation-summary/v1`.
-- Added the deliberately small four-rule engine for Ready for Training,
-  Needs Review, and Priority Review guidance over existing findings only.
+- Added the deliberately small four-rule engine for no-finding, Needs Review,
+  and Priority Review guidance over existing findings only.
 - Kept CLI behavior, inspect output, analyzer behavior, confidence handling,
   validation coupling, review-decision coupling, repair, cleanup, export,
   plugins, UI, and analyzer set unchanged.

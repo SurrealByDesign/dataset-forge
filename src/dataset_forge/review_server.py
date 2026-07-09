@@ -357,7 +357,7 @@ dialog { border: 1px solid var(--line); max-width: 620px; }
 <dialog id="shortcuts">
   <h2>Keyboard Shortcuts</h2>
   <p>J / Left: previous image. K / Right: next image. N: next undecided.</p>
-  <p>1: Keep. 2: Accepted Style / False Positive. 3: Improvement Candidate. 4: Removal Candidate. U: Undecided.</p>
+  <p>1: Keep. 2: Accepted Style / False Positive. 3: Improvement Candidate. 4: Exclude Candidate. U: Undecided.</p>
   <p>Space: larger preview. F: fullscreen preview. Escape: close dialogs.</p>
   <p>In zoom view: mouse wheel zooms, drag pans, + / - zoom, 0 fits, 1 shows actual size.</p>
   <button type="button" onclick="document.getElementById('shortcuts').close()">Close</button>
@@ -385,7 +385,7 @@ const decisionLabels = {
   KEEP: 'Keep',
   ACCEPTED_STYLE_FALSE_POSITIVE: 'Accepted Style / False Positive',
   IMPROVEMENT_CANDIDATE: 'Improvement Candidate',
-  REMOVAL_CANDIDATE: 'Removal Candidate',
+  REMOVAL_CANDIDATE: 'Exclude Candidate',
   UNDECIDED: 'Undecided'
 };
 const workflowLabels = {

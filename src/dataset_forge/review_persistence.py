@@ -138,7 +138,7 @@ def _display_decision(value: str) -> str:
         "KEEP": "Keep",
         "ACCEPTED_STYLE_FALSE_POSITIVE": "Accepted Style / False Positive",
         "IMPROVEMENT_CANDIDATE": "Improvement Candidate",
-        "REMOVAL_CANDIDATE": "Removal Candidate",
+        "REMOVAL_CANDIDATE": "Exclude Candidate",
         "UNDECIDED": "Undecided",
     }
     return labels.get(value, value.replace("_", " ").title())

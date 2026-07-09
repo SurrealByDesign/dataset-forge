@@ -32,6 +32,7 @@ pip-wheel-metadata/
 .codex-docs-cache/
 .gallery-preview/
 .architecture-review/
+.rc-validation/
 .DS_Store
 Thumbs.db
 *.swp

@@ -797,6 +797,8 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Accepted Style", html)
         self.assertIn("Improvement Candidate", html)
         self.assertIn("Exclude Candidate", html)
+        self.assertNotIn("Removal Candidate", html)
+        self.assertNotIn("'Removal Candidate'", html)
         self.assertIn("All decisions save to <code>review_decisions.json</code>", html)
         self.assertIn('id="saveStatus"', html)
         self.assertIn("Saving...", html)

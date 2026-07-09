@@ -4,6 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 SUPPORTED_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".webp"})
+DEFAULT_OUTPUT_DIR_NAMES = frozenset({"inspect_output"})
+OUTPUT_MARKER_FILES = frozenset(
+    {
+        "inspection_report.json",
+        "recommendation_summary.json",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -32,6 +39,8 @@ def discover_images(
         resolved = path.resolve()
         if excluded_root and _is_relative_to(resolved, excluded_root):
             continue
+        if recursive and _is_inside_dataset_forge_output(resolved, input_path):
+            continue
         if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             skipped += 1
             continue
@@ -47,3 +56,17 @@ def _is_relative_to(path: Path, parent: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _is_inside_dataset_forge_output(path: Path, input_root: Path) -> bool:
+    """Return True for files inside generated Dataset Forge output folders."""
+    for parent in path.parents:
+        if parent == input_root:
+            return False
+        if not _is_relative_to(parent, input_root):
+            return False
+        if parent.name in DEFAULT_OUTPUT_DIR_NAMES:
+            return True
+        if all((parent / marker).is_file() for marker in OUTPUT_MARKER_FILES):
+            return True
+    return False

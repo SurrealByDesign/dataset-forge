@@ -37,6 +37,32 @@ class DiscoveryTests(unittest.TestCase):
 
             self.assertEqual([path.name for path in result.images], ["a.png", "b.png"])
 
+    def test_recursive_discovery_skips_default_inspect_output(self) -> None:
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "source.png").touch()
+            output = root / "inspect_output"
+            output.mkdir()
+            (output / "inspection_gallery.png").touch()
+
+            result = discover_images(root, recursive=True)
+
+            self.assertEqual([path.name for path in result.images], ["source.png"])
+
+    def test_recursive_discovery_skips_marked_dataset_forge_output(self) -> None:
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "source.png").touch()
+            output = root / "custom_reports"
+            output.mkdir()
+            (output / "inspection_report.json").touch()
+            (output / "recommendation_summary.json").touch()
+            (output / "contact_sheet.png").touch()
+
+            result = discover_images(root, recursive=True)
+
+            self.assertEqual([path.name for path in result.images], ["source.png"])
+
 
 if __name__ == "__main__":
     unittest.main()
