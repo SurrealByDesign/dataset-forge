@@ -245,6 +245,7 @@ body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: var(--ink); 
 button, input, select, textarea { font: inherit; }
 button { border: 1px solid #9aa8b8; background: #fff; color: var(--ink); cursor: pointer; }
 button:hover, button.selected { border-color: var(--accent); color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible, .preview:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .app { display: grid; grid-template-columns: 280px minmax(360px, 1fr) 360px; min-height: 100vh; }
 aside, main { min-width: 0; }
 .left, .right { background: var(--panel); border-color: var(--line); border-style: solid; overflow: auto; max-height: 100vh; }
@@ -345,8 +346,8 @@ dialog { border: 1px solid var(--line); max-width: 620px; }
   <section class="toolbar">
     <label for="thumbSize">Thumbnail size</label>
     <input id="thumbSize" type="range" min="130" max="280" value="170">
-    <span id="visibleCount" class="muted"></span>
-    <span id="filterSummary" class="muted"></span>
+    <span id="visibleCount" class="muted" role="status" aria-live="polite"></span>
+    <span id="filterSummary" class="muted" role="status" aria-live="polite"></span>
   </section>
   <section id="groups"></section>
 </main>
@@ -381,6 +382,9 @@ dialog { border: 1px solid var(--line); max-width: 620px; }
 let data = null;
 let selectedId = null;
 let zoomState = { open: false, scale: 1, fitScale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0, originX: 0, originY: 0 };
+let uiState = {};
+const FILTER_IDS = ['search', 'decisionFilter', 'workflowFilter', 'triageFilter', 'categoryFilter', 'severityFilter', 'confidenceFilter'];
+const UI_STATE_KEY_PREFIX = 'dataset-forge-review-desk-state';
 const decisionLabels = {
   KEEP: 'Keep',
   ACCEPTED_STYLE_FALSE_POSITIVE: 'Accepted Style / False Positive',
@@ -407,6 +411,59 @@ function escapeText(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function label(value, labels) { return labels[value] || value || 'Undecided'; }
+function uiStateKey() {
+  const dataset = data && data.dataset_path ? data.dataset_path : 'unknown';
+  return `${UI_STATE_KEY_PREFIX}:${dataset}`;
+}
+function readUiState() {
+  try {
+    return JSON.parse(sessionStorage.getItem(uiStateKey()) || '{}') || {};
+  } catch (error) {
+    return {};
+  }
+}
+function writeUiState() {
+  if (!data) return;
+  try {
+    const filters = {};
+    FILTER_IDS.forEach(id => { filters[id] = document.getElementById(id).value; });
+    const overviewOpen = Array.from(document.querySelectorAll('#overview details'))
+      .filter(detail => detail.open)
+      .map(detail => detail.querySelector('summary').textContent.trim());
+    sessionStorage.setItem(uiStateKey(), JSON.stringify({
+      filters,
+      selectedId,
+      thumbSize: document.getElementById('thumbSize').value,
+      overviewOpen,
+    }));
+  } catch (error) {
+    // Session memory is optional polish. Review decisions still persist via sidecar.
+  }
+}
+function restoreFilters() {
+  const filters = uiState.filters || {};
+  FILTER_IDS.forEach(id => {
+    const element = document.getElementById(id);
+    if (element && Object.prototype.hasOwnProperty.call(filters, id)) {
+      element.value = filters[id];
+    }
+  });
+}
+function restoreThumbSize() {
+  const thumbSize = uiState.thumbSize;
+  if (!thumbSize) return;
+  const element = document.getElementById('thumbSize');
+  element.value = thumbSize;
+  document.documentElement.style.setProperty('--thumb-size', `${thumbSize}px`);
+}
+function restoreOverviewDetails() {
+  const open = new Set(uiState.overviewOpen || []);
+  document.querySelectorAll('#overview details').forEach(detail => {
+    const summary = detail.querySelector('summary').textContent.trim();
+    detail.open = open.has(summary);
+    detail.addEventListener('toggle', writeUiState);
+  });
+}
 function currentImages() {
   if (!data) return [];
   const search = document.getElementById('search').value.toLowerCase();
@@ -468,10 +525,14 @@ function triageClass(image) {
 }
 function groupTitle(label, count) { return `<div class="group-title"><h2>${escapeText(label)}</h2><span class="muted">${count}</span></div>`; }
 function renderGroups() {
+  const visibleImages = currentImages();
+  if (visibleImages.length && !visibleImages.some(image => image.id === selectedId)) {
+    selectedId = visibleImages[0].id;
+  }
   const groups = [
-    ['Priority Review', currentImages().filter(i => i.triage_status === 'Priority Review')],
-    ['Needs Review', currentImages().filter(i => i.triage_status === 'Needs Review')],
-    ['No Findings Emitted', currentImages().filter(i => i.triage_status === 'No Findings Emitted')]
+    ['Priority Review', visibleImages.filter(i => i.triage_status === 'Priority Review')],
+    ['Needs Review', visibleImages.filter(i => i.triage_status === 'Needs Review')],
+    ['No Findings Emitted', visibleImages.filter(i => i.triage_status === 'No Findings Emitted')]
   ];
   const root = document.getElementById('groups');
   root.innerHTML = '';
@@ -615,12 +676,15 @@ function renderOverview() {
     <p class="muted">No current review finding. Not a guarantee.</p>
     <p class="muted">Dataset Intelligence scope: descriptive only ${scope.descriptive_only ? 'yes' : 'no'}; no quality score ${scope.no_quality_score ? 'yes' : 'no'}; does not run analyzers ${scope.does_not_run_analyzers ? 'yes' : 'no'}; does not modify images ${scope.does_not_modify_images ? 'yes' : 'no'}.</p>
     <p class="muted">Set Aside Intent is workflow intent only. Dataset Forge does not create quarantine folders or move files.</p>`;
+  restoreOverviewDetails();
   document.getElementById('applyNextAction').addEventListener('click', applyNextAction);
   document.getElementById('overviewClearFilters').addEventListener('click', clearFilters);
   document.querySelectorAll('#overview [data-category]').forEach(button => {
     button.addEventListener('click', () => {
       document.getElementById('categoryFilter').value = button.dataset.category;
       renderGroups();
+      renderDetail();
+      writeUiState();
     });
   });
 }
@@ -638,6 +702,7 @@ function selectImage(id) {
   selectedId = id;
   renderGroups();
   renderDetail();
+  writeUiState();
 }
 function selectedImage() {
   return data.images.find(image => image.id === selectedId) || data.images[0];
@@ -663,7 +728,7 @@ function renderDetail() {
   if (!image) return;
   selectedId = image.id;
   document.getElementById('detail').innerHTML = `
-    <img class="preview" src="${escapeText(image.thumbnail_url)}" alt="${escapeText(image.filename)}">
+    <img class="preview" src="${escapeText(image.thumbnail_url)}" alt="${escapeText(image.filename)}" tabindex="0" role="button" aria-label="Open zoom viewer for ${escapeText(image.filename)}">
     <h2>${escapeText(image.filename)}</h2>
     <p><strong>Path:</strong> ${escapeText(image.image_path)}</p>
     <p><strong>Triage:</strong> ${escapeText(image.triage_status)}</p>
@@ -692,7 +757,14 @@ function renderDetail() {
   document.querySelectorAll('.decision-buttons button').forEach(button => button.addEventListener('click', () => {
     saveDecision(image, button.dataset.decision, document.getElementById('workflowState').value, document.getElementById('notes').value);
   }));
-  document.querySelector('.preview').addEventListener('click', () => openZoom(image));
+  const preview = document.querySelector('.preview');
+  preview.addEventListener('click', () => openZoom(image));
+  preview.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openZoom(image);
+    }
+  });
   document.getElementById('workflowState').addEventListener('change', event => saveDecision(image, image.decision || 'UNDECIDED', event.target.value, document.getElementById('notes').value));
   document.getElementById('notes').addEventListener('change', event => saveDecision(image, image.decision || 'UNDECIDED', document.getElementById('workflowState').value, event.target.value));
 }
@@ -737,6 +809,7 @@ async function saveDecision(image, decision, workflowState, notes) {
   renderDetail();
   if (center) center.scrollTop = previousScroll;
   setSaveStatus('Saved');
+  writeUiState();
 }
 function setSaveStatus(text) {
   const status = document.getElementById('saveStatus');
@@ -754,10 +827,12 @@ function nextUndecided() {
   if (target) selectImage(target.id);
 }
 function clearFilters() {
-  ['search', 'decisionFilter', 'workflowFilter', 'triageFilter', 'categoryFilter', 'severityFilter', 'confidenceFilter'].forEach(id => {
+  FILTER_IDS.forEach(id => {
     document.getElementById(id).value = '';
   });
   renderGroups();
+  renderDetail();
+  writeUiState();
 }
 function applyNextAction() {
   const next = data.overview && data.overview.next_action;
@@ -768,6 +843,8 @@ function applyNextAction() {
   if (filter.decision) document.getElementById('decisionFilter').value = filter.decision;
   renderGroups();
   if (next.target_image_id) selectImage(next.target_image_id);
+  else renderDetail();
+  writeUiState();
 }
 function openPreview(image) {
   openZoom(image);
@@ -785,6 +862,7 @@ function openZoom(image) {
   zoomState.open = true;
   renderGroups();
   renderDetail();
+  writeUiState();
 }
 function closeZoom() {
   document.getElementById('zoomViewer').hidden = true;
@@ -833,18 +911,26 @@ function toggleZoom() {
 }
 async function render() {
   data = await loadData();
+  uiState = readUiState();
   populateFilters();
-  selectedId = data.images[0] && data.images[0].id;
+  restoreFilters();
+  restoreThumbSize();
+  selectedId = data.images.some(image => image.id === uiState.selectedId)
+    ? uiState.selectedId
+    : data.images[0] && data.images[0].id;
   renderCounts();
   renderOverview();
   renderGroups();
   renderDetail();
 }
-['search', 'decisionFilter', 'workflowFilter', 'triageFilter', 'categoryFilter', 'severityFilter', 'confidenceFilter'].forEach(id => {
-  document.getElementById(id).addEventListener('input', renderGroups);
-  document.getElementById(id).addEventListener('change', renderGroups);
+FILTER_IDS.forEach(id => {
+  document.getElementById(id).addEventListener('input', () => { renderGroups(); renderDetail(); writeUiState(); });
+  document.getElementById(id).addEventListener('change', () => { renderGroups(); renderDetail(); writeUiState(); });
 });
-document.getElementById('thumbSize').addEventListener('input', event => document.documentElement.style.setProperty('--thumb-size', event.target.value + 'px'));
+document.getElementById('thumbSize').addEventListener('input', event => {
+  document.documentElement.style.setProperty('--thumb-size', event.target.value + 'px');
+  writeUiState();
+});
 document.getElementById('nextUndecided').addEventListener('click', nextUndecided);
 document.getElementById('clearFilters').addEventListener('click', clearFilters);
 document.getElementById('shortcutHelp').addEventListener('click', () => document.getElementById('shortcuts').showModal());
