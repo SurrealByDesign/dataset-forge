@@ -238,6 +238,12 @@ class ValidationDossierTests(unittest.TestCase):
                 "artifact.high_frequency_isolated",
                 "artifact.oversharpening_halo",
                 "dataset.duplicate.exact",
+                "source_encoding.banding",
+                "source_encoding.chroma_artifact",
+                "source_encoding.jpeg_blocking",
+                "source_encoding.jpeg_compression",
+                "source_encoding.jpeg_ringing",
+                "source_encoding.low_source_quality",
                 TEXTURE,
             ],
         )

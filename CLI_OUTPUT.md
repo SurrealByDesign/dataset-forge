@@ -152,9 +152,14 @@ Known false-positive contexts that may need human judgment:
 - hard-edge line art, ink outlines, or crisp transitions
 - mixed-media and intentionally rough texture
 
-Dataset Forge does not include a JPEG/compression analyzer in v1.x. Exact
-duplicate detection is advisory and limited to byte-identical and decoded
-pixel-identical images; it does not detect perceptual near-duplicates.
+Image Encoding Analyzer findings are advisory source-context signals. JPEG
+presence alone is not a finding, and high-quality JPEGs should not be flagged
+only because they are JPEG files. Encoding evidence may explain texture, halo,
+crystalline, or high-frequency findings, but Dataset Forge does not repair,
+denoise, upscale, clean, exclude, export, move, or modify images.
+
+Exact duplicate detection is advisory and limited to byte-identical and
+decoded pixel-identical images; it does not detect perceptual near-duplicates.
 
 ---
 

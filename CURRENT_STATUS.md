@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-09. v1.1.0 duplicate detection prep.*
+*Last updated: 2026-07-09. v1.2.0 image encoding analyzer prep.*
 
 ---
 
@@ -90,6 +90,7 @@ Plan and preview are advisory and execution-free.
 | `oversharpening_halo_analyzer/v1` | `artifact.oversharpening_halo` | Advisory; synthetic-fixture-backed. |
 | `high_frequency_isolated_artifact_analyzer/v1` | `artifact.high_frequency_isolated` | Advisory; synthetic-fixture-backed. |
 | `duplicate_detection_analyzer/v1` | `dataset.duplicate.exact` | Advisory; exact/content duplicate only. |
+| `image_encoding_analyzer/v1` | `source_encoding.*` | Advisory; source-encoding context only. |
 
 Current analyzers are useful review signals, not final judgments. They are
 deterministic and emit evidence, but they are not published real-world
@@ -105,8 +106,11 @@ Known false-positive contexts to review carefully:
 - Hard-edge line art, ink outlines, and crisp transitions.
 - Mixed-media or intentionally rough texture.
 
-There is no JPEG/compression analyzer in v1.x. Compression evidence should be
-handled through human review and conservative wording.
+Image Encoding Analyzer findings are source-context review signals. JPEG
+presence alone is not a finding, and high-quality JPEGs should not be flagged
+only because they are JPEG files. Encoding findings can help explain texture,
+halo, crystalline, or high-frequency findings, but they are not quality scores,
+readiness labels, repair instructions, or automatic exclusion decisions.
 
 Duplicate detection is limited to byte-identical and decoded pixel-identical
 images. Dataset Forge does not detect near-duplicates, resized matches, cropped
@@ -141,7 +145,7 @@ Validated by project/private review work:
 Not yet validated enough to claim calibrated public reliability:
 
 - real-world precision/recall for all analyzers
-- JPEG/compression separation
+- JPEG/compression separation beyond conservative v1.2 context signals
 - cross-style performance beyond current fixtures and private review data
 - perceptual near-duplicate review
 
@@ -179,7 +183,7 @@ Before tagging a v1.x release:
 - file movement or copying
 - perceptual near-duplicate detection
 - duplicate cleanup, file movement, or automatic exclusion
-- JPEG/compression analyzer
+- JPEG cleanup, denoising, upscaling, or repair
 - profile UI
 - analyzer toggles
 - plugin system

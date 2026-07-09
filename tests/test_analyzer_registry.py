@@ -9,6 +9,7 @@ from dataset_forge.analyzers.duplicates import DuplicateDetectionAnalyzer
 from dataset_forge.analyzers.high_frequency_isolated import (
     HighFrequencyIsolatedArtifactAnalyzer,
 )
+from dataset_forge.analyzers.image_encoding import ImageEncodingAnalyzer
 from dataset_forge.analyzers.oversharpening import OversharpeningHaloAnalyzer
 from dataset_forge.analyzers.registry import (
     ANALYZER_CLASSES,
@@ -29,6 +30,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 OversharpeningHaloAnalyzer,
                 HighFrequencyIsolatedArtifactAnalyzer,
                 DuplicateDetectionAnalyzer,
+                ImageEncodingAnalyzer,
             ),
         )
 
@@ -44,6 +46,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "oversharpening_halo_analyzer/v1",
                 "high_frequency_isolated_artifact_analyzer/v1",
                 "duplicate_detection_analyzer/v1",
+                "image_encoding_analyzer/v1",
             ],
         )
         self.assertIsNot(first[0], second[0])
@@ -57,6 +60,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "oversharpening_halo_analyzer": "v1",
                 "high_frequency_isolated_artifact_analyzer": "v1",
                 "duplicate_detection_analyzer": "v1",
+                "image_encoding_analyzer": "v1",
             },
         )
 
@@ -69,6 +73,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "oversharpening_halo_analyzer/v1",
                 "high_frequency_isolated_artifact_analyzer/v1",
                 "duplicate_detection_analyzer/v1",
+                "image_encoding_analyzer/v1",
             ),
         )
 

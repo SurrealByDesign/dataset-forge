@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.2.0
+
+- Added `image_encoding_analyzer/v1` for advisory source-encoding context.
+- Detects conservative evidence for obvious JPEG compression, 8x8 blocking,
+  edge ringing or mosquito-noise context, chroma artifacts, banding, and tiny
+  compressed source characteristics.
+- JPEG presence alone is not a finding, and high-quality JPEGs should not be
+  flagged only because they are JPEG files.
+- Added Review Desk labels for source-encoding categories while preserving raw
+  category IDs and the existing review workflow.
+- Did not add image repair, JPEG cleanup, denoising, upscaling, automatic
+  exclusion, quality scores, new sidecars, schema changes, export, execution,
+  or source-image modification.
+
 ## v1.1.0
 
 - Added `duplicate_detection_analyzer/v1` for advisory exact duplicate

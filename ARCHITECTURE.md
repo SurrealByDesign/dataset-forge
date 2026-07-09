@@ -85,13 +85,18 @@ cleanup, export, or training-readiness decisions.
 | `oversharpening_halo_analyzer/v1` | `artifact.oversharpening_halo`, error category | Advisory; synthetic-fixture-backed. |
 | `high_frequency_isolated_artifact_analyzer/v1` | `artifact.high_frequency_isolated`, error category | Advisory; synthetic-fixture-backed. |
 | `duplicate_detection_analyzer/v1` | `dataset.duplicate.exact` | Advisory; exact/content duplicate only. |
+| `image_encoding_analyzer/v1` | `source_encoding.jpeg_compression`, `source_encoding.jpeg_blocking`, `source_encoding.jpeg_ringing`, `source_encoding.chroma_artifact`, `source_encoding.banding`, `source_encoding.low_source_quality` | Advisory; source-encoding context only. |
 
 Known false-positive contexts include JPEG compression/ringing, low-resolution
 JPEG artifacts, natural paper or pencil grain, watercolor/canvas texture,
 engraving or etched illustration texture, intentional highlights or glitter,
 hard-edge line art, and deliberately rough mixed-media surfaces.
 
-There is no JPEG/compression analyzer in v1.x.
+Image encoding analysis is intentionally contextual. JPEG presence alone is not
+a finding, and high-quality JPEGs should not be flagged only because they are
+JPEG files. Encoding findings may explain what other analyzers are seeing, but
+they are not quality scores, readiness labels, repair instructions, or cleanup
+recommendations.
 
 Duplicate detection is intentionally narrow. It emits advisory findings for
 byte-identical files and decoded pixel-identical images only. It does not use
@@ -220,8 +225,8 @@ Before a v1.x release:
 
 ## Future Work Boundary
 
-Perceptual near-duplicate detection, JPEG/compression analysis,
-metadata/caption review, public configurable review signals, profile editing,
-export, cleanup, repair, and execution are future possibilities only. They
-should be considered only when the read-only workstation remains stable and
-trusted.
+Perceptual near-duplicate detection, metadata/caption review, public
+configurable review signals, profile editing, export, cleanup, repair, and
+execution are future possibilities only. JPEG cleanup, denoising, upscaling,
+and image repair remain out of scope. Future work should be considered only
+when the read-only workstation remains stable and trusted.

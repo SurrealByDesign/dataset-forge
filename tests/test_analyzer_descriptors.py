@@ -66,6 +66,25 @@ class TestAnalyzerDescriptors(unittest.TestCase):
         self.assertEqual(descriptor.categories_emitted, ("dataset.duplicate.exact",))
         self.assertFalse(descriptor.requires_image_measurements)
 
+    def test_image_encoding_descriptor_uses_technical_quality_family(self):
+        descriptor = descriptor_for_id("image_encoding_analyzer")
+
+        self.assertIsNotNone(descriptor)
+        self.assertEqual(descriptor.family, FAMILY_TECHNICAL_QUALITY)
+        self.assertEqual(
+            descriptor.categories_emitted,
+            (
+                "source_encoding.jpeg_compression",
+                "source_encoding.jpeg_blocking",
+                "source_encoding.jpeg_ringing",
+                "source_encoding.chroma_artifact",
+                "source_encoding.banding",
+                "source_encoding.low_source_quality",
+            ),
+        )
+        self.assertFalse(descriptor.requires_dataset_context)
+        self.assertFalse(descriptor.requires_image_measurements)
+
     def test_current_quality_descriptors_keep_technical_quality_family(self):
         for descriptor in built_in_descriptors():
             if descriptor.id == "duplicate_detection_analyzer":

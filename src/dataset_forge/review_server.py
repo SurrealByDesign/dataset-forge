@@ -407,7 +407,13 @@ const categoryLabels = {
   'artifact.oversharpening_halo.error': 'Oversharpening / Edge Halo Error',
   'artifact.high_frequency_isolated': 'Isolated High-Frequency Specks',
   'artifact.high_frequency_isolated.error': 'Isolated High-Frequency Speck Error',
-  'dataset.duplicate.exact': 'Duplicate Image'
+  'dataset.duplicate.exact': 'Duplicate Image',
+  'source_encoding.jpeg_compression': 'JPEG Compression Context',
+  'source_encoding.jpeg_blocking': '8x8 JPEG Blocking',
+  'source_encoding.jpeg_ringing': 'JPEG Ringing / Mosquito Noise',
+  'source_encoding.chroma_artifact': 'Chroma Encoding Artifact',
+  'source_encoding.banding': 'Banding / Posterization',
+  'source_encoding.low_source_quality': 'Low Source-Quality Context'
 };
 const analyzerLabels = {
   'crystalline_faceting_analyzer': 'Crystal-like Surface Pattern Analyzer',
@@ -419,7 +425,9 @@ const analyzerLabels = {
   'high_frequency_isolated_artifact_analyzer': 'Isolated Speck Analyzer',
   'high_frequency_isolated_artifact_analyzer/v1': 'Isolated Speck Analyzer',
   'duplicate_detection_analyzer': 'Duplicate Detection Analyzer',
-  'duplicate_detection_analyzer/v1': 'Duplicate Detection Analyzer'
+  'duplicate_detection_analyzer/v1': 'Duplicate Detection Analyzer',
+  'image_encoding_analyzer': 'Image Encoding Analyzer',
+  'image_encoding_analyzer/v1': 'Image Encoding Analyzer'
 };
 const shortcutDecision = { '1': 'KEEP', '2': 'ACCEPTED_STYLE_FALSE_POSITIVE', '3': 'IMPROVEMENT_CANDIDATE', '4': 'REMOVAL_CANDIDATE', 'u': 'UNDECIDED' };
 async function loadData() {

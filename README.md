@@ -126,6 +126,7 @@ model.
 | `oversharpening_halo_analyzer/v1` | Edge-localized residuals consistent with oversharpening or halos. | Advisory; synthetic-fixture-backed. |
 | `high_frequency_isolated_artifact_analyzer/v1` | Sparse isolated high-frequency residual components such as bright or dark specks. | Advisory; synthetic-fixture-backed. |
 | `duplicate_detection_analyzer/v1` | Byte-identical and decoded pixel-identical duplicate images. | Advisory; exact/content duplicates only. |
+| `image_encoding_analyzer/v1` | Source-encoding context such as obvious JPEG compression, blocking, ringing, chroma artifacts, banding, or tiny compressed sources. | Advisory; context only. |
 
 All current analyzers are deterministic and read-only. They emit evidence,
 severity, confidence, false-positive-rate estimates, and plain-language
@@ -144,9 +145,22 @@ Review findings carefully when images contain:
 - Hard-edge line art, ink outlines, or naturally crisp transitions.
 - Mixed media, textured brushes, or intentionally rough surfaces.
 
-Dataset Forge does not currently include a JPEG/compression analyzer. Existing
-analyzers may flag symptoms that compression contributes to, so human review
-remains required.
+### Image Encoding
+
+Dataset Forge v1.2 includes `image_encoding_analyzer/v1` as an advisory source
+context signal. JPEG presence alone is not a finding, and high-quality JPEGs
+should not be flagged just because they are JPEG files.
+
+The analyzer may emit findings for obvious compression context, 8x8 blocking,
+edge ringing or mosquito-noise evidence, chroma artifacts, banding, or tiny
+compressed source characteristics. These findings can help explain texture,
+halo, crystalline, or high-frequency findings from other analyzers, but they
+are not quality scores or automatic defects.
+
+Dataset Forge does not repair, denoise, upscale, clean, exclude, export, move,
+or modify images.
+
+---
 
 ### Duplicate Detection
 

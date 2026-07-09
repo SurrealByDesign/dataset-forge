@@ -146,6 +146,31 @@ BUILT_IN_ANALYZER_DESCRIPTORS: tuple[AnalyzerDescriptor, ...] = (
         default_display_policy=DISPLAY_VISIBLE,
         default_triage_policy=TRIAGE_INCLUDED,
     ),
+    AnalyzerDescriptor(
+        id="image_encoding_analyzer",
+        display_name="Image Encoding Analyzer",
+        description=(
+            "Detects conservative source-encoding context that may explain "
+            "texture, halo, crystalline, or high-frequency findings."
+        ),
+        version="v1",
+        family=FAMILY_TECHNICAL_QUALITY,
+        categories_emitted=(
+            "source_encoding.jpeg_compression",
+            "source_encoding.jpeg_blocking",
+            "source_encoding.jpeg_ringing",
+            "source_encoding.chroma_artifact",
+            "source_encoding.banding",
+            "source_encoding.low_source_quality",
+        ),
+        calibration_status=CALIBRATION_ADVISORY,
+        deterministic=True,
+        requires_dataset_context=False,
+        requires_image_measurements=False,
+        default_execution_policy=EXECUTION_ENABLED,
+        default_display_policy=DISPLAY_VISIBLE,
+        default_triage_policy=TRIAGE_INCLUDED,
+    ),
 )
 
 _DESCRIPTORS_BY_ID: Mapping[str, AnalyzerDescriptor] = {

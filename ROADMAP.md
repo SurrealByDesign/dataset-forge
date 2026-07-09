@@ -37,7 +37,7 @@ v1.0 does not include:
 - file movement
 - quarantine folders
 - perceptual near-duplicate analyzer
-- JPEG/compression analyzer
+- JPEG cleanup, denoising, upscaling, or repair
 - profile UI
 - analyzer toggles
 - plugin system
@@ -95,30 +95,48 @@ finding details.
 
 ---
 
-## Post-v1.1 Direction
+## v1.2: Image Encoding Analyzer
 
-Post-v1.1 work should be driven by evidence and user review friction, not by
+v1.2 adds `image_encoding_analyzer/v1` as conservative source-encoding
+context:
+
+- obvious JPEG compression context
+- 8x8 blocking
+- edge ringing or mosquito-noise evidence
+- chroma artifacts where practical
+- banding/posterization evidence
+- tiny compressed source characteristics
+
+JPEG presence alone is not a finding. High-quality JPEGs should not be flagged
+only because they are JPEG files. Encoding findings are advisory context that
+may explain texture, halo, crystalline, or high-frequency findings; they are
+not quality scores, repair instructions, cleanup recommendations, or automatic
+exclusion decisions.
+
+---
+
+## Post-v1.2 Direction
+
+Post-v1.2 work should be driven by evidence and user review friction, not by
 architecture expansion.
-
-Likely v1.2 priorities:
-
-- strengthen analyzer validation and calibration notes
-- add legally safe real-world validation fixtures if available
-- consider conservative perceptual near-duplicate review only after exact
-  duplicate validation
-- consider JPEG/compression artifact analysis if validation shows it reduces
-  false positives
-- improve Review Desk ergonomics only where real review sessions show friction
 
 Likely v1.3 priorities:
 
-- public configurable review signals and profile selection, using the existing
-  descriptor/profile/policy/manifest foundation
-- clearer Review Desk explanations for visible versus triage-included findings
+- strengthen analyzer validation and calibration notes
+- add legally safe real-world validation fixtures if available
+- caption / metadata review signals if they can remain deterministic and
+  sidecar-only
+- improve Review Desk ergonomics only where real review sessions show friction
+
+Likely v1.4 priorities:
+
+- conservative perceptual near-duplicate review only after exact duplicate and
+  encoding-context validation
 
 Later possibilities:
 
-- metadata/caption review signals
+- public configurable review signals and profile selection, using the existing
+  descriptor/profile/policy/manifest foundation
 - diversity/style-consistency review signals
 - non-destructive export or copy workflows only after human-review trust is
   strong
