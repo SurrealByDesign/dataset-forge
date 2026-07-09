@@ -397,6 +397,27 @@ const workflowLabels = {
   QUARANTINE_PLANNED: 'Set Aside Intent (no files moved)',
   REVIEWED: 'Reviewed'
 };
+const categoryLabels = {
+  'artifact.crystalline_faceting': 'Crystal-like Surface Pattern',
+  'artifact.crystalline_faceting.error': 'Crystal-like Surface Pattern Error',
+  'texture.high_microtexture': 'High Microtexture',
+  'texture.error': 'Texture Measurement Error',
+  'artifact.texture': 'Texture Artifact Signal',
+  'artifact.oversharpening_halo': 'Oversharpening / Edge Halo',
+  'artifact.oversharpening_halo.error': 'Oversharpening / Edge Halo Error',
+  'artifact.high_frequency_isolated': 'Isolated High-Frequency Specks',
+  'artifact.high_frequency_isolated.error': 'Isolated High-Frequency Speck Error'
+};
+const analyzerLabels = {
+  'crystalline_faceting_analyzer': 'Crystal-like Surface Pattern Analyzer',
+  'crystalline_faceting_analyzer/v1': 'Crystal-like Surface Pattern Analyzer',
+  'texture_analyzer': 'Texture Analyzer',
+  'texture_analyzer/v1': 'Texture Analyzer',
+  'oversharpening_halo_analyzer': 'Oversharpening / Edge Halo Analyzer',
+  'oversharpening_halo_analyzer/v1': 'Oversharpening / Edge Halo Analyzer',
+  'high_frequency_isolated_artifact_analyzer': 'Isolated Speck Analyzer',
+  'high_frequency_isolated_artifact_analyzer/v1': 'Isolated Speck Analyzer'
+};
 const shortcutDecision = { '1': 'KEEP', '2': 'ACCEPTED_STYLE_FALSE_POSITIVE', '3': 'IMPROVEMENT_CANDIDATE', '4': 'REMOVAL_CANDIDATE', 'u': 'UNDECIDED' };
 async function loadData() {
   const response = await fetch('/api/review-data');
@@ -411,6 +432,19 @@ function escapeText(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function label(value, labels) { return labels[value] || value || 'Undecided'; }
+function categoryLabel(value) { return categoryLabels[value] || value || 'Unknown finding category'; }
+function analyzerLabel(value) { return analyzerLabels[value] || value || 'Unknown analyzer'; }
+function displayEvidenceSummary(value) {
+  let text = String(value ?? '');
+  Object.entries(categoryLabels).forEach(([raw, display]) => {
+    text = text.split(raw).join(`${display} (${raw})`);
+  });
+  return text;
+}
+function categorySecondaryText(categories) {
+  if (!categories || !categories.length) return 'No current review finding. Not a guarantee.';
+  return `Raw category IDs: ${categories.join(', ')}`;
+}
 function uiStateKey() {
   const dataset = data && data.dataset_path ? data.dataset_path : 'unknown';
   return `${UI_STATE_KEY_PREFIX}:${dataset}`;
@@ -490,6 +524,9 @@ function renderCard(image) {
   if (image.id === selectedId) card.classList.add('selected');
   if (image.workflow_state === 'REVIEWED') card.classList.add('reviewed');
   if (image.workflow_state === 'QUARANTINE_PLANNED') card.classList.add('quarantine');
+  const findingLabels = image.finding_categories.length
+    ? image.finding_categories.map(categoryLabel).join(', ')
+    : 'No current review finding. Not a guarantee.';
   card.innerHTML = `
     <img loading="lazy" src="${escapeText(image.thumbnail_url)}" alt="${escapeText(image.filename)}">
     <h3>${escapeText(image.filename)}</h3>
@@ -499,7 +536,9 @@ function renderCard(image) {
       <span class="badge">${escapeText(label(image.workflow_state, workflowLabels))}</span>
       <span class="badge">${image.finding_count} findings</span>
     </div>
-    <p>${escapeText(image.evidence_summary)}</p>
+    <p><strong>Finding type:</strong> ${escapeText(findingLabels)}</p>
+    <p>${escapeText(displayEvidenceSummary(image.evidence_summary))}</p>
+    <p class="muted">${escapeText(categorySecondaryText(image.finding_categories))}</p>
     <div class="actions">
       ${decisionButton('KEEP', 'Keep')}
       ${decisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', 'Accepted Style')}
@@ -581,15 +620,15 @@ function renderOverview() {
   const evidenceRows = (evidence.category_rows || []).slice(0, 8);
   const unresolvedRows = (guidance.unresolved_evidence_categories || []).slice(0, 5);
   const categoryButtons = categories.length
-    ? categories.map(item => `<button type="button" data-category="${escapeText(item.category)}">${escapeText(item.category)} (${item.count})</button>`).join('')
+    ? categories.map(item => `<button type="button" data-category="${escapeText(item.category)}" title="Raw category: ${escapeText(item.category)}">${escapeText(categoryLabel(item.category))} (${item.count})</button>`).join('')
     : '<span class="muted">No finding categories emitted.</span>';
   const analyzerRows = analyzers.length
-    ? analyzers.map(item => `<span class="badge">${escapeText(item.analyzer)}: ${item.finding_count} findings on ${item.image_count} images, Advisory review signal</span>`).join('')
+    ? analyzers.map(item => `<span class="badge">${escapeText(analyzerLabel(item.analyzer))}: ${item.finding_count} findings on ${item.image_count} images, Advisory review signal</span>`).join('')
     : '<span class="muted">No analyzer coverage summary was recorded.</span>';
   const evidenceTable = evidenceRows.length
     ? `<table class="intelligence-table"><thead><tr><th>Category</th><th>Findings</th><th>Images</th><th>Dataset</th><th>Severity</th><th>Undecided</th></tr></thead><tbody>${evidenceRows.map(item => `
       <tr>
-        <td>${escapeText(item.finding_category)}</td>
+        <td>${escapeText(categoryLabel(item.finding_category))}<br><span class="muted">${escapeText(item.finding_category)}</span></td>
         <td>${item.finding_count}</td>
         <td>${item.affected_image_count}</td>
         <td>${percent(item.affected_image_percentage)}</td>
@@ -600,7 +639,7 @@ function renderOverview() {
   const analyzerTable = analyzerContribution.length
     ? `<table class="intelligence-table"><thead><tr><th>Analyzer</th><th>Family</th><th>Findings</th><th>Images</th><th>Policies</th><th>Source</th></tr></thead><tbody>${analyzerContribution.map(item => `
       <tr>
-        <td>${escapeText(item.analyzer)} ${escapeText(item.version)}</td>
+        <td>${escapeText(analyzerLabel(item.analyzer))} ${escapeText(item.version)}<br><span class="muted">${escapeText(item.analyzer)}</span></td>
         <td>${escapeText(item.family)}</td>
         <td>${item.finding_count}</td>
         <td>${item.affected_image_count}</td>
@@ -611,7 +650,7 @@ function renderOverview() {
   const sidecars = coverage.optional_sidecars || {};
   const profile = provenance.inspection_profile || characteristics.inspection_profile || {};
   const unresolved = unresolvedRows.length
-    ? unresolvedRows.map(item => `<span class="badge">${escapeText(item.finding_category)}: ${item.undecided_image_count} undecided images</span>`).join('')
+    ? unresolvedRows.map(item => `<span class="badge">${escapeText(categoryLabel(item.finding_category))}: ${item.undecided_image_count} undecided images <span class="muted">${escapeText(item.finding_category)}</span></span>`).join('')
     : '<span class="muted">No unresolved evidence categories emitted by current filters.</span>';
   document.getElementById('overview').innerHTML = `
     <h2>Dataset Intelligence</h2>
@@ -694,7 +733,7 @@ function populateFilters() {
   const workflow = document.getElementById('workflowFilter');
   data.workflow_states.forEach(value => workflow.insertAdjacentHTML('beforeend', `<option value="${value}">${escapeText(label(value, workflowLabels))}</option>`));
   const categories = [...new Set(data.images.flatMap(image => image.finding_categories))].sort();
-  categories.forEach(value => document.getElementById('categoryFilter').insertAdjacentHTML('beforeend', `<option value="${escapeText(value)}">${escapeText(value)}</option>`));
+  categories.forEach(value => document.getElementById('categoryFilter').insertAdjacentHTML('beforeend', `<option value="${escapeText(value)}">${escapeText(categoryLabel(value))} (${escapeText(value)})</option>`));
   const severities = [...new Set(data.images.flatMap(image => image.severities))].sort();
   severities.forEach(value => document.getElementById('severityFilter').insertAdjacentHTML('beforeend', `<option value="${escapeText(value)}">${escapeText(value)}</option>`));
 }
@@ -716,7 +755,7 @@ function currentFilterSummary() {
     ['Decision', decision ? label(decision, decisionLabels) : ''],
     ['Workflow', workflow ? label(workflow, workflowLabels) : ''],
     ['Triage', document.getElementById('triageFilter').value],
-    ['Category', document.getElementById('categoryFilter').value],
+    ['Category', document.getElementById('categoryFilter').value ? categoryLabel(document.getElementById('categoryFilter').value) : ''],
     ['Severity', document.getElementById('severityFilter').value],
     ['Confidence', document.getElementById('confidenceFilter').value ? document.getElementById('confidenceFilter').selectedOptions[0].textContent : '']
   ];
@@ -732,7 +771,7 @@ function renderDetail() {
     <h2>${escapeText(image.filename)}</h2>
     <p><strong>Path:</strong> ${escapeText(image.image_path)}</p>
     <p><strong>Triage:</strong> ${escapeText(image.triage_status)}</p>
-    <p><strong>Evidence:</strong> ${escapeText(image.evidence_summary)}</p>
+    <p><strong>Evidence:</strong> ${escapeText(displayEvidenceSummary(image.evidence_summary))}</p>
     <p><strong>Suggested review action:</strong> ${escapeText(image.suggested_review_action)}</p>
     <div class="decision-buttons">
       ${detailDecisionButton('KEEP', '1 Keep')}
@@ -776,8 +815,10 @@ function renderFindings(image) {
   if (!image.findings.length) return '<p>No current findings emitted.</p>';
   return image.findings.map(finding => `
     <section class="finding">
-      <h3>${escapeText(finding.category)} / ${escapeText(finding.analyzer)}</h3>
+      <h3>${escapeText(categoryLabel(finding.category))}</h3>
+      <p class="muted">Raw category: <code>${escapeText(finding.category)}</code>. Analyzer: ${escapeText(analyzerLabel(finding.analyzer))} <code>${escapeText(finding.analyzer)}</code>.</p>
       <p><strong>Severity:</strong> ${escapeText(finding.severity)} <strong>Confidence:</strong> ${escapeText(finding.confidence)}</p>
+      <p class="muted">Review signal only; not an automatic defect.</p>
       <p>${escapeText(finding.explanation)}</p>
       <p>${escapeText(finding.recommendation)}</p>
     </section>`).join('');
@@ -785,7 +826,7 @@ function renderFindings(image) {
 function renderCoverage() {
   const analyzers = (data.analyzer_coverage && data.analyzer_coverage.analyzers) || [];
   if (!analyzers.length) return '<p>No analyzer coverage summary was recorded.</p>';
-  return analyzers.map(item => `<p>${escapeText(item.analyzer || '')}: ${escapeText(item.finding_count || 0)} findings on ${escapeText(item.image_count || 0)} images. Advisory review signal.</p>`).join('');
+  return analyzers.map(item => `<p>${escapeText(analyzerLabel(item.analyzer || ''))} <span class="muted">${escapeText(item.analyzer || '')}</span>: ${escapeText(item.finding_count || 0)} findings on ${escapeText(item.image_count || 0)} images. Advisory review signal.</p>`).join('');
 }
 async function saveDecision(image, decision, workflowState, notes) {
   const center = document.querySelector('.center');
