@@ -332,6 +332,14 @@ class TestCrystallineFacetingFindingFields(unittest.TestCase):
         self.assertIn("50.0", text)  # grain value
         self.assertIn("45.0", text)  # smoothness value
 
+    def test_explanation_is_advisory_not_overclaimed(self):
+        text = self._finding().explanation
+        self.assertIn("resembles surface patterns Dataset Forge currently watches for", text)
+        self.assertIn("advisory review signal", text)
+        self.assertIn("not a calibrated defect diagnosis", text)
+        self.assertNotIn("matches the crystalline faceting pattern", text)
+        self.assertNotIn("common GPT rendering fingerprint", text)
+
     def test_recommendation_mentions_review(self):
         rec = self._finding().recommendation
         self.assertIn("Review", rec)

@@ -135,7 +135,9 @@ recommendations. They remain review signals, not final judgments.
 Review findings carefully when images contain:
 
 - JPEG compression, ringing, mosquito noise, or chroma artifacts.
+- Low-resolution JPEG/compression artifacts.
 - Natural paper, pencil, watercolor, canvas, or scan grain.
+- Engraving or etched illustration texture.
 - Intentional glitter, stars, freckles, sparkles, highlights, or decorative
   specks.
 - Hard-edge line art, ink outlines, or naturally crisp transitions.
@@ -175,6 +177,15 @@ evidence is not yet sufficient to claim calibrated precision/recall for all
 dataset styles.
 
 Users should interpret findings as evidence-backed review prompts.
+
+### Analyzer Validation Journal Template
+
+When validating findings on real datasets, keep notes in a simple reviewer
+journal. This is optional documentation, not a Dataset Forge sidecar.
+
+| filename | analyzer | category | human judgment | likely cause | reviewer note |
+|---|---|---|---|---|---|
+| `example.jpg` | `texture_analyzer/v1` | `texture.high_microtexture` | Correct useful signal / Accepted style / Source artifact / Ambiguous | watercolor texture / JPEG compression / natural grain / intentional highlights | Short note explaining the decision. |
 
 ---
 

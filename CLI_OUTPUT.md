@@ -145,7 +145,9 @@ severity should not be presented as certainty.
 Known false-positive contexts that may need human judgment:
 
 - JPEG compression, ringing, mosquito noise, chroma artifacts, or banding
+- low-resolution JPEG/compression artifacts
 - natural paper, pencil, watercolor, canvas, or scan grain
+- engraving or etched illustration texture
 - intentional highlights, glitter, stars, freckles, or decorative specks
 - hard-edge line art, ink outlines, or crisp transitions
 - mixed-media and intentionally rough texture

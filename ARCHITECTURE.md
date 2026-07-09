@@ -84,8 +84,9 @@ cleanup, export, or training-readiness decisions.
 | `oversharpening_halo_analyzer/v1` | `artifact.oversharpening_halo`, error category | Advisory; synthetic-fixture-backed. |
 | `high_frequency_isolated_artifact_analyzer/v1` | `artifact.high_frequency_isolated`, error category | Advisory; synthetic-fixture-backed. |
 
-Known false-positive contexts include JPEG compression/ringing, natural paper
-or pencil grain, watercolor/canvas texture, intentional highlights or glitter,
+Known false-positive contexts include JPEG compression/ringing, low-resolution
+JPEG artifacts, natural paper or pencil grain, watercolor/canvas texture,
+engraving or etched illustration texture, intentional highlights or glitter,
 hard-edge line art, and deliberately rough mixed-media surfaces.
 
 There is no JPEG/compression analyzer in v1.0.

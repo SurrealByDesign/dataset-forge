@@ -97,7 +97,9 @@ calibrated detectors.
 Known false-positive contexts to review carefully:
 
 - JPEG compression, ringing, mosquito noise, chroma artifacts, and banding.
+- Low-resolution JPEG/compression artifacts.
 - Natural paper, pencil, watercolor, canvas, or scan grain.
+- Engraving or etched illustration texture.
 - Intentional highlights, glitter, stars, freckles, and decorative specks.
 - Hard-edge line art, ink outlines, and crisp transitions.
 - Mixed-media or intentionally rough texture.

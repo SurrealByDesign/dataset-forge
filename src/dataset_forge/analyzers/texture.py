@@ -140,8 +140,9 @@ class TextureAnalyzer(Analyzer):
         explanation = (
             f"Microtexture density {micro:.1f} is {z:.1f} standard deviations above "
             f"the dataset mean ({dist.mean:.1f} ± {dist.stddev:.1f}). "
-            f"High microtexture density is a common GPT image artifact that LoRA "
-            f"models learn alongside the intended style."
+            f"High microtexture density is a review signal Dataset Forge currently "
+            f"watches for. It may indicate AI-like surface texture, compression, "
+            f"natural grain, or intentional illustration texture."
         )
 
         if severity >= Severity.HIGH:

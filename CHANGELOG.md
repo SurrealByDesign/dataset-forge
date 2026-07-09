@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Softened Texture and Crystalline Faceting analyzer explanations so findings
+  read as advisory review signals rather than calibrated defect diagnoses.
+- Expanded analyzer trust documentation with low-resolution JPEG/compression
+  artifacts and engraving/etched illustration texture as known false-positive
+  contexts.
+- Added a docs-only analyzer validation journal template for real-dataset
+  reviewer notes.
+
 ## v1.0.0
 
 - Rewrote v1.0-facing documentation around the current read-only curation

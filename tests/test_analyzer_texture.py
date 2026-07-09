@@ -234,6 +234,16 @@ class TestTextureAnalyzerNoisyImage(unittest.TestCase):
         findings = self.analyzer.analyze(self.path, ctx)
         json.dumps(findings[0].evidence)
 
+    def test_finding_explanation_is_advisory_not_overclaimed(self):
+        ctx = _ctx(mean=30.0, stddev=5.0)
+        findings = self.analyzer.analyze(self.path, ctx)
+        text = findings[0].explanation
+        self.assertIn("review signal Dataset Forge currently watches for", text)
+        self.assertIn("AI-like surface texture", text)
+        self.assertIn("compression", text)
+        self.assertIn("intentional illustration texture", text)
+        self.assertNotIn("common GPT image artifact", text)
+
     def test_finding_image_path_matches(self):
         ctx = _ctx(mean=30.0, stddev=5.0)
         findings = self.analyzer.analyze(self.path, ctx)

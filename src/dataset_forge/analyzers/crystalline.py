@@ -169,10 +169,11 @@ class CrystallineFacetingAnalyzer(Analyzer):
             f"Pencil-grain score {grain:.1f} (threshold {_GRAIN_THRESHOLD}) "
             f"with watercolor smoothness {smoothness:.1f} (ceiling {_SMOOTHNESS_CEILING}) "
             f"and microtexture {micro:.1f} (floor {_MICRO_FLOOR}) "
-            f"matches the crystalline faceting pattern identified during calibration. "
+            f"resembles surface patterns Dataset Forge currently watches for. "
             f"Surfaces may appear carved from angular micro-polygons rather than "
-            f"painted or drawn. This is a common GPT rendering fingerprint that "
-            f"LoRA models learn alongside the intended artistic style."
+            f"painted or drawn. This may indicate AI-like surface texture, "
+            f"compression, or intentional illustration texture. Treat this as an "
+            f"advisory review signal, not a calibrated defect diagnosis."
         )
 
         recommendation = (
