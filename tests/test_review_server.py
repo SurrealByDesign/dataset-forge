@@ -804,6 +804,7 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Saving...", html)
         self.assertIn("No images match this group with the current filters.", html)
         self.assertIn("Advisory review signal", html)
+        self.assertIn("String(value ?? '')", html)
         self.assertIn('id="filterSummary"', html)
         self.assertIn("Review Desk does not run analyzers", html)
         self.assertIn("Evidence Summary", html)

@@ -404,7 +404,7 @@ function countBox(label, value) {
 }
 function percent(value) { return `${Number(value || 0).toFixed(1)}%`; }
 function escapeText(value) {
-  return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function label(value, labels) { return labels[value] || value || 'Undecided'; }
 function currentImages() {
