@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## v1.1.0
+
+- Added `duplicate_detection_analyzer/v1` for advisory exact duplicate
+  detection.
+- Detects byte-identical files and decoded pixel-identical images; perceptual
+  near-duplicate, crop, and resize matching remain out of scope.
+- Emits one image-centered `dataset.duplicate.exact` finding per image in each
+  duplicate group, with deterministic group IDs and suggested representative
+  evidence.
+- Added Review Desk labels and duplicate evidence wording while preserving the
+  existing review workflow and queues.
+- Did not add cleanup, export, execution, deletion, file movement, quarantine
+  folders, automatic exclusion, new sidecars, or duplicate-management UI.
 
 - Softened Texture and Crystalline Faceting analyzer explanations so findings
   read as advisory review signals rather than calibrated defect diagnoses.

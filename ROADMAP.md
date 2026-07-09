@@ -1,9 +1,10 @@
 # Dataset Forge -- Roadmap
 
-This roadmap reflects the v1.0 scope freeze.
+This roadmap reflects the v1.x read-only curation workstation direction.
 
 Dataset Forge is a read-only dataset curation workstation. The architecture is
-frozen for v1.0 unless a concrete release blocker appears.
+kept stable around inspect, Review Desk, sidecars, comparison, planning, and
+preview.
 
 ---
 
@@ -35,7 +36,7 @@ v1.0 does not include:
 - image modification
 - file movement
 - quarantine folders
-- duplicate/near-duplicate analyzer
+- perceptual near-duplicate analyzer
 - JPEG/compression analyzer
 - profile UI
 - analyzer toggles
@@ -77,21 +78,39 @@ source images were not touched.
 
 ---
 
-## Post-v1.0 Direction
+## v1.1: Exact Duplicate Detection
 
-Post-v1 work should be driven by evidence and user review friction, not by
+v1.1 adds advisory exact duplicate detection:
+
+- byte-identical duplicate files
+- decoded pixel-identical duplicate images
+- deterministic duplicate group IDs
+- evidence-based suggested representative
+- no near-duplicate, crop, or resize matching
+- no cleanup, export, file movement, deletion, quarantine, or automatic
+  exclusion
+
+The Review Desk continues to use the existing review queues and image-centered
+finding details.
+
+---
+
+## Post-v1.1 Direction
+
+Post-v1.1 work should be driven by evidence and user review friction, not by
 architecture expansion.
 
-Likely v1.1 priorities:
+Likely v1.2 priorities:
 
 - strengthen analyzer validation and calibration notes
 - add legally safe real-world validation fixtures if available
-- consider exact / near-duplicate review as a first-class advisory signal
+- consider conservative perceptual near-duplicate review only after exact
+  duplicate validation
 - consider JPEG/compression artifact analysis if validation shows it reduces
   false positives
 - improve Review Desk ergonomics only where real review sessions show friction
 
-Likely v1.2 priorities:
+Likely v1.3 priorities:
 
 - public configurable review signals and profile selection, using the existing
   descriptor/profile/policy/manifest foundation

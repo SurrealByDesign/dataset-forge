@@ -237,6 +237,7 @@ class ValidationDossierTests(unittest.TestCase):
                 "artifact.crystalline_faceting",
                 "artifact.high_frequency_isolated",
                 "artifact.oversharpening_halo",
+                "dataset.duplicate.exact",
                 TEXTURE,
             ],
         )

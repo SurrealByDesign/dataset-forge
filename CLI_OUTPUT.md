@@ -14,7 +14,7 @@ The CLI should quickly answer:
 
 ## Public Commands
 
-The public v1.0 surface is:
+The public v1.x surface is:
 
 ```text
 dataset-forge inspect <dataset>
@@ -28,7 +28,7 @@ dataset-forge --version
 
 Cleanup, export, execution, repair, profile selection, analyzer toggles,
 plugins, cloud features, databases, and image modification are not public
-v1.0 commands.
+v1.x commands.
 
 ---
 
@@ -152,13 +152,15 @@ Known false-positive contexts that may need human judgment:
 - hard-edge line art, ink outlines, or crisp transitions
 - mixed-media and intentionally rough texture
 
-Dataset Forge does not include a JPEG/compression analyzer in v1.0.
+Dataset Forge does not include a JPEG/compression analyzer in v1.x. Exact
+duplicate detection is advisory and limited to byte-identical and decoded
+pixel-identical images; it does not detect perceptual near-duplicates.
 
 ---
 
 ## Release Checks
 
-Before v1.0, run:
+Before a v1.x release, run:
 
 ```text
 python -m pytest tests/test_cli_surface.py -q

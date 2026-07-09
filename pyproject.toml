@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataset-forge"
-version = "1.0.0"
-description = "Dataset Forge v1.0.0 -- a read-only LoRA dataset curation workstation with policy-aware sidecar semantics, an internal Inspection Profile contract, review signal policy resolution, Analyzer Descriptors, Dataset Intelligence, manifest-aware comparison, Inspection Manifest provenance, local Review Desk, inspect, review, improvement planning, and preview workflows."
+version = "1.1.0"
+description = "Dataset Forge v1.1.0 -- a read-only LoRA dataset curation workstation with advisory exact duplicate detection, policy-aware sidecar semantics, an internal Inspection Profile contract, review signal policy resolution, Analyzer Descriptors, Dataset Intelligence, manifest-aware comparison, Inspection Manifest provenance, local Review Desk, inspect, review, improvement planning, and preview workflows."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

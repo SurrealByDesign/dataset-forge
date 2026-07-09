@@ -8,6 +8,8 @@ against actual pixel data, not stubs.
 from __future__ import annotations
 
 import json
+import hashlib
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -35,11 +37,12 @@ from dataset_forge.review_signal_policy import (
 # ---------------------------------------------------------------------------
 
 def _write_smooth(path: Path, n: int = 1) -> list[Path]:
-    """Write n solid-grey images. Near-zero microtexture."""
+    """Write n solid images. Near-zero microtexture, but not duplicates."""
     written = []
     for i in range(n):
         p = path / f"smooth_{i:03d}.png"
-        arr = np.full((256, 256, 3), 128, dtype=np.uint8)
+        value = 96 + (i % 64)
+        arr = np.full((256, 256, 3), value, dtype=np.uint8)
         Image.fromarray(arr).save(p)
         written.append(p)
     return written
@@ -55,6 +58,14 @@ def _write_noisy(path: Path, n: int = 1) -> list[Path]:
         Image.fromarray(arr).save(p)
         written.append(p)
     return written
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -583,6 +594,62 @@ class TestRunInspectCleanDataset(unittest.TestCase):
         result = run_inspect(self.dataset, self.output)
         data = json.loads(result.json_report.read_text(encoding="utf-8"))
         self.assertEqual(data["summary"]["images_clean"], result.image_count)
+
+
+class TestRunInspectDuplicateDataset(unittest.TestCase):
+    """Duplicate findings should flow through inspect sidecars read-only."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dataset = Path(self.tmp.name) / "dataset"
+        self.output = Path(self.tmp.name) / "output"
+        self.dataset.mkdir()
+        self.first = _write_smooth(self.dataset, n=1)[0]
+        self.second = self.dataset / "duplicate.png"
+        shutil.copyfile(self.first, self.second)
+        self.before_hashes = {
+            self.first: _sha256(self.first),
+            self.second: _sha256(self.second),
+        }
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_duplicate_findings_are_written_without_modifying_sources(self):
+        result = run_inspect(self.dataset, self.output)
+        report = json.loads(result.json_report.read_text(encoding="utf-8"))
+        summary = json.loads(result.recommendation_json.read_text(encoding="utf-8"))
+        manifest = json.loads(result.inspection_manifest.read_text(encoding="utf-8"))
+
+        duplicate_findings = [
+            finding for finding in report["findings"]
+            if finding["category"] == "dataset.duplicate.exact"
+        ]
+        self.assertEqual(len(duplicate_findings), 2)
+        self.assertEqual(
+            {finding["evidence"]["group_id"] for finding in duplicate_findings},
+            {"duplicate-group-0001"},
+        )
+        self.assertEqual(
+            {finding["evidence"]["duplicate_kind"] for finding in duplicate_findings},
+            {"file_sha256"},
+        )
+        self.assertIn(
+            "dataset.duplicate.exact",
+            {
+                ref["category"]
+                for item in summary["recommendations"]
+                for ref in item["finding_refs"]
+            },
+        )
+        self.assertIn(
+            "duplicate_detection_analyzer",
+            {row["id"] for row in manifest["analyzers"]},
+        )
+        self.assertEqual(
+            {path: _sha256(path) for path in self.before_hashes},
+            self.before_hashes,
+        )
 
 
 class TestRunInspectNoisyDataset(unittest.TestCase):

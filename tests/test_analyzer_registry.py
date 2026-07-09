@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
+from dataset_forge.analyzers.duplicates import DuplicateDetectionAnalyzer
 from dataset_forge.analyzers.high_frequency_isolated import (
     HighFrequencyIsolatedArtifactAnalyzer,
 )
@@ -27,6 +28,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 CrystallineFacetingAnalyzer,
                 OversharpeningHaloAnalyzer,
                 HighFrequencyIsolatedArtifactAnalyzer,
+                DuplicateDetectionAnalyzer,
             ),
         )
 
@@ -41,6 +43,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "crystalline_faceting_analyzer/v1",
                 "oversharpening_halo_analyzer/v1",
                 "high_frequency_isolated_artifact_analyzer/v1",
+                "duplicate_detection_analyzer/v1",
             ],
         )
         self.assertIsNot(first[0], second[0])
@@ -53,6 +56,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "crystalline_faceting_analyzer": "v1",
                 "oversharpening_halo_analyzer": "v1",
                 "high_frequency_isolated_artifact_analyzer": "v1",
+                "duplicate_detection_analyzer": "v1",
             },
         )
 
@@ -64,6 +68,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "crystalline_faceting_analyzer/v1",
                 "oversharpening_halo_analyzer/v1",
                 "high_frequency_isolated_artifact_analyzer/v1",
+                "duplicate_detection_analyzer/v1",
             ),
         )
 

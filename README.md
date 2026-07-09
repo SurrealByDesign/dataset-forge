@@ -125,6 +125,7 @@ model.
 | `crystalline_faceting_analyzer/v1` | Angular micro-polygon / crystalline surface faceting. | Advisory; first-pass calibration. |
 | `oversharpening_halo_analyzer/v1` | Edge-localized residuals consistent with oversharpening or halos. | Advisory; synthetic-fixture-backed. |
 | `high_frequency_isolated_artifact_analyzer/v1` | Sparse isolated high-frequency residual components such as bright or dark specks. | Advisory; synthetic-fixture-backed. |
+| `duplicate_detection_analyzer/v1` | Byte-identical and decoded pixel-identical duplicate images. | Advisory; exact/content duplicates only. |
 
 All current analyzers are deterministic and read-only. They emit evidence,
 severity, confidence, false-positive-rate estimates, and plain-language
@@ -146,6 +147,18 @@ Review findings carefully when images contain:
 Dataset Forge does not currently include a JPEG/compression analyzer. Existing
 analyzers may flag symptoms that compression contributes to, so human review
 remains required.
+
+### Duplicate Detection
+
+Dataset Forge v1.1 includes exact duplicate detection as an advisory review
+signal. It detects byte-identical files and decoded pixel-identical images,
+including images with the same pixels but different filenames or metadata.
+
+It does not detect perceptual near-duplicates, resized matches, cropped
+matches, or visually similar but distinct images. Suggested representatives are
+based on deterministic evidence such as dimensions, pixel count, format,
+compression risk, bytes per pixel, and path tie-breaks. Dataset Forge never
+moves, deletes, copies, quarantines, excludes, or modifies source files.
 
 ---
 
@@ -212,7 +225,7 @@ git diff --check
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Current read-only architecture and contracts. |
 | [CURRENT_STATUS.md](CURRENT_STATUS.md) | Current product/release state. |
-| [ROADMAP.md](ROADMAP.md) | v1.0 scope and post-v1 direction. |
+| [ROADMAP.md](ROADMAP.md) | v1.x scope and future direction. |
 | [CLI_OUTPUT.md](CLI_OUTPUT.md) | Public CLI wording expectations. |
 | [CHANGELOG.md](CHANGELOG.md) | Release changes. |
 | [WHY.md](WHY.md) | Design rationale. |

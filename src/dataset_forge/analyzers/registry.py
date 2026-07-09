@@ -10,6 +10,7 @@ from typing import TypeAlias
 
 from dataset_forge.analyzers.base import Analyzer
 from dataset_forge.analyzers.crystalline import CrystallineFacetingAnalyzer
+from dataset_forge.analyzers.duplicates import DuplicateDetectionAnalyzer
 from dataset_forge.analyzers.high_frequency_isolated import (
     HighFrequencyIsolatedArtifactAnalyzer,
 )
@@ -23,6 +24,7 @@ ANALYZER_CLASSES: tuple[AnalyzerClass, ...] = (
     CrystallineFacetingAnalyzer,
     OversharpeningHaloAnalyzer,
     HighFrequencyIsolatedArtifactAnalyzer,
+    DuplicateDetectionAnalyzer,
 )
 
 

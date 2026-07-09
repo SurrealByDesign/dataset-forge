@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-08. v1.0.0 release prep.*
+*Last updated: 2026-07-09. v1.1.0 duplicate detection prep.*
 
 ---
 
@@ -21,7 +21,7 @@ inspect
 
 Source images are never modified. Cleanup, export, repair, execution,
 quarantine folders, image modification, databases, cloud services, profile UI,
-and analyzer toggles are out of scope for v1.0.
+and analyzer toggles are out of scope for v1.x.
 
 ---
 
@@ -40,7 +40,7 @@ Supported public commands:
 
 Public commands are sidecar-driven and non-destructive. Future cleanup,
 execution, export, plugin, profile, and analyzer-configuration code paths are
-not part of the public v1.0 product.
+not part of the public v1.x product.
 
 ---
 
@@ -89,6 +89,7 @@ Plan and preview are advisory and execution-free.
 | `crystalline_faceting_analyzer/v1` | `artifact.crystalline_faceting` | Advisory; first-pass calibration. |
 | `oversharpening_halo_analyzer/v1` | `artifact.oversharpening_halo` | Advisory; synthetic-fixture-backed. |
 | `high_frequency_isolated_artifact_analyzer/v1` | `artifact.high_frequency_isolated` | Advisory; synthetic-fixture-backed. |
+| `duplicate_detection_analyzer/v1` | `dataset.duplicate.exact` | Advisory; exact/content duplicate only. |
 
 Current analyzers are useful review signals, not final judgments. They are
 deterministic and emit evidence, but they are not published real-world
@@ -104,8 +105,14 @@ Known false-positive contexts to review carefully:
 - Hard-edge line art, ink outlines, and crisp transitions.
 - Mixed-media or intentionally rough texture.
 
-There is no JPEG/compression analyzer in v1.0. Compression evidence should be
+There is no JPEG/compression analyzer in v1.x. Compression evidence should be
 handled through human review and conservative wording.
+
+Duplicate detection is limited to byte-identical and decoded pixel-identical
+images. Dataset Forge does not detect near-duplicates, resized matches, cropped
+matches, or visually similar images in v1.1. Suggested representatives are
+advisory; no files are moved, deleted, copied, quarantined, excluded, or
+modified.
 
 ---
 
@@ -136,13 +143,13 @@ Not yet validated enough to claim calibrated public reliability:
 - real-world precision/recall for all analyzers
 - JPEG/compression separation
 - cross-style performance beyond current fixtures and private review data
-- duplicate/near-duplicate review as a first-class analyzer
+- perceptual near-duplicate review
 
 ---
 
-## v1.0 Release Checklist
+## v1.x Release Checklist
 
-Before tagging v1.0:
+Before tagging a v1.x release:
 
 - Run `python -m pytest tests/test_cli_surface.py -q`.
 - Run `python -m pytest tests/test_review_server.py -q`.
@@ -161,7 +168,7 @@ Before tagging v1.0:
 
 ---
 
-## Out Of Scope For v1.0
+## Out Of Scope For v1.x
 
 - cleanup
 - execution
@@ -170,7 +177,8 @@ Before tagging v1.0:
 - quarantine folder creation
 - source-image modification
 - file movement or copying
-- duplicate/near-duplicate analyzer
+- perceptual near-duplicate detection
+- duplicate cleanup, file movement, or automatic exclusion
 - JPEG/compression analyzer
 - profile UI
 - analyzer toggles

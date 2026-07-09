@@ -3,7 +3,8 @@
 Dataset Forge is an evidence-first, deterministic, read-only, sidecar-based
 LoRA/image dataset curation workstation.
 
-The v1.0 architecture is frozen unless a concrete release blocker appears.
+The v1.x architecture remains read-only and review-first. New analyzer
+capabilities must preserve the existing sidecar and Review Desk workflow.
 
 ---
 
@@ -83,13 +84,20 @@ cleanup, export, or training-readiness decisions.
 | `crystalline_faceting_analyzer/v1` | `artifact.crystalline_faceting`, error category | Advisory; first-pass calibration. |
 | `oversharpening_halo_analyzer/v1` | `artifact.oversharpening_halo`, error category | Advisory; synthetic-fixture-backed. |
 | `high_frequency_isolated_artifact_analyzer/v1` | `artifact.high_frequency_isolated`, error category | Advisory; synthetic-fixture-backed. |
+| `duplicate_detection_analyzer/v1` | `dataset.duplicate.exact` | Advisory; exact/content duplicate only. |
 
 Known false-positive contexts include JPEG compression/ringing, low-resolution
 JPEG artifacts, natural paper or pencil grain, watercolor/canvas texture,
 engraving or etched illustration texture, intentional highlights or glitter,
 hard-edge line art, and deliberately rough mixed-media surfaces.
 
-There is no JPEG/compression analyzer in v1.0.
+There is no JPEG/compression analyzer in v1.x.
+
+Duplicate detection is intentionally narrow. It emits advisory findings for
+byte-identical files and decoded pixel-identical images only. It does not use
+perceptual hash thresholds, crop matching, resize matching, cleanup actions, or
+file movement. Suggested representatives are evidence-based review prompts,
+not automatic exclusion decisions.
 
 ---
 
@@ -123,7 +131,7 @@ or modify source images.
 
 Analyzer metadata is owned by `analyzer_descriptors.py`.
 
-Inspection profiles are owned by `inspection_profiles.py`. v1.0 ships only the
+Inspection profiles are owned by `inspection_profiles.py`. v1.x ships only the
 default profile with no overrides.
 
 Effective review signal policy is resolved by `review_signal_policy.py`:
@@ -196,7 +204,7 @@ without explicit sidecar evidence.
 
 ## Release Hardening Checklist
 
-Before v1.0:
+Before a v1.x release:
 
 - run the full test suite
 - run `git diff --check`
@@ -212,7 +220,8 @@ Before v1.0:
 
 ## Future Work Boundary
 
-Duplicate detection, JPEG/compression analysis, metadata/caption review, public
-configurable review signals, profile editing, export, cleanup, repair, and
-execution are post-v1 possibilities only. They should be considered only after
-the v1.0 read-only workstation is stable and trusted.
+Perceptual near-duplicate detection, JPEG/compression analysis,
+metadata/caption review, public configurable review signals, profile editing,
+export, cleanup, repair, and execution are future possibilities only. They
+should be considered only when the read-only workstation remains stable and
+trusted.

@@ -406,7 +406,8 @@ const categoryLabels = {
   'artifact.oversharpening_halo': 'Oversharpening / Edge Halo',
   'artifact.oversharpening_halo.error': 'Oversharpening / Edge Halo Error',
   'artifact.high_frequency_isolated': 'Isolated High-Frequency Specks',
-  'artifact.high_frequency_isolated.error': 'Isolated High-Frequency Speck Error'
+  'artifact.high_frequency_isolated.error': 'Isolated High-Frequency Speck Error',
+  'dataset.duplicate.exact': 'Duplicate Image'
 };
 const analyzerLabels = {
   'crystalline_faceting_analyzer': 'Crystal-like Surface Pattern Analyzer',
@@ -416,7 +417,9 @@ const analyzerLabels = {
   'oversharpening_halo_analyzer': 'Oversharpening / Edge Halo Analyzer',
   'oversharpening_halo_analyzer/v1': 'Oversharpening / Edge Halo Analyzer',
   'high_frequency_isolated_artifact_analyzer': 'Isolated Speck Analyzer',
-  'high_frequency_isolated_artifact_analyzer/v1': 'Isolated Speck Analyzer'
+  'high_frequency_isolated_artifact_analyzer/v1': 'Isolated Speck Analyzer',
+  'duplicate_detection_analyzer': 'Duplicate Detection Analyzer',
+  'duplicate_detection_analyzer/v1': 'Duplicate Detection Analyzer'
 };
 const shortcutDecision = { '1': 'KEEP', '2': 'ACCEPTED_STYLE_FALSE_POSITIVE', '3': 'IMPROVEMENT_CANDIDATE', '4': 'REMOVAL_CANDIDATE', 'u': 'UNDECIDED' };
 async function loadData() {
@@ -819,9 +822,22 @@ function renderFindings(image) {
       <p class="muted">Raw category: <code>${escapeText(finding.category)}</code>. Analyzer: ${escapeText(analyzerLabel(finding.analyzer))} <code>${escapeText(finding.analyzer)}</code>.</p>
       <p><strong>Severity:</strong> ${escapeText(finding.severity)} <strong>Confidence:</strong> ${escapeText(finding.confidence)}</p>
       <p class="muted">Review signal only; not an automatic defect.</p>
+      ${renderDuplicateEvidence(finding)}
       <p>${escapeText(finding.explanation)}</p>
       <p>${escapeText(finding.recommendation)}</p>
     </section>`).join('');
+}
+function renderDuplicateEvidence(finding) {
+  if (finding.category !== 'dataset.duplicate.exact') return '';
+  const evidence = finding.evidence || {};
+  return `
+    <div class="muted">
+      <p><strong>Duplicate group:</strong> ${escapeText(evidence.group_id || '')} (${escapeText(evidence.group_size || 0)} images)</p>
+      <p><strong>Duplicate kind:</strong> ${escapeText(evidence.duplicate_kind || '')}</p>
+      <p><strong>Suggested representative:</strong> ${escapeText(evidence.suggested_representative_path || '')}</p>
+      <p><strong>Current image role:</strong> ${escapeText(evidence.current_image_role || '')}</p>
+      <p>Suggested representative is advisory. Dataset Forge does not delete, move, exclude, copy, quarantine, or modify files.</p>
+    </div>`;
 }
 function renderCoverage() {
   const analyzers = (data.analyzer_coverage && data.analyzer_coverage.analyzers) || [];

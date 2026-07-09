@@ -8,6 +8,7 @@ from dataset_forge.analyzer_descriptors import (
     CALIBRATION_ADVISORY,
     DISPLAY_VISIBLE,
     EXECUTION_ENABLED,
+    FAMILY_DATASET_STRUCTURE,
     FAMILY_TECHNICAL_QUALITY,
     TRIAGE_INCLUDED,
     built_in_descriptors,
@@ -51,12 +52,25 @@ class TestAnalyzerDescriptors(unittest.TestCase):
 
     def test_current_descriptors_use_default_metadata(self):
         for descriptor in built_in_descriptors():
-            self.assertEqual(descriptor.family, FAMILY_TECHNICAL_QUALITY)
             self.assertEqual(descriptor.calibration_status, CALIBRATION_ADVISORY)
             self.assertTrue(descriptor.deterministic)
             self.assertEqual(descriptor.default_execution_policy, EXECUTION_ENABLED)
             self.assertEqual(descriptor.default_display_policy, DISPLAY_VISIBLE)
             self.assertEqual(descriptor.default_triage_policy, TRIAGE_INCLUDED)
+
+    def test_duplicate_descriptor_uses_dataset_structure_family(self):
+        descriptor = descriptor_for_id("duplicate_detection_analyzer")
+
+        self.assertIsNotNone(descriptor)
+        self.assertEqual(descriptor.family, FAMILY_DATASET_STRUCTURE)
+        self.assertEqual(descriptor.categories_emitted, ("dataset.duplicate.exact",))
+        self.assertFalse(descriptor.requires_image_measurements)
+
+    def test_current_quality_descriptors_keep_technical_quality_family(self):
+        for descriptor in built_in_descriptors():
+            if descriptor.id == "duplicate_detection_analyzer":
+                continue
+            self.assertEqual(descriptor.family, FAMILY_TECHNICAL_QUALITY)
 
     def test_descriptor_lookup_helpers(self):
         analyzer = create_analyzers()[0]

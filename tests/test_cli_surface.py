@@ -63,7 +63,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 1.0.0")
+        self.assertEqual(stdout.strip(), "dataset-forge 1.1.0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
