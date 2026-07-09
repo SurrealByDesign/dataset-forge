@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-08. v1.0 scope freeze hardening pass.*
+*Last updated: 2026-07-08. v1.0.0 release prep.*
 
 ---
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0 hardening pass
+## v1.0.0
 
 - Rewrote v1.0-facing documentation around the current read-only curation
   workstation workflow instead of the historical alpha roadmap.
