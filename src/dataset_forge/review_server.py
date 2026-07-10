@@ -466,6 +466,29 @@ const approvalLabels = {
   APPROVED: 'Approved',
   REJECTED: 'Rejected'
 };
+const providerLabels = {
+  LOCAL_CLASSICAL: 'Local Classical',
+  COMFYUI: 'ComfyUI',
+  KREA: 'Krea',
+  MANUAL: 'Manual Review',
+  UNKNOWN: 'Provider Not Selected'
+};
+const capabilityLabels = {
+  image_input: 'Source image input',
+  mask_input: 'Mask input',
+  seed: 'Seed support',
+  deterministic_execution: 'Deterministic execution',
+  parameter_provenance: 'Parameter provenance',
+  candidate_image_output: 'Isolated candidate image output',
+  difference_metadata: 'Difference metadata',
+  metadata_only_manual_import: 'Manual metadata workflow'
+};
+const compatibilityLabels = {
+  compatible: 'Capabilities match',
+  incompatible: 'Capabilities do not match',
+  unknown_provider: 'Provider not selected',
+  invalid_plan: 'Plan compatibility unavailable'
+};
 const workflowLabels = {
   IN_DATASET: 'In Dataset',
   QUARANTINE_PLANNED: 'Set Aside Intent (no files moved)',
@@ -530,6 +553,8 @@ function escapeText(value) {
 function label(value, labels) { return labels[value] || value || 'Undecided'; }
 function categoryLabel(value) { return categoryLabels[value] || value || 'Unknown finding category'; }
 function analyzerLabel(value) { return analyzerLabels[value] || value || 'Unknown analyzer'; }
+function providerLabel(value) { return providerLabels[value] || value || 'Provider not recorded'; }
+function capabilityLabel(value) { return capabilityLabels[value] || value; }
 function displayEvidenceSummary(value) {
   let text = String(value ?? '');
   Object.entries(categoryLabels).forEach(([raw, display]) => {
@@ -835,22 +860,24 @@ function renderImprovementPreview(preview) {
   const records = (preview.records || []).slice(0, 8);
   const summary = preview.summary || {};
   const rows = records.length
-    ? `<table class="intelligence-table"><thead><tr><th>Image</th><th>Operation</th><th>Reason</th><th>Provider</th><th>Status</th><th>Approval</th></tr></thead><tbody>${records.map(record => {
+    ? `<table class="intelligence-table"><thead><tr><th>Image</th><th>Operation</th><th>Reason</th><th>Provider</th><th>Compatibility</th><th>Status</th><th>Approval</th></tr></thead><tbody>${records.map(record => {
       const image = record.image || {};
+      const compatibility = record.provider_compatibility || {};
       return `<tr>
         <td>${escapeText(image.filename || image.path || '')}</td>
         <td>${escapeText(record.recommended_operation || '')}</td>
         <td>${escapeText(record.operation_rationale || '')}</td>
-        <td>${escapeText(record.required_provider_type || '')}</td>
+        <td>${escapeText(providerLabel(record.required_provider_type))}<br><span class="muted"><code>${escapeText(record.required_provider_type || '')}</code></span></td>
+        <td>${escapeText(compatibilityLabels[compatibility.status] || compatibility.status || 'Unavailable')}</td>
         <td>${escapeText(record.preview_status || '')}</td>
         <td>${escapeText(record.approval_state || '')}</td>
       </tr>`;
     }).join('')}</tbody></table>`
     : '<p class="muted">Improvement Preview sidecar is present but contains no planning records.</p>';
   return `
-    <p class="muted">Planning infrastructure for future preview generation. No image comparison UI, image processing, provider calls, generated outputs, or execution.</p>
+    <p class="muted">Planning infrastructure for future preview generation. Provider-neutral preview contracts and capability matching. No image comparison UI, image processing, provider calls, generated outputs, or execution.</p>
     <div class="overview-grid">
-      ${countBox('Preview records', summary.record_count || 0)}
+      ${countBox('Preview records', summary.record_count || summary.preview_entry_count || (preview.records || []).length || 0)}
       ${countBox('Execution available', summary.execution_available ? 'yes' : 'no')}
       ${countBox('Provider implementations', summary.provider_implementations_available ? 'yes' : 'no')}
       ${countBox('Generated previews', summary.generated_preview_image_count || 0)}
@@ -986,6 +1013,10 @@ function renderPreviewWorkspace(image) {
       </section>`;
   }
   const states = preview.approval_states || ['NOT_REQUESTED', 'APPROVED', 'REJECTED'];
+  const compatibility = record.provider_compatibility || {};
+  const descriptor = compatibility.provider_descriptor || {};
+  const requiredCapabilities = compatibility.required_capabilities || [];
+  const missingCapabilities = compatibility.missing_capabilities || [];
   return `
     <section class="preview-workspace">
       <h2>Improvement Preview</h2>
@@ -995,14 +1026,18 @@ function renderPreviewWorkspace(image) {
         <p><strong>Rationale:</strong> ${escapeText(record.operation_rationale || '')}</p>
         <p><strong>Evidence summary:</strong> ${renderPreviewEvidence(record)}</p>
         <p><strong>Confidence:</strong> ${escapeText(record.confidence ?? '')}</p>
-        <p><strong>Required provider:</strong> ${escapeText(record.required_provider_type || '')}</p>
+        <p><strong>Required provider:</strong> ${escapeText(descriptor.display_name || providerLabel(record.required_provider_type))} <span class="muted"><code>${escapeText(record.required_provider_type || '')}</code></span></p>
+        <p><strong>Required capabilities:</strong> ${requiredCapabilities.length ? requiredCapabilities.map(value => `${escapeText(capabilityLabel(value))} <span class="muted"><code>${escapeText(value)}</code></span>`).join('; ') : 'None for this planning operation.'}</p>
+        <p><strong>Capability compatibility:</strong> ${escapeText(compatibilityLabels[compatibility.status] || compatibility.status || 'Unavailable')}</p>
+        ${missingCapabilities.length ? `<p class="muted"><strong>Missing capabilities:</strong> ${missingCapabilities.map(value => escapeText(capabilityLabel(value))).join(', ')}</p>` : ''}
+        <p><strong>Provider status:</strong> ${escapeText(descriptor.implementation_status || 'not_implemented')}. Execution unavailable.</p>
         <p><strong>Preview status:</strong> ${escapeText(record.preview_status || '')}</p>
         <p><strong>Approval state:</strong> ${escapeText(label(record.approval_state, approvalLabels))}</p>
       </div>
       <div class="approval-buttons">
         ${states.map(state => `<button type="button" data-preview-approval="${escapeText(state)}" class="${record.approval_state === state ? 'selected' : ''}">${escapeText(label(state, approvalLabels))}</button>`).join('')}
       </div>
-      <p class="muted">Approval changes update <code>improvement_preview.json</code> only. They do not execute improvements, call providers, create preview images, or modify source files.</p>
+      <p class="muted">Capability matching uses static provider descriptors only. Approval changes update <code>improvement_preview.json</code> only. They do not execute improvements, call providers, create preview images, or modify source files.</p>
     </section>`;
 }
 function renderPreviewEvidence(record) {

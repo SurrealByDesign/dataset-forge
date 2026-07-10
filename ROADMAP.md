@@ -218,3 +218,24 @@ only.
 v1.6 does not generate preview images, perform image processing, integrate
 ComfyUI or Krea, call APIs, render providers, execute improvements, modify
 datasets, or modify source images.
+
+---
+
+## v1.7: Preview Provider Contract and Capability Model
+
+v1.7 adds provider-neutral preview contracts and capability matching.
+
+The internal contract describes static provider metadata, supported planning
+operations, capability claims, provider-neutral request/result records,
+isolated preview artifact references, reproducibility metadata, and explicit
+execution safety policy. The Review Desk displays derived capability
+compatibility and execution-unavailable status.
+
+`dataset-forge/improvement-preview/v1` remains compatible and unchanged.
+Capability matching is deterministic and uses static descriptors only; it does
+not perform live availability checks.
+
+v1.7 does not add provider implementations, plugin discovery, credentials,
+configuration, networking, external API calls, subprocesses, image processing,
+preview generation, candidate import, cleanup, export, dataset modification,
+or improvement execution.

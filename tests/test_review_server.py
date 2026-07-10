@@ -508,6 +508,58 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertEqual(preview["approval_states"], ["NOT_REQUESTED", "APPROVED", "REJECTED"])
         self.assertEqual(preview["preview_statuses"][2], "READY")
         self.assertEqual(preview["records"][0]["image"]["path"], str(image))
+        compatibility = preview["records"][0]["provider_compatibility"]
+        self.assertEqual(compatibility["status"], "compatible")
+        self.assertEqual(compatibility["provider_type"], "MANUAL")
+        self.assertFalse(compatibility["execution_available"])
+        self.assertEqual(
+            compatibility["provider_descriptor"]["implementation_status"],
+            "not_implemented",
+        )
+        self.assertFalse(preview["provider_contract"]["execution_available"])
+
+    def test_review_payload_normalizes_legacy_preview_entries_for_display(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            legacy_record = {
+                "entry_type": "Improvement Candidate",
+                "image_path": str(image),
+                "filename": image.name,
+                "suggested_improvement": "Manual Source Review",
+                "triggering_findings": [
+                    {
+                        "analyzer": "texture_analyzer/v1",
+                        "category": "artifact.texture",
+                        "severity": "MEDIUM",
+                    }
+                ],
+                "planning_status": "PLANNING_ONLY",
+                "planning_notes": "Planning metadata only; no provider execution.",
+                "execution_availability": "Not Implemented",
+            }
+            (output / "improvement_preview.json").write_text(
+                json.dumps({
+                    "schema": IMPROVEMENT_PREVIEW_SCHEMA,
+                    "summary": {"preview_entry_count": 1},
+                    "preview_entries": [legacy_record],
+                }),
+                encoding="utf-8",
+            )
+
+            data = build_review_data(output)
+
+        preview = data["improvement_preview"]
+        self.assertEqual(len(preview["records"]), 1)
+        record = preview["records"][0]
+        self.assertEqual(record["image"]["path"], str(image))
+        self.assertEqual(record["image"]["filename"], image.name)
+        self.assertEqual(record["recommended_operation"], "Manual Source Review")
+        self.assertEqual(record["current_findings"][0]["category"], "artifact.texture")
+        self.assertEqual(record["preview_status"], "PLANNING_ONLY")
+        self.assertEqual(
+            record["provider_compatibility"]["status"],
+            "invalid_plan",
+        )
 
     def test_review_payload_handles_missing_improvement_preview_sidecar(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -518,6 +570,34 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertFalse(preview["available"])
         self.assertEqual(preview["records"], [])
         self.assertEqual(preview["approval_states"], [])
+        self.assertFalse(preview["provider_contract"]["execution_available"])
+        self.assertEqual(len(preview["provider_contract"]["descriptors"]), 5)
+
+    def test_review_payload_handles_unknown_and_malformed_preview_contract_data(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            _write_improvement_preview(output, image)
+            path = output / "improvement_preview.json"
+            preview = json.loads(path.read_text(encoding="utf-8"))
+            preview["preview_records"][0]["required_provider_type"] = "MISSING"
+            path.write_text(json.dumps(preview), encoding="utf-8")
+
+            unknown = build_review_data(output)["improvement_preview"]["records"][0]
+            preview["preview_records"][0]["recommended_operation"] = "RUN_SHELL"
+            path.write_text(json.dumps(preview), encoding="utf-8")
+            malformed = build_review_data(output)["improvement_preview"]["records"][0]
+
+        self.assertEqual(
+            unknown["provider_compatibility"]["status"],
+            "unknown_provider",
+        )
+        self.assertIsNone(
+            unknown["provider_compatibility"]["provider_descriptor"]
+        )
+        self.assertEqual(
+            malformed["provider_compatibility"]["status"],
+            "invalid_plan",
+        )
 
     def test_dataset_intelligence_evidence_summary_counts_images_and_percentages(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -923,6 +1003,12 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Planning infrastructure for future preview generation", html)
         self.assertIn("No image comparison UI, image processing, provider calls, generated outputs, or execution.", html)
         self.assertIn("Provider implementations", html)
+        self.assertIn("Provider-neutral preview contracts and capability matching", html)
+        self.assertIn("Required capabilities", html)
+        self.assertIn("Capability compatibility", html)
+        self.assertIn("Execution unavailable", html)
+        self.assertIn("Capability matching uses static provider descriptors only", html)
+        self.assertIn("Raw category", html)
         self.assertIn("preview-workspace", html)
         self.assertIn("No preview image generated. Original image remains the only image displayed.", html)
         self.assertIn("Preview status", html)

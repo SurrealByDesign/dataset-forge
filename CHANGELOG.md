@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.7.0
+
+- Added provider-neutral preview contracts and deterministic capability
+  matching for future Improvement Preview renderers.
+- Added immutable descriptors, capability metadata, provider-neutral request
+  and result records, isolated artifact references, and an explicit execution
+  safety policy.
+- Added minimal Review Desk display for required capabilities, static provider
+  metadata, compatibility status, and execution-unavailable state.
+- Preserved `dataset-forge/improvement-preview/v1`; compatibility information
+  is derived at Review Desk load time and is not persisted to the sidecar.
+- Added no provider implementations, discovery, live availability checks,
+  credentials, networking, API calls, subprocesses, image processing, preview
+  generation, candidate import, cleanup, export, dataset modification, or
+  improvement execution.
+
 ## v1.6.0
 
 - Added the Review Desk Preview Workspace for `improvement_preview.json`.

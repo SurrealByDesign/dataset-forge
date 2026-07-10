@@ -237,10 +237,17 @@ show a placeholder when no preview image exists, and update the record's
 approval state in `improvement_preview.json`. Approval changes do not execute
 improvements.
 
-Provider types are capability descriptors only. v1.6 does not implement
-ComfyUI, Krea, local OpenCV/classical preview generation, manual import, API
-calls, networking, image processing, prompt generation, preview image
-generation, dataset modification, or improvement execution.
+v1.7 adds provider-neutral preview contracts and deterministic capability
+matching. Static descriptors record supported operations, capability claims,
+local/remote and reproducibility metadata, and implementation status. The
+Review Desk derives compatibility from those descriptors and the existing
+planning record; `improvement_preview.json` remains on its v1 schema.
+
+Provider execution remains unavailable. Dataset Forge does not implement
+ComfyUI, Krea, local OpenCV/classical preview generation, manual import,
+credentials, API calls, networking, subprocess execution, image processing,
+prompt generation, preview image generation, dataset modification, or
+improvement execution.
 
 ---
 

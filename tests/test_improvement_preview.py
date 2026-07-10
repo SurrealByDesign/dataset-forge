@@ -246,6 +246,31 @@ class ImprovementPreviewTests(unittest.TestCase):
         self.assertTrue(all(not descriptor["network_access"] for descriptor in descriptors))
         self.assertTrue(all(not descriptor["modifies_source_images"] for descriptor in descriptors))
         self.assertTrue(all(not descriptor["generates_preview_images"] for descriptor in descriptors))
+        self.assertTrue(all(set(descriptor) == {
+            "provider_type",
+            "display_name",
+            "capabilities",
+            "implementation_status",
+            "network_access",
+            "processes_images",
+            "modifies_source_images",
+            "generates_preview_images",
+        } for descriptor in descriptors))
+
+    def test_v17_provider_contract_does_not_change_improvement_preview_v1_records(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = _write_output(
+                Path(tmp) / "inspect_output",
+                recommendations=[_recommendation("dataset/img.png")],
+            )
+
+            preview = build_improvement_preview(output)
+
+        record = preview["preview_records"][0]
+        self.assertNotIn("required_capabilities", record)
+        self.assertNotIn("provider_compatibility", record)
+        self.assertNotIn("provider_contract", preview)
+        self.assertEqual(preview["schema"], IMPROVEMENT_PREVIEW_SCHEMA)
 
     def test_wrong_sidecar_schema_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

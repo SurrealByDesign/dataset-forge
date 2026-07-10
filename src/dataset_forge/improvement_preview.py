@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from dataset_forge import __version__
+from dataset_forge.preview_provider_contract import preview_provider_descriptors
 from dataset_forge.recommendation_summary import RECOMMENDATION_SUMMARY_SCHEMA
 from dataset_forge.report import REPORT_SCHEMA
 from dataset_forge.review_decisions import (
@@ -121,32 +122,33 @@ class ProviderDescriptor:
         }
 
 
-BUILT_IN_PROVIDER_DESCRIPTORS = (
+_LEGACY_PROVIDER_DISPLAY_NAMES = {
+    PROVIDER_LOCAL_CLASSICAL: "Local Classical Provider",
+    PROVIDER_COMFYUI: "ComfyUI Provider",
+    PROVIDER_KREA: "Krea Provider",
+    PROVIDER_MANUAL: "Manual Provider",
+    PROVIDER_UNKNOWN: "Unknown Provider",
+}
+_LEGACY_PROVIDER_CAPABILITIES = {
+    PROVIDER_LOCAL_CLASSICAL: ("future_local_classical_preview",),
+    PROVIDER_COMFYUI: ("future_external_preview",),
+    PROVIDER_KREA: ("future_external_preview",),
+    PROVIDER_MANUAL: ("human_supplied_review_or_replacement",),
+    PROVIDER_UNKNOWN: ("provider_not_selected",),
+}
+
+# Preserve the Improvement Preview v1 embedded descriptor snapshot exactly.
+# The v1.7 provider contract is richer runtime metadata; this adapter avoids a
+# sidecar schema change while keeping provider types and implementation status
+# sourced from the authoritative contract registry.
+BUILT_IN_PROVIDER_DESCRIPTORS = tuple(
     ProviderDescriptor(
-        provider_type=PROVIDER_LOCAL_CLASSICAL,
-        display_name="Local Classical Provider",
-        capabilities=("future_local_classical_preview",),
-    ),
-    ProviderDescriptor(
-        provider_type=PROVIDER_COMFYUI,
-        display_name="ComfyUI Provider",
-        capabilities=("future_external_preview",),
-    ),
-    ProviderDescriptor(
-        provider_type=PROVIDER_KREA,
-        display_name="Krea Provider",
-        capabilities=("future_external_preview",),
-    ),
-    ProviderDescriptor(
-        provider_type=PROVIDER_MANUAL,
-        display_name="Manual Provider",
-        capabilities=("human_supplied_review_or_replacement",),
-    ),
-    ProviderDescriptor(
-        provider_type=PROVIDER_UNKNOWN,
-        display_name="Unknown Provider",
-        capabilities=("provider_not_selected",),
-    ),
+        provider_type=descriptor.provider_type,
+        display_name=_LEGACY_PROVIDER_DISPLAY_NAMES[descriptor.provider_type],
+        capabilities=_LEGACY_PROVIDER_CAPABILITIES[descriptor.provider_type],
+        implementation_status=descriptor.implementation_status,
+    )
+    for descriptor in preview_provider_descriptors()
 )
 
 

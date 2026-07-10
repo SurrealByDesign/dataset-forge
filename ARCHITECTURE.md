@@ -148,15 +148,31 @@ review decision, current findings, recommended operation, operation rationale,
 confidence, required provider type, preview status, and approval state.
 
 Improvement Preview provider types are capability descriptors only:
-`LOCAL_CLASSICAL`, `COMFYUI`, `KREA`, `MANUAL`, and `UNKNOWN`. v1.6 does not
-implement providers, call APIs, use networking, process images, generate
-preview images, generate prompts, modify datasets, or execute improvements.
+`LOCAL_CLASSICAL`, `COMFYUI`, `KREA`, `MANUAL`, and `UNKNOWN`.
+
+`preview_provider_contract.py` owns the immutable, provider-neutral v1.7
+contract: provider descriptors, capability metadata, request/result records,
+isolated artifact references, execution safety policy, and deterministic
+capability matching. It contains no executable provider base class, plugin
+discovery, live availability checks, networking, subprocess, image-processing,
+credential, or provider-specific implementation path.
+
+The existing `dataset-forge/improvement-preview/v1` sidecar remains unchanged.
+`improvement_preview.py` retains its compatible embedded descriptor snapshot,
+while the Review Desk derives richer capability compatibility at load time
+from static contract descriptors. This derived browser data is not persisted
+to the planning sidecar.
 
 The Review Desk consumes `improvement_preview.json` when present and displays a
 selected-image preview workspace with the original image, planning operation,
 rationale, evidence summary, confidence, required provider, preview status, and
 approval state. The only Review Desk write to this sidecar is approval-state
 metadata. No preview image is rendered or generated.
+
+Provider compatibility means only that a static descriptor claims the
+operation and required capabilities. It never means a provider is installed,
+available, connected, or executable. v1.7 keeps execution explicitly
+unavailable.
 
 ---
 

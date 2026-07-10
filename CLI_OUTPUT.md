@@ -145,6 +145,11 @@ selected original image and update preview approval state only. It still does
 not render providers, create preview images, process images, or execute
 improvements.
 
+v1.7 may also display provider descriptor metadata, required capabilities,
+and deterministic compatibility status. Capability matching is descriptive
+only. `Execution unavailable` must remain visible; a compatible capability
+match does not imply that a provider is installed, connected, or callable.
+
 ---
 
 ## Analyzer Trust Wording

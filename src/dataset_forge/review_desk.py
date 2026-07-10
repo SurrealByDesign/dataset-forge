@@ -14,6 +14,13 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import quote
 
+from dataset_forge.preview_provider_contract import (
+    DEFAULT_PROVIDER_EXECUTION_POLICY,
+    PreviewProviderContractError,
+    match_preview_provider,
+    preview_provider_descriptor,
+    preview_provider_descriptors,
+)
 from dataset_forge.review_decisions import (
     REVIEW_DECISIONS_SCHEMA,
     ReviewDecisionSet,
@@ -200,6 +207,7 @@ def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, An
     """Expose optional Improvement Preview sidecar data for the Review Desk."""
 
     preview = workspace.improvement_preview
+    provider_contract = _review_provider_contract()
     if preview is None:
         return {
             "available": False,
@@ -210,6 +218,7 @@ def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, An
             "records": [],
             "preview_statuses": [],
             "approval_states": [],
+            "provider_contract": provider_contract,
             "scope": {
                 "read_only": True,
                 "sidecar_only": True,
@@ -221,21 +230,89 @@ def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, An
     records = preview.get("preview_records", preview.get("preview_entries", []))
     if not isinstance(records, list):
         records = []
+    review_records = [
+        _review_preview_record(record)
+        for record in records
+        if isinstance(record, Mapping)
+    ]
     return {
         "available": True,
         "error": "",
         "path": str(workspace.improvement_preview_path),
         "schema": str(preview.get("schema", "")),
         "summary": preview.get("summary", {}) if isinstance(preview.get("summary"), Mapping) else {},
-        "records": [record for record in records if isinstance(record, Mapping)],
+        "records": review_records,
         "preview_statuses": list(preview.get("preview_statuses", []))
         if isinstance(preview.get("preview_statuses"), list)
         else [],
         "approval_states": list(preview.get("approval_states", []))
         if isinstance(preview.get("approval_states"), list)
         else [],
+        "provider_contract": provider_contract,
         "scope": preview.get("scope", {}) if isinstance(preview.get("scope"), Mapping) else {},
     }
+
+
+def _review_provider_contract() -> dict[str, Any]:
+    """Build deterministic descriptor metadata for read-only Review Desk display."""
+
+    return {
+        "execution_available": False,
+        "execution_policy": DEFAULT_PROVIDER_EXECUTION_POLICY.to_dict(),
+        "descriptors": [
+            descriptor.to_dict()
+            for descriptor in preview_provider_descriptors()
+        ],
+    }
+
+
+def _review_preview_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Add derived capability context without changing the source sidecar record."""
+
+    result = dict(record)
+    if not isinstance(result.get("image"), Mapping):
+        image_path = str(record.get("image_path", ""))
+        filename = str(record.get("filename", ""))
+        if image_path or filename:
+            result["image"] = {
+                "path": image_path,
+                "filename": filename,
+            }
+    if not result.get("recommended_operation") and record.get("suggested_improvement"):
+        result["recommended_operation"] = str(record.get("suggested_improvement", ""))
+    if not result.get("operation_rationale"):
+        result["operation_rationale"] = str(
+            record.get("operation_rationale")
+            or record.get("planning_notes")
+            or record.get("expected_outcome")
+            or ""
+        )
+    if not result.get("current_findings") and isinstance(record.get("triggering_findings"), list):
+        result["current_findings"] = list(record.get("triggering_findings", []))
+    if not result.get("preview_status") and record.get("planning_status"):
+        result["preview_status"] = str(record.get("planning_status", ""))
+    operation = str(result.get("recommended_operation", ""))
+    provider_type = str(result.get("required_provider_type", ""))
+    descriptor = preview_provider_descriptor(provider_type)
+    try:
+        match = match_preview_provider(provider_type, operation)
+        compatibility = match.to_dict()
+    except PreviewProviderContractError as exc:
+        compatibility = {
+            "status": "invalid_plan",
+            "provider_type": provider_type,
+            "provider_id": descriptor.provider_id if descriptor else None,
+            "required_capabilities": [],
+            "missing_capabilities": [],
+            "operation_supported": False,
+            "execution_available": False,
+            "error": str(exc),
+        }
+    compatibility["provider_descriptor"] = (
+        descriptor.to_dict() if descriptor is not None else None
+    )
+    result["provider_compatibility"] = compatibility
+    return result
 
 
 def build_dataset_intelligence(

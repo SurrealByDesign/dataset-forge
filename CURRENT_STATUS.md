@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-10. v1.6.0 Review Desk Preview Workspace.*
+*Last updated: 2026-07-10. v1.7.0 Preview Provider Contract and Capability Model.*
 
 ---
 
@@ -94,6 +94,18 @@ original image, shows a placeholder when no preview image exists, and lets the
 reviewer update approval state only. It does not generate previews, process
 images, call providers, execute improvements, or modify source files.
 
+v1.7 defines provider-neutral preview contracts and static capability
+matching. Provider descriptors can describe operation support, local/remote
+metadata, network or credential requirements, reproducibility characteristics,
+and implementation status. Request, result, artifact-reference, and execution
+policy models are contracts only. The Review Desk may display derived
+compatibility, required capabilities, and execution-unavailable status without
+changing `improvement_preview.json` v1.
+
+No provider implementation, discovery, live availability check, credential
+storage, networking, subprocess execution, image processing, candidate import,
+preview generation, dataset export, or improvement execution exists.
+
 ---
 
 ## Current Analyzers
@@ -162,6 +174,8 @@ Validated by automated tests:
 - manifest-aware comparison
 - advisory Improvement Planning, planning-only Improvement Preview, and Review
   Desk preview workspace behavior
+- provider contract validation, isolated artifact-reference rules, and
+  deterministic capability matching
 - public CLI surface
 
 Validated by project/private review work:
