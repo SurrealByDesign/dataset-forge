@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.4.0
+
+- Added `perceptual_duplicate_analyzer/v1` for conservative perceptual
+  near-duplicate detection.
+- Emits one advisory `duplicate.perceptual` finding per near-duplicate group,
+  attached to the deterministic suggested representative.
+- Requires multiple deterministic classical signals before emitting a finding:
+  average hash, difference hash, low-resolution luminance verification, and
+  center-crop luminance verification.
+- Added Review Desk labels and near-duplicate group evidence while preserving
+  raw category IDs and the existing review workflow.
+- Did not add semantic duplicate detection, character recognition, style
+  matching, pose matching, prompt matching, face recognition, image search, ML,
+  embeddings, CLIP, neural networks, automatic deletion, automatic removal
+  recommendations, new sidecars, schema changes, or source-image modification.
+
 ## v1.3.0
 
 - Added `caption_metadata_analyzer/v1` for advisory caption/metadata

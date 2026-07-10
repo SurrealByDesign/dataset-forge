@@ -105,10 +105,20 @@ class TestAnalyzerDescriptors(unittest.TestCase):
         self.assertTrue(descriptor.requires_dataset_context)
         self.assertFalse(descriptor.requires_image_measurements)
 
+    def test_perceptual_duplicate_descriptor_uses_dataset_structure_family(self):
+        descriptor = descriptor_for_id("perceptual_duplicate_analyzer")
+
+        self.assertIsNotNone(descriptor)
+        self.assertEqual(descriptor.family, FAMILY_DATASET_STRUCTURE)
+        self.assertEqual(descriptor.categories_emitted, ("duplicate.perceptual",))
+        self.assertTrue(descriptor.requires_dataset_context)
+        self.assertFalse(descriptor.requires_image_measurements)
+
     def test_current_quality_descriptors_keep_technical_quality_family(self):
         for descriptor in built_in_descriptors():
             if descriptor.id in {
                 "duplicate_detection_analyzer",
+                "perceptual_duplicate_analyzer",
                 "caption_metadata_analyzer",
             }:
                 continue

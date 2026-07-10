@@ -12,6 +12,7 @@ from dataset_forge.analyzers.high_frequency_isolated import (
 )
 from dataset_forge.analyzers.image_encoding import ImageEncodingAnalyzer
 from dataset_forge.analyzers.oversharpening import OversharpeningHaloAnalyzer
+from dataset_forge.analyzers.perceptual_duplicates import PerceptualDuplicateAnalyzer
 from dataset_forge.analyzers.registry import (
     ANALYZER_CLASSES,
     analyzer_versions,
@@ -33,6 +34,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 DuplicateDetectionAnalyzer,
                 ImageEncodingAnalyzer,
                 CaptionMetadataAnalyzer,
+                PerceptualDuplicateAnalyzer,
             ),
         )
 
@@ -50,6 +52,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "duplicate_detection_analyzer/v1",
                 "image_encoding_analyzer/v1",
                 "caption_metadata_analyzer/v1",
+                "perceptual_duplicate_analyzer/v1",
             ],
         )
         self.assertIsNot(first[0], second[0])
@@ -65,6 +68,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "duplicate_detection_analyzer": "v1",
                 "image_encoding_analyzer": "v1",
                 "caption_metadata_analyzer": "v1",
+                "perceptual_duplicate_analyzer": "v1",
             },
         )
 
@@ -79,6 +83,7 @@ class TestAnalyzerRegistry(unittest.TestCase):
                 "duplicate_detection_analyzer/v1",
                 "image_encoding_analyzer/v1",
                 "caption_metadata_analyzer/v1",
+                "perceptual_duplicate_analyzer/v1",
             ),
         )
 

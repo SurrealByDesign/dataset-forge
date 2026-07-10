@@ -196,6 +196,24 @@ BUILT_IN_ANALYZER_DESCRIPTORS: tuple[AnalyzerDescriptor, ...] = (
         default_display_policy=DISPLAY_VISIBLE,
         default_triage_policy=TRIAGE_INCLUDED,
     ),
+    AnalyzerDescriptor(
+        id="perceptual_duplicate_analyzer",
+        display_name="Perceptual Near-Duplicate Analyzer",
+        description=(
+            "Detects conservative perceptual near-duplicate image groups for "
+            "advisory human review."
+        ),
+        version="v1",
+        family=FAMILY_DATASET_STRUCTURE,
+        categories_emitted=("duplicate.perceptual",),
+        calibration_status=CALIBRATION_ADVISORY,
+        deterministic=True,
+        requires_dataset_context=True,
+        requires_image_measurements=False,
+        default_execution_policy=EXECUTION_ENABLED,
+        default_display_policy=DISPLAY_VISIBLE,
+        default_triage_policy=TRIAGE_INCLUDED,
+    ),
 )
 
 _DESCRIPTORS_BY_ID: Mapping[str, AnalyzerDescriptor] = {

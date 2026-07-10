@@ -138,18 +138,39 @@ captions, use ML/LLMs, or make training-readiness claims.
 
 ---
 
-## Post-v1.3 Direction
+## v1.4: Conservative Perceptual Near-Duplicate Analyzer
 
-Post-v1.3 work should be driven by evidence and user review friction, not by
-architecture expansion.
+v1.4 adds `perceptual_duplicate_analyzer/v1` as the final planned analyzer
+release.
 
-Likely v1.4 priorities:
+It detects conservative perceptual near-duplicate groups that are extremely
+likely to be the same training example after small edits:
+
+- mild JPEG recompression
+- tiny resize
+- slight crop
+- tiny color shift
+- small edit variants that pass multiple deterministic verification signals
+
+It does not perform semantic duplicate detection, character recognition, style
+matching, pose matching, prompt matching, face recognition, image search, ML,
+embeddings, CLIP, neural network matching, automatic deletion, or automatic
+removal recommendations.
+
+---
+
+## Post-v1.4 Direction
+
+Post-v1.4 work should shift away from adding analyzers and toward validation,
+Review Desk ergonomics, and making Improvement Preview the flagship advisory
+planning surface.
+
+Likely priorities:
 
 - strengthen analyzer validation and calibration notes
 - add legally safe real-world validation fixtures if available
 - improve Review Desk ergonomics only where real review sessions show friction
-- conservative perceptual near-duplicate review only after exact duplicate and
-  encoding-context validation
+- improve Improvement Preview clarity without adding execution
 
 Later possibilities:
 

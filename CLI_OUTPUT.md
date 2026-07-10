@@ -164,7 +164,13 @@ do not judge caption quality, optimize prompts, rewrite captions, generate
 captions, use ML/LLMs, or make training-readiness claims.
 
 Exact duplicate detection is advisory and limited to byte-identical and
-decoded pixel-identical images; it does not detect perceptual near-duplicates.
+decoded pixel-identical images.
+
+Perceptual Near-Duplicate Analyzer findings are conservative advisory group
+signals for images that are extremely likely to be the same training example
+after small edits. They are not semantic duplicate detection, character
+recognition, style matching, pose matching, prompt matching, image search, ML,
+embeddings, CLIP, or automatic removal guidance.
 
 ---
 

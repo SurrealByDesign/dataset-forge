@@ -244,6 +244,7 @@ class ValidationDossierTests(unittest.TestCase):
                 "caption.short",
                 "caption.token_imbalance",
                 "dataset.duplicate.exact",
+                "duplicate.perceptual",
                 "source_encoding.banding",
                 "source_encoding.chroma_artifact",
                 "source_encoding.jpeg_blocking",

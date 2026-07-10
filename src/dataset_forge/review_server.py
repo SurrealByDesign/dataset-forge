@@ -419,7 +419,8 @@ const categoryLabels = {
   'caption.duplicate': 'Duplicate Caption Text',
   'caption.short': 'Very Short Caption',
   'caption.long': 'Very Long Caption',
-  'caption.token_imbalance': 'Repeated Caption Boilerplate'
+  'caption.token_imbalance': 'Repeated Caption Boilerplate',
+  'duplicate.perceptual': 'Perceptual Near-Duplicate'
 };
 const analyzerLabels = {
   'crystalline_faceting_analyzer': 'Crystal-like Surface Pattern Analyzer',
@@ -435,7 +436,9 @@ const analyzerLabels = {
   'image_encoding_analyzer': 'Image Encoding Analyzer',
   'image_encoding_analyzer/v1': 'Image Encoding Analyzer',
   'caption_metadata_analyzer': 'Caption / Metadata Analyzer',
-  'caption_metadata_analyzer/v1': 'Caption / Metadata Analyzer'
+  'caption_metadata_analyzer/v1': 'Caption / Metadata Analyzer',
+  'perceptual_duplicate_analyzer': 'Perceptual Near-Duplicate Analyzer',
+  'perceptual_duplicate_analyzer/v1': 'Perceptual Near-Duplicate Analyzer'
 };
 const shortcutDecision = { '1': 'KEEP', '2': 'ACCEPTED_STYLE_FALSE_POSITIVE', '3': 'IMPROVEMENT_CANDIDATE', '4': 'REMOVAL_CANDIDATE', 'u': 'UNDECIDED' };
 async function loadData() {
@@ -844,8 +847,17 @@ function renderFindings(image) {
     </section>`).join('');
 }
 function renderDuplicateEvidence(finding) {
-  if (finding.category !== 'dataset.duplicate.exact') return '';
+  if (finding.category !== 'dataset.duplicate.exact' && finding.category !== 'duplicate.perceptual') return '';
   const evidence = finding.evidence || {};
+  if (finding.category === 'duplicate.perceptual') {
+    return `
+      <div class="muted">
+        <p><strong>Near-duplicate group:</strong> ${escapeText(evidence.group_id || '')} (${escapeText(evidence.group_size || 0)} images)</p>
+        <p><strong>Representative image:</strong> ${escapeText(evidence.representative_image || '')}</p>
+        <p><strong>Duplicate images:</strong> ${escapeText((evidence.duplicate_images || []).join(', '))}</p>
+        <p>Perceptual near-duplicate findings are advisory. Dataset Forge does not delete, move, exclude, copy, quarantine, generate, or modify files.</p>
+      </div>`;
+  }
   return `
     <div class="muted">
       <p><strong>Duplicate group:</strong> ${escapeText(evidence.group_id || '')} (${escapeText(evidence.group_size || 0)} images)</p>

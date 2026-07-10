@@ -128,6 +128,7 @@ model.
 | `duplicate_detection_analyzer/v1` | Byte-identical and decoded pixel-identical duplicate images. | Advisory; exact/content duplicates only. |
 | `image_encoding_analyzer/v1` | Source-encoding context such as obvious JPEG compression, blocking, ringing, chroma artifacts, banding, or tiny compressed sources. | Advisory; context only. |
 | `caption_metadata_analyzer/v1` | Image-adjacent `.txt` caption sidecar presence and consistency. | Advisory; metadata consistency only. |
+| `perceptual_duplicate_analyzer/v1` | Conservative perceptual near-duplicate groups after small edits. | Advisory; precision-first. |
 
 All current analyzers are deterministic and read-only. They emit evidence,
 severity, confidence, false-positive-rate estimates, and plain-language
@@ -180,15 +181,26 @@ captions, use ML/LLMs, or make training-readiness claims.
 
 ### Duplicate Detection
 
-Dataset Forge v1.1 includes exact duplicate detection as an advisory review
-signal. It detects byte-identical files and decoded pixel-identical images,
-including images with the same pixels but different filenames or metadata.
+Dataset Forge includes exact duplicate detection and conservative perceptual
+near-duplicate detection as advisory review signals.
 
-It does not detect perceptual near-duplicates, resized matches, cropped
-matches, or visually similar but distinct images. Suggested representatives are
+Exact duplicate detection finds byte-identical files and decoded
+pixel-identical images, including images with the same pixels but different
+filenames or metadata.
+
+Perceptual near-duplicate detection is intentionally stricter than general
+image matching. It requires multiple deterministic classical signals before
+emitting `duplicate.perceptual`, and is intended for cases that are extremely
+likely to be the same training example after small edits such as mild JPEG
+recompression, tiny resize, slight crop, or tiny color shift.
+
+It does not perform semantic duplicate detection, character recognition, style
+matching, pose matching, prompt matching, face recognition, image search, ML,
+embeddings, CLIP, or neural network matching. Suggested representatives are
 based on deterministic evidence such as dimensions, pixel count, format,
 compression risk, bytes per pixel, and path tie-breaks. Dataset Forge never
-moves, deletes, copies, quarantines, excludes, or modifies source files.
+moves, deletes, copies, quarantines, excludes, generates, or modifies source
+files.
 
 ---
 

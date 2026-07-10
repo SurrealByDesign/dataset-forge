@@ -17,6 +17,7 @@ from dataset_forge.analyzers.high_frequency_isolated import (
 )
 from dataset_forge.analyzers.image_encoding import ImageEncodingAnalyzer
 from dataset_forge.analyzers.oversharpening import OversharpeningHaloAnalyzer
+from dataset_forge.analyzers.perceptual_duplicates import PerceptualDuplicateAnalyzer
 from dataset_forge.analyzers.texture import TextureAnalyzer
 
 AnalyzerClass: TypeAlias = type[Analyzer]
@@ -29,6 +30,7 @@ ANALYZER_CLASSES: tuple[AnalyzerClass, ...] = (
     DuplicateDetectionAnalyzer,
     ImageEncodingAnalyzer,
     CaptionMetadataAnalyzer,
+    PerceptualDuplicateAnalyzer,
 )
 
 

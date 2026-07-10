@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-09. v1.3.0 caption / metadata analyzer prep.*
+*Last updated: 2026-07-09. v1.4.0 conservative perceptual near-duplicate analyzer prep.*
 
 ---
 
@@ -92,6 +92,7 @@ Plan and preview are advisory and execution-free.
 | `duplicate_detection_analyzer/v1` | `dataset.duplicate.exact` | Advisory; exact/content duplicate only. |
 | `image_encoding_analyzer/v1` | `source_encoding.*` | Advisory; source-encoding context only. |
 | `caption_metadata_analyzer/v1` | `caption.*` | Advisory; metadata consistency only. |
+| `perceptual_duplicate_analyzer/v1` | `duplicate.perceptual` | Advisory; conservative near-duplicate groups only. |
 
 Current analyzers are useful review signals, not final judgments. They are
 deterministic and emit evidence, but they are not published real-world
@@ -119,11 +120,16 @@ exact duplicate, very short, very long, or repeated-boilerplate captions. They
 do not judge caption writing quality, optimize prompts, rewrite captions,
 generate captions, use ML/LLMs, or make training-readiness claims.
 
-Duplicate detection is limited to byte-identical and decoded pixel-identical
-images. Dataset Forge does not detect near-duplicates, resized matches, cropped
-matches, or visually similar images in v1.1. Suggested representatives are
-advisory; no files are moved, deleted, copied, quarantined, excluded, or
-modified.
+Duplicate detection includes exact/content duplicates and conservative
+perceptual near-duplicate groups. The perceptual analyzer is precision-first
+and requires multiple deterministic classical signals before emitting a
+finding. It is meant for images that are extremely likely to be the same
+training example after small edits such as mild recompression, tiny resize,
+slight crop, or tiny color shift. It does not perform semantic duplicate
+detection, character recognition, style matching, pose matching, prompt
+matching, face recognition, image search, ML, embeddings, CLIP, or neural
+network matching. Suggested representatives are advisory; no files are moved,
+deleted, copied, quarantined, excluded, generated, or modified.
 
 ---
 
@@ -189,7 +195,7 @@ Before tagging a v1.x release:
 - quarantine folder creation
 - source-image modification
 - file movement or copying
-- perceptual near-duplicate detection
+- broad image similarity or semantic duplicate detection
 - duplicate cleanup, file movement, or automatic exclusion
 - JPEG cleanup, denoising, upscaling, or repair
 - profile UI

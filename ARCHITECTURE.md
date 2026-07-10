@@ -87,6 +87,7 @@ cleanup, export, or training-readiness decisions.
 | `duplicate_detection_analyzer/v1` | `dataset.duplicate.exact` | Advisory; exact/content duplicate only. |
 | `image_encoding_analyzer/v1` | `source_encoding.jpeg_compression`, `source_encoding.jpeg_blocking`, `source_encoding.jpeg_ringing`, `source_encoding.chroma_artifact`, `source_encoding.banding`, `source_encoding.low_source_quality` | Advisory; source-encoding context only. |
 | `caption_metadata_analyzer/v1` | `caption.missing`, `caption.empty`, `caption.duplicate`, `caption.short`, `caption.long`, `caption.token_imbalance` | Advisory; metadata consistency only. |
+| `perceptual_duplicate_analyzer/v1` | `duplicate.perceptual` | Advisory; conservative perceptual near-duplicate groups only. |
 
 Known false-positive contexts include JPEG compression/ringing, low-resolution
 JPEG artifacts, natural paper or pencil grain, watercolor/canvas texture,
@@ -106,10 +107,13 @@ content, optimize prompts, rewrite captions, generate captions, use ML/LLMs,
 or make training-readiness claims.
 
 Duplicate detection is intentionally narrow. It emits advisory findings for
-byte-identical files and decoded pixel-identical images only. It does not use
-perceptual hash thresholds, crop matching, resize matching, cleanup actions, or
-file movement. Suggested representatives are evidence-based review prompts,
-not automatic exclusion decisions.
+byte-identical files, decoded pixel-identical images, and conservative
+perceptual near-duplicate groups. The perceptual analyzer requires multiple
+deterministic classical image signals before emitting a finding. It is not
+semantic duplicate detection, character recognition, style matching, pose
+matching, prompt matching, face recognition, image search, ML, embeddings,
+CLIP, or neural network matching. Suggested representatives are evidence-based
+review prompts, not automatic exclusion decisions.
 
 ---
 
@@ -232,9 +236,9 @@ Before a v1.x release:
 
 ## Future Work Boundary
 
-Perceptual near-duplicate detection, semantic caption evaluation, public
-configurable review signals, profile editing, export, cleanup, repair, and
-execution are future possibilities only. JPEG cleanup, denoising, upscaling,
-image repair, caption rewriting, and prompt generation remain out of scope.
-Future work should be considered only when the read-only workstation remains
-stable and trusted.
+Semantic caption evaluation, broad image similarity, public configurable review
+signals, profile editing, export, cleanup, repair, and execution are future
+possibilities only. JPEG cleanup, denoising, upscaling, image repair, caption
+rewriting, prompt generation, automatic duplicate removal, and image search
+remain out of scope. Future work should be considered only when the read-only
+workstation remains stable and trusted.
