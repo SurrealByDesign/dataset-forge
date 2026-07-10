@@ -31,6 +31,7 @@ REVIEW_DECISIONS_FILENAME = "review_decisions.json"
 TRIAGE_DOSSIERS_FILENAME = "triage_dossiers.json"
 INSPECTION_MANIFEST_FILENAME = "inspection_manifest.json"
 COMPARISON_SUMMARY_FILENAME = "comparison_summary.json"
+IMPROVEMENT_PREVIEW_FILENAME = "improvement_preview.json"
 REVIEW_DESK_DATA_SCHEMA = "dataset-forge/review-desk-data/v1"
 
 _DECISION_VALUES = {value.value for value in ReviewDecisionValue}
@@ -50,6 +51,7 @@ class ReviewWorkspace:
     triage_dossiers_path: Path
     inspection_manifest_path: Path
     comparison_summary_path: Path
+    improvement_preview_path: Path
     inspection_report: dict[str, Any]
     recommendation_summary: dict[str, Any]
     triage_dossiers: dict[str, Any]
@@ -57,6 +59,8 @@ class ReviewWorkspace:
     inspection_manifest_error: str
     comparison_summary: dict[str, Any] | None
     comparison_summary_error: str
+    improvement_preview: dict[str, Any] | None
+    improvement_preview_error: str
     review_decisions: ReviewDecisionSet
 
 
@@ -70,6 +74,7 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
     triage_path = root / TRIAGE_DOSSIERS_FILENAME
     manifest_path = root / INSPECTION_MANIFEST_FILENAME
     comparison_path = root / COMPARISON_SUMMARY_FILENAME
+    preview_path = root / IMPROVEMENT_PREVIEW_FILENAME
 
     if not inspection_path.exists():
         raise ReviewDeskError(
@@ -100,6 +105,10 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
         comparison_path,
         "comparison summary",
     )
+    improvement_preview, improvement_preview_error = _load_optional_json_object(
+        preview_path,
+        "improvement preview",
+    )
     decisions = (
         load_review_decisions(decisions_path)
         if decisions_path.exists()
@@ -114,6 +123,7 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
         triage_dossiers_path=triage_path,
         inspection_manifest_path=manifest_path,
         comparison_summary_path=comparison_path,
+        improvement_preview_path=preview_path,
         inspection_report=inspection_report,
         recommendation_summary=recommendation_summary,
         triage_dossiers=triage_dossiers,
@@ -121,6 +131,8 @@ def load_review_workspace(output_dir: Path) -> ReviewWorkspace:
         inspection_manifest_error=inspection_manifest_error,
         comparison_summary=comparison_summary,
         comparison_summary_error=comparison_summary_error,
+        improvement_preview=improvement_preview,
+        improvement_preview_error=improvement_preview_error,
         review_decisions=decisions,
     )
 
@@ -165,13 +177,14 @@ def build_review_payload(workspace: ReviewWorkspace) -> dict[str, Any]:
         },
         "overview": overview,
         "dataset_intelligence": dataset_intelligence,
+        "improvement_preview": build_review_improvement_preview(workspace),
         "analyzer_coverage": analyzer_coverage,
         "decision_values": sorted(_DECISION_VALUES),
         "workflow_states": sorted(_WORKFLOW_STATES),
         "scope": {
             "local_only": True,
             "read_only_inputs": True,
-            "writes_only": REVIEW_DECISIONS_FILENAME,
+            "writes_only": [REVIEW_DECISIONS_FILENAME, IMPROVEMENT_PREVIEW_FILENAME],
             "execution": "out_of_scope",
             "cleanup": "out_of_scope",
             "export": "out_of_scope",
@@ -180,6 +193,48 @@ def build_review_payload(workspace: ReviewWorkspace) -> dict[str, Any]:
         },
         "images": images,
         "rows": images,
+    }
+
+
+def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, Any]:
+    """Expose optional Improvement Preview sidecar data for the Review Desk."""
+
+    preview = workspace.improvement_preview
+    if preview is None:
+        return {
+            "available": False,
+            "error": workspace.improvement_preview_error,
+            "path": str(workspace.improvement_preview_path),
+            "schema": "",
+            "summary": {},
+            "records": [],
+            "preview_statuses": [],
+            "approval_states": [],
+            "scope": {
+                "read_only": True,
+                "sidecar_only": True,
+                "does_not_generate_images": True,
+                "does_not_execute_improvements": True,
+                "does_not_modify_images": True,
+            },
+        }
+    records = preview.get("preview_records", preview.get("preview_entries", []))
+    if not isinstance(records, list):
+        records = []
+    return {
+        "available": True,
+        "error": "",
+        "path": str(workspace.improvement_preview_path),
+        "schema": str(preview.get("schema", "")),
+        "summary": preview.get("summary", {}) if isinstance(preview.get("summary"), Mapping) else {},
+        "records": [record for record in records if isinstance(record, Mapping)],
+        "preview_statuses": list(preview.get("preview_statuses", []))
+        if isinstance(preview.get("preview_statuses"), list)
+        else [],
+        "approval_states": list(preview.get("approval_states", []))
+        if isinstance(preview.get("approval_states"), list)
+        else [],
+        "scope": preview.get("scope", {}) if isinstance(preview.get("scope"), Mapping) else {},
     }
 
 
@@ -368,6 +423,7 @@ def build_intelligence_dataset_coverage(
         INSPECTION_MANIFEST_FILENAME: workspace.inspection_manifest_path.is_file(),
         REVIEW_DECISIONS_FILENAME: workspace.review_decisions_path.is_file(),
         COMPARISON_SUMMARY_FILENAME: workspace.comparison_summary_path.is_file(),
+        IMPROVEMENT_PREVIEW_FILENAME: workspace.improvement_preview_path.is_file(),
     }
     return {
         "required_sidecars": required,
@@ -377,6 +433,8 @@ def build_intelligence_dataset_coverage(
         "review_decisions_available": workspace.review_decisions_path.is_file(),
         "comparison_available": workspace.comparison_summary is not None,
         "comparison_error": workspace.comparison_summary_error,
+        "improvement_preview_available": workspace.improvement_preview is not None,
+        "improvement_preview_error": workspace.improvement_preview_error,
         "image_count": int(dataset.get("image_count", summary.get("image_count", 0)) or 0),
         "analyzed_count": int(
             dataset.get("analyzed_count", summary.get("image_count", 0)) or 0
@@ -479,7 +537,7 @@ def build_overview(
         "scope": {
             "read_only": True,
             "sidecar_driven": True,
-            "writes_only": REVIEW_DECISIONS_FILENAME,
+            "writes_only": [REVIEW_DECISIONS_FILENAME, IMPROVEMENT_PREVIEW_FILENAME],
             "does_not_run_analyzers": True,
             "does_not_modify_images": True,
             "does_not_move_copy_export_or_quarantine_files": True,
@@ -845,6 +903,7 @@ def _triage_sort(recommendation: str) -> int:
 __all__ = [
     "DEFAULT_REVIEW_PORT",
     "INSPECTION_REPORT_FILENAME",
+    "IMPROVEMENT_PREVIEW_FILENAME",
     "LOCAL_REVIEW_HOST",
     "RECOMMENDATION_SUMMARY_FILENAME",
     "REVIEW_DECISIONS_FILENAME",
@@ -863,6 +922,7 @@ __all__ = [
     "build_intelligence_review_status",
     "build_next_action",
     "build_overview",
+    "build_review_improvement_preview",
     "build_review_data",
     "build_review_images",
     "build_review_payload",

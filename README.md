@@ -3,8 +3,9 @@
 Dataset Forge is a read-only LoRA/image dataset curation workstation.
 
 It helps you inspect image datasets, review deterministic evidence, record
-human decisions, compare inspection runs, and prepare advisory improvement
-plans before training. Source images are never modified.
+human decisions, compare inspection runs, prepare advisory improvement plans,
+write planning-only Improvement Preview sidecars, and review those preview
+plans in the browser before training. Source images are never modified.
 
 The primary workflow is:
 
@@ -13,7 +14,9 @@ inspect
 -> review in the local Review Desk
 -> record human decisions
 -> compare runs
--> plan / preview
+-> plan
+-> improvement preview
+-> preview workspace review
 -> train with the images you choose
 ```
 
@@ -46,8 +49,9 @@ uv run dataset-forge review my_dataset/inspect_output/
 ```
 
 The Review Desk is the primary human-facing workflow. It shows images,
-evidence, triage groups, Dataset Intelligence, and decision controls. Decisions
-save locally to:
+evidence, triage groups, Dataset Intelligence, decision controls, and
+Improvement Preview planning records when `improvement_preview.json` exists.
+Decisions save locally to:
 
 ```text
 review_decisions.json
@@ -63,7 +67,7 @@ review_decisions.json
 | `dataset-forge review <inspect_output>` | Open the localhost Review Desk and save decisions. |
 | `dataset-forge compare <before> <after> --output <dir>` | Compare two existing inspect outputs. |
 | `dataset-forge plan <inspect_output>` | Write an advisory Improvement Plan from sidecars. |
-| `dataset-forge preview <improvement_plan.json>` | Write an execution-free preview of a plan. |
+| `dataset-forge preview <inspect_output>` | Write planning-only Improvement Preview sidecars from existing sidecars. |
 
 There is no public cleanup, repair, export, execution, profile selection,
 analyzer toggle, plugin, database, cloud, or hosted-review command.
@@ -87,7 +91,7 @@ Common files in `inspect_output/`:
 | `review_decisions.json` | Local Review Desk decisions, workflow state, and notes. |
 | `comparison_summary.json` / `.md` | Optional comparison output. |
 | `improvement_plan.json` / `.md` | Optional advisory plan. |
-| `improvement_preview.json` / `.md` | Optional execution-free preview. |
+| `improvement_preview.json` / `.md` | Optional planning infrastructure for future preview generation. |
 
 Optional visual aids:
 
@@ -209,13 +213,34 @@ files.
 - Source images are never modified, moved, renamed, deleted, exported, or
   quarantined.
 - `inspect` writes reports and sidecars only.
-- `review` serves a local browser workflow and writes only
-  `review_decisions.json`.
+- `review` serves a local browser workflow, writes human decisions to
+  `review_decisions.json`, and can update preview approval state in
+  `improvement_preview.json` when that sidecar exists.
 - `compare` reads existing sidecars and writes comparison summaries only.
 - `plan` writes advisory Improvement Plan files only.
-- `preview` writes execution-free preview files only.
+- `preview` writes planning-only Improvement Preview files only.
 - Dataset Forge does not execute cleanup, repair images, export datasets, train
   models, contact cloud services, or use a database.
+
+## Improvement Preview
+
+`dataset-forge preview <inspect_output>` writes `improvement_preview.json` and
+`improvement_preview.md` from existing inspection, recommendation, and review
+decision sidecars.
+
+The preview sidecar describes planning records: image, review decision, current
+findings, recommended operation, operation rationale, confidence, required
+provider type, preview status, and approval state.
+
+The Review Desk can display these planning records beside the original image,
+show a placeholder when no preview image exists, and update the record's
+approval state in `improvement_preview.json`. Approval changes do not execute
+improvements.
+
+Provider types are capability descriptors only. v1.6 does not implement
+ComfyUI, Krea, local OpenCV/classical preview generation, manual import, API
+calls, networking, image processing, prompt generation, preview image
+generation, dataset modification, or improvement execution.
 
 ---
 

@@ -5,195 +5,296 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from dataset_forge.improvement_plan import IMPROVEMENT_PLAN_SCHEMA
 from dataset_forge.improvement_preview import (
-    EXECUTION_AVAILABILITY,
     IMPROVEMENT_PREVIEW_SCHEMA,
+    OPERATION_MANUAL_CAPTION,
+    OPERATION_NO_ACTION,
+    OPERATION_REDUCE_HALO,
+    OPERATION_REMOVE_DUPLICATE,
+    PROVIDER_MANUAL,
+    PROVIDER_UNKNOWN,
+    STATUS_NOT_AVAILABLE,
+    STATUS_READY,
+    STATUS_WAITING_FOR_PROVIDER,
     ImprovementPreviewError,
     build_improvement_preview,
+    provider_descriptors,
     render_improvement_preview_markdown,
     write_improvement_preview,
 )
 from dataset_forge.review_decisions import REVIEW_DECISIONS_SCHEMA
+from dataset_forge.review_desk import build_review_data
 
 
-def _candidate(
+def _recommendation(
     image_path: str,
     *,
-    status: str = "PLANNING_ONLY",
-    suggested_improvement: str = "Microtexture Normalization",
-    decision: str | None = "IMPROVEMENT_CANDIDATE",
+    category: str = "artifact.oversharpening_halo",
+    analyzer: str = "oversharpening_halo_analyzer/v1",
+    severity: str = "MEDIUM",
+    confidence: float = 0.61,
+    recommendation: str = "NEEDS_REVIEW",
 ) -> dict[str, object]:
+    labels = {
+        "READY_FOR_TRAINING": "No Findings Emitted",
+        "NEEDS_REVIEW": "Needs Review",
+        "PRIORITY_REVIEW": "Priority Review",
+    }
+    findings = [] if recommendation == "READY_FOR_TRAINING" else [
+        {
+            "image_path": image_path,
+            "analyzer": analyzer,
+            "category": category,
+            "severity": severity,
+            "confidence": confidence,
+            "evidence": {"fixture": True},
+            "explanation": "fixture finding",
+            "recommendation": "review",
+        }
+    ]
     return {
         "image_path": image_path,
-        "filename": Path(image_path).name,
-        "recommendation": "Priority Review",
-        "recommendation_code": "PRIORITY_REVIEW",
-        "primary_reason": "High-severity finding detected.",
-        "finding_references": [
+        "recommendation": recommendation,
+        "display_label": labels[recommendation],
+        "primary_reason": "Fixture evidence.",
+        "reason_codes": ["fixture"],
+        "finding_refs": [
             {
-                "category": "artifact.crystalline_faceting",
-                "analyzer": "crystalline_faceting_analyzer/v1",
-                "severity": "HIGH",
+                "category": category,
+                "analyzer": analyzer,
+                "severity": severity,
             }
+            for _finding in findings
         ],
-        "review_decision": (
-            {
-                "image_path": image_path,
-                "category": "artifact.crystalline_faceting",
-                "analyzer": "crystalline_faceting_analyzer/v1",
-                "decision": decision,
-                "workflow_state": "REVIEWED",
-            }
-            if decision is not None
-            else None
-        ),
-        "suggested_improvement": suggested_improvement,
-        "status": status,
-        "planning_notes": "Improvement Candidate only.",
+        "findings": findings,
+        "guidance": "review",
+        "confidence_note": "advisory",
     }
 
 
-def _write_plan(root: Path, *, candidates: list[dict[str, object]]) -> Path:
-    root.mkdir(exist_ok=True)
-    plan_path = root / "improvement_plan.json"
-    plan_path.write_text(
+def _decision(
+    image_path: str,
+    decision: str,
+) -> dict[str, object]:
+    return {
+        "image_path": image_path,
+        "decision": decision,
+        "workflow_state": "REVIEWED",
+    }
+
+
+def _write_output(
+    root: Path,
+    *,
+    recommendations: list[dict[str, object]],
+    decisions: list[dict[str, object]] | None = None,
+) -> Path:
+    root.mkdir()
+    findings = [
+        finding
+        for recommendation in recommendations
+        for finding in recommendation.get("findings", [])
+        if isinstance(finding, dict)
+    ]
+    (root / "inspection_report.json").write_text(
         json.dumps({
-            "schema": IMPROVEMENT_PLAN_SCHEMA,
-            "tool_version": "0.test",
-            "generated_at": "2026-07-05T00:00:00Z",
-            "inputs": {"inspection_report": "inspection_report.json"},
-            "summary": {
-                "improvement_candidate_count": len(candidates),
-                "deferred_improvement_candidate_count": 0,
-                "suppressed_improvement_candidate_count": 0,
-                "suggested_improvement_count": 1 if candidates else 0,
-            },
-            "improvement_candidates": candidates,
-            "deferred_improvement_candidates": [],
-            "suppressed_improvement_candidates": [],
-            "suggested_improvements": [
-                {"suggested_improvement": "Microtexture Normalization", "count": len(candidates)}
-            ] if candidates else [],
+            "schema": "dataset-forge/inspection/v1",
+            "dataset_path": str(root / "dataset"),
+            "tool_version": "fixture",
+            "findings": findings,
+            "summary": {"total_findings": len(findings)},
         }),
         encoding="utf-8",
     )
-    return plan_path
+    (root / "recommendation_summary.json").write_text(
+        json.dumps({
+            "schema": "dataset-forge/recommendation-summary/v1",
+            "source_report_schema": "dataset-forge/inspection/v1",
+            "summary": {
+                "image_count": len(recommendations),
+                "priority_review_count": sum(
+                    1 for item in recommendations
+                    if item["recommendation"] == "PRIORITY_REVIEW"
+                ),
+                "needs_review_count": sum(
+                    1 for item in recommendations
+                    if item["recommendation"] == "NEEDS_REVIEW"
+                ),
+                "no_findings_emitted_count": sum(
+                    1 for item in recommendations
+                    if item["recommendation"] == "READY_FOR_TRAINING"
+                ),
+            },
+            "recommendations": recommendations,
+        }),
+        encoding="utf-8",
+    )
+    if decisions is not None:
+        (root / "review_decisions.json").write_text(
+            json.dumps({
+                "schema": REVIEW_DECISIONS_SCHEMA,
+                "decisions": decisions,
+            }),
+            encoding="utf-8",
+        )
+    return root
 
 
 class ImprovementPreviewTests(unittest.TestCase):
-    def test_builds_json_serializable_preview(self) -> None:
+    def test_builds_schema_v1_sidecar_from_inspect_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            plan_path = _write_plan(
-                Path(tmp),
-                candidates=[_candidate("dataset/img.png")],
+            output = _write_output(
+                Path(tmp) / "inspect_output",
+                recommendations=[_recommendation("dataset/img.png")],
+                decisions=[_decision("dataset/img.png", "IMPROVEMENT_CANDIDATE")],
             )
 
-            preview = build_improvement_preview(
-                plan_path,
-                generated_at="2026-07-05T00:00:00Z",
-            )
+            preview = build_improvement_preview(output)
 
         self.assertEqual(preview["schema"], IMPROVEMENT_PREVIEW_SCHEMA)
-        self.assertEqual(preview["summary"]["execution_availability"], EXECUTION_AVAILABILITY)
-        self.assertEqual(preview["preview_entries"][0]["execution_availability"], "Not Implemented")
+        self.assertTrue(preview["deterministic"])
+        self.assertEqual(preview["summary"]["record_count"], 1)
+        record = preview["preview_records"][0]
+        self.assertEqual(record["image"]["path"], "dataset/img.png")
+        self.assertEqual(record["recommended_operation"], OPERATION_REDUCE_HALO)
+        self.assertEqual(record["required_provider_type"], PROVIDER_UNKNOWN)
+        self.assertEqual(record["preview_status"], STATUS_WAITING_FOR_PROVIDER)
+        self.assertEqual(record["approval_state"], "APPROVED")
         self.assertEqual(json.loads(json.dumps(preview)), preview)
 
-    def test_writes_json_and_markdown_without_modifying_inputs_or_images(self) -> None:
+    def test_writes_preview_without_modifying_inputs_or_images(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            plan_path = _write_plan(root, candidates=[_candidate("dataset/img.png")])
+            output = _write_output(
+                root / "inspect_output",
+                recommendations=[_recommendation("dataset/img.png")],
+            )
             image = root / "dataset" / "img.png"
             image.parent.mkdir()
-            image.write_text("not an image", encoding="utf-8")
-            image_before = image.read_text(encoding="utf-8")
-            plan_before = plan_path.read_text(encoding="utf-8")
+            image.write_text("source image placeholder", encoding="utf-8")
+            before_image = image.read_text(encoding="utf-8")
+            before_report = (output / "inspection_report.json").read_text(encoding="utf-8")
+            before_summary = (output / "recommendation_summary.json").read_text(encoding="utf-8")
 
-            json_path, markdown_path = write_improvement_preview(plan_path)
+            json_path, markdown_path = write_improvement_preview(output)
 
             self.assertEqual(json_path.name, "improvement_preview.json")
             self.assertEqual(markdown_path.name, "improvement_preview.md")
-            self.assertEqual(image.read_text(encoding="utf-8"), image_before)
-            self.assertEqual(plan_path.read_text(encoding="utf-8"), plan_before)
+            self.assertEqual(image.read_text(encoding="utf-8"), before_image)
+            self.assertEqual((output / "inspection_report.json").read_text(encoding="utf-8"), before_report)
+            self.assertEqual((output / "recommendation_summary.json").read_text(encoding="utf-8"), before_summary)
             self.assertEqual(
                 json.loads(json_path.read_text(encoding="utf-8"))["schema"],
                 IMPROVEMENT_PREVIEW_SCHEMA,
             )
 
-    def test_optional_sidecars_are_validated_and_summarized(self) -> None:
+    def test_output_is_deterministic_for_same_sidecars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            plan_path = _write_plan(root, candidates=[_candidate("dataset/img.png")])
-            (root / "review_decisions.json").write_text(
-                json.dumps({
-                    "schema": REVIEW_DECISIONS_SCHEMA,
-                    "decisions": [
-                        {
-                            "image_path": "dataset/img.png",
-                            "decision": "IMPROVEMENT_CANDIDATE",
-                            "workflow_state": "REVIEWED",
-                        }
-                    ],
-                }),
-                encoding="utf-8",
-            )
-            (root / "comparison_summary.json").write_text(
-                json.dumps({
-                    "schema": "dataset-forge/comparison-summary/v1",
-                }),
-                encoding="utf-8",
-            )
-
-            preview = build_improvement_preview(
-                plan_path,
-                generated_at="2026-07-05T00:00:00Z",
-            )
-
-        self.assertEqual(preview["inputs"]["review_decision_count"], 1)
-        self.assertTrue(preview["inputs"]["comparison_summary_available"])
-
-    def test_wrong_plan_schema_rejected(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "improvement_plan.json"
-            path.write_text(json.dumps({"schema": "wrong"}), encoding="utf-8")
-
-            with self.assertRaisesRegex(ImprovementPreviewError, "Unsupported improvement plan schema"):
-                build_improvement_preview(path)
-
-    def test_deterministic_ordering(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            plan_path = _write_plan(
-                Path(tmp),
-                candidates=[
-                    _candidate("dataset/b.png", suggested_improvement="Speck Reduction"),
-                    _candidate("dataset/a.png", suggested_improvement="Microtexture Normalization"),
+            output = _write_output(
+                Path(tmp) / "inspect_output",
+                recommendations=[
+                    _recommendation("dataset/b.png", category="caption.missing", analyzer="caption_metadata_analyzer/v1"),
+                    _recommendation("dataset/a.png", category="dataset.duplicate.exact", analyzer="duplicate_detection_analyzer/v1"),
+                ],
+                decisions=[
+                    _decision("dataset/a.png", "REMOVAL_CANDIDATE"),
+                    _decision("dataset/b.png", "IMPROVEMENT_CANDIDATE"),
                 ],
             )
 
-            preview = build_improvement_preview(
-                plan_path,
-                generated_at="2026-07-05T00:00:00Z",
-            )
+            first = build_improvement_preview(output)
+            second = build_improvement_preview(output)
 
+        self.assertEqual(first, second)
         self.assertEqual(
-            [entry["filename"] for entry in preview["preview_entries"]],
-            ["a.png", "b.png"],
+            [record["image"]["path"] for record in first["preview_records"]],
+            ["dataset/a.png", "dataset/b.png"],
         )
 
-    def test_markdown_contains_traceability_and_no_execution_language(self) -> None:
+    def test_operation_selection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            plan_path = _write_plan(Path(tmp), candidates=[_candidate("dataset/img.png")])
-            preview = build_improvement_preview(
-                plan_path,
-                generated_at="2026-07-05T00:00:00Z",
+            output = _write_output(
+                Path(tmp) / "inspect_output",
+                recommendations=[
+                    _recommendation("dataset/caption.png", category="caption.short", analyzer="caption_metadata_analyzer/v1"),
+                    _recommendation("dataset/duplicate.png", category="duplicate.perceptual", analyzer="perceptual_duplicate_analyzer/v1"),
+                    _recommendation("dataset/clean.png", recommendation="READY_FOR_TRAINING"),
+                ],
             )
+
+            preview = build_improvement_preview(output)
+
+        by_path = {
+            record["image"]["path"]: record
+            for record in preview["preview_records"]
+        }
+        self.assertEqual(by_path["dataset/caption.png"]["recommended_operation"], OPERATION_MANUAL_CAPTION)
+        self.assertEqual(by_path["dataset/caption.png"]["required_provider_type"], PROVIDER_MANUAL)
+        self.assertEqual(by_path["dataset/caption.png"]["preview_status"], STATUS_READY)
+        self.assertEqual(by_path["dataset/duplicate.png"]["recommended_operation"], OPERATION_REMOVE_DUPLICATE)
+        self.assertEqual(by_path["dataset/clean.png"]["recommended_operation"], OPERATION_NO_ACTION)
+        self.assertEqual(by_path["dataset/clean.png"]["preview_status"], STATUS_NOT_AVAILABLE)
+
+    def test_provider_descriptors_are_capabilities_only(self) -> None:
+        descriptors = [descriptor.to_dict() for descriptor in provider_descriptors()]
+
+        self.assertEqual(
+            [descriptor["provider_type"] for descriptor in descriptors],
+            ["LOCAL_CLASSICAL", "COMFYUI", "KREA", "MANUAL", "UNKNOWN"],
+        )
+        self.assertTrue(all(descriptor["implementation_status"] == "not_implemented" for descriptor in descriptors))
+        self.assertTrue(all(not descriptor["network_access"] for descriptor in descriptors))
+        self.assertTrue(all(not descriptor["modifies_source_images"] for descriptor in descriptors))
+        self.assertTrue(all(not descriptor["generates_preview_images"] for descriptor in descriptors))
+
+    def test_wrong_sidecar_schema_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "inspect_output"
+            output.mkdir()
+            (output / "inspection_report.json").write_text(
+                json.dumps({"schema": "wrong"}),
+                encoding="utf-8",
+            )
+            (output / "recommendation_summary.json").write_text(
+                json.dumps({"schema": "dataset-forge/recommendation-summary/v1"}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ImprovementPreviewError, "Unsupported inspection report schema"):
+                build_improvement_preview(output)
+
+    def test_review_desk_exposes_preview_sidecar_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = _write_output(
+                Path(tmp) / "inspect_output",
+                recommendations=[_recommendation("dataset/img.png")],
+            )
+            write_improvement_preview(output)
+
+            payload = build_review_data(output)
+
+        self.assertTrue(payload["improvement_preview"]["available"])
+        self.assertEqual(payload["improvement_preview"]["schema"], IMPROVEMENT_PREVIEW_SCHEMA)
+        self.assertEqual(payload["improvement_preview"]["records"][0]["recommended_operation"], OPERATION_REDUCE_HALO)
+
+    def test_markdown_contains_scope_boundaries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = _write_output(
+                Path(tmp) / "inspect_output",
+                recommendations=[_recommendation("dataset/img.png")],
+            )
+            preview = build_improvement_preview(output)
 
             markdown = render_improvement_preview_markdown(preview)
 
         self.assertIn("# Improvement Preview", markdown)
-        self.assertIn("Suggested Improvement", markdown)
-        self.assertIn("Triggering findings", markdown)
-        self.assertIn("Execution availability: Not Implemented", markdown)
-        self.assertIn("Expected outcome", markdown)
-        self.assertNotIn("Cleanup Candidate", markdown)
-        self.assertNotIn("Repair Candidate", markdown)
+        self.assertIn("Planning infrastructure for future preview generation", markdown)
+        self.assertIn("Recommended operation", markdown)
+        self.assertIn("Required provider type", markdown)
+        self.assertIn("No provider implementation was called", markdown)
+        self.assertNotIn("Prompt:", markdown)
+        self.assertNotIn("Image editing", markdown)
+
+
+if __name__ == "__main__":
+    unittest.main()

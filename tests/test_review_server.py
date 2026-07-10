@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 from PIL import Image
 
+from dataset_forge.improvement_preview import IMPROVEMENT_PREVIEW_SCHEMA
 from dataset_forge.review_decisions import REVIEW_DECISIONS_SCHEMA
 from dataset_forge.review_desk import (
     REVIEW_DESK_DATA_SCHEMA,
@@ -32,6 +33,7 @@ from dataset_forge.review_server import (
     create_review_server,
     load_review_workspace,
     update_review_decision,
+    update_preview_approval,
 )
 
 
@@ -236,6 +238,63 @@ def _write_review_decisions(output: Path, decisions: list[dict[str, object]]) ->
     )
 
 
+def _write_improvement_preview(
+    output: Path,
+    image: Path,
+    *,
+    approval_state: str = "NOT_REQUESTED",
+) -> None:
+    record = {
+        "image": {
+            "path": str(image),
+            "filename": image.name,
+        },
+        "review_decision": "UNDECIDED",
+        "current_findings": [
+            {
+                "analyzer": "texture_analyzer/v1",
+                "category": "artifact.texture",
+                "severity": "HIGH",
+                "confidence": 0.82,
+            }
+        ],
+        "recommended_operation": "REPLACE_SOURCE",
+        "operation_rationale": "Planning only; source replacement may be reviewed later.",
+        "confidence": 0.82,
+        "required_provider_type": "MANUAL",
+        "preview_status": "READY",
+        "approval_state": approval_state,
+        "notes": "Planning only. No image data, generated outputs, provider calls, or execution.",
+    }
+    payload = {
+        "schema": IMPROVEMENT_PREVIEW_SCHEMA,
+        "tool_version": "1.5.0",
+        "deterministic": True,
+        "approval_states": ["NOT_REQUESTED", "APPROVED", "REJECTED"],
+        "preview_statuses": ["NOT_AVAILABLE", "WAITING_FOR_PROVIDER", "READY", "REJECTED", "APPROVED"],
+        "summary": {
+            "record_count": 1,
+            "approval_state_counts": {approval_state: 1},
+            "generated_preview_image_count": 0,
+            "execution_available": False,
+            "provider_implementations_available": False,
+        },
+        "scope": {
+            "read_only": True,
+            "sidecar_only": True,
+            "does_not_generate_images": True,
+            "does_not_execute_improvements": True,
+            "does_not_modify_images": True,
+        },
+        "preview_records": [record],
+        "preview_entries": [record],
+    }
+    (output / "improvement_preview.json").write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+
+
 class ReviewServerDataTests(unittest.TestCase):
     def test_requires_inspection_and_recommendation_sidecars(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -276,6 +335,7 @@ class ReviewServerDataTests(unittest.TestCase):
                 "summary",
                 "overview",
                 "dataset_intelligence",
+                "improvement_preview",
                 "analyzer_coverage",
                 "decision_values",
                 "workflow_states",
@@ -394,7 +454,10 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertTrue(overview["scope"]["sidecar_driven"])
         self.assertTrue(overview["scope"]["does_not_run_analyzers"])
         self.assertTrue(overview["scope"]["does_not_modify_images"])
-        self.assertEqual(overview["scope"]["writes_only"], "review_decisions.json")
+        self.assertEqual(
+            overview["scope"]["writes_only"],
+            ["review_decisions.json", "improvement_preview.json"],
+        )
 
     def test_dataset_intelligence_review_status_and_scope_are_descriptive(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -432,6 +495,29 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertTrue(intelligence["scope"]["does_not_run_analyzers"])
         self.assertTrue(intelligence["scope"]["does_not_modify_images"])
         self.assertEqual(intelligence["scope"]["writes_only"], "review_decisions.json")
+
+    def test_review_payload_exposes_optional_improvement_preview_sidecar(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            _write_improvement_preview(output, image)
+
+            preview = build_review_data(output)["improvement_preview"]
+
+        self.assertTrue(preview["available"])
+        self.assertEqual(preview["schema"], IMPROVEMENT_PREVIEW_SCHEMA)
+        self.assertEqual(preview["approval_states"], ["NOT_REQUESTED", "APPROVED", "REJECTED"])
+        self.assertEqual(preview["preview_statuses"][2], "READY")
+        self.assertEqual(preview["records"][0]["image"]["path"], str(image))
+
+    def test_review_payload_handles_missing_improvement_preview_sidecar(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, _image = _write_workspace(Path(tmp))
+
+            preview = build_review_data(output)["improvement_preview"]
+
+        self.assertFalse(preview["available"])
+        self.assertEqual(preview["records"], [])
+        self.assertEqual(preview["approval_states"], [])
 
     def test_dataset_intelligence_evidence_summary_counts_images_and_percentages(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -655,6 +741,49 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertEqual(payload["decisions"][0]["workflow_state"], "REVIEWED")
         self.assertEqual(payload["decisions"][0]["notes"], "visible artifact")
 
+    def test_preview_approval_update_writes_only_improvement_preview(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            _write_improvement_preview(output, image)
+            image_before = image.read_bytes()
+            inspection_before = (output / "inspection_report.json").read_text(encoding="utf-8")
+            recommendation_before = (output / "recommendation_summary.json").read_text(encoding="utf-8")
+
+            data = update_preview_approval(output, {
+                "image_path": str(image),
+                "approval_state": "APPROVED",
+            })
+            payload = json.loads((output / "improvement_preview.json").read_text(encoding="utf-8"))
+            image_after = image.read_bytes()
+            inspection_after = (output / "inspection_report.json").read_text(encoding="utf-8")
+            recommendation_after = (output / "recommendation_summary.json").read_text(encoding="utf-8")
+            review_decisions_exists = (output / "review_decisions.json").exists()
+
+        self.assertEqual(data["improvement_preview"]["records"][0]["approval_state"], "APPROVED")
+        self.assertEqual(payload["preview_records"][0]["approval_state"], "APPROVED")
+        self.assertEqual(payload["preview_entries"][0]["approval_state"], "APPROVED")
+        self.assertEqual(payload["summary"]["approval_state_counts"], {"APPROVED": 1})
+        self.assertEqual(image_after, image_before)
+        self.assertEqual(inspection_after, inspection_before)
+        self.assertEqual(recommendation_after, recommendation_before)
+        self.assertFalse(review_decisions_exists)
+
+    def test_preview_approval_requires_existing_record_and_known_state(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            _write_improvement_preview(output, image)
+
+            with self.assertRaises(ReviewServerError):
+                update_preview_approval(output, {
+                    "image_path": str(image),
+                    "approval_state": "EXECUTE",
+                })
+            with self.assertRaises(ReviewServerError):
+                update_preview_approval(output, {
+                    "image_path": str(output / "missing.png"),
+                    "approval_state": "APPROVED",
+                })
+
     def test_same_scope_decision_updates_and_unrelated_decisions_are_preserved(self) -> None:
         with TemporaryDirectory() as tmp:
             output, image = _write_workspace(Path(tmp))
@@ -790,6 +919,17 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("<summary>Dataset Coverage</summary>", html)
         self.assertIn("<summary>Dataset Characteristics</summary>", html)
         self.assertIn("<summary>Unresolved Evidence Categories</summary>", html)
+        self.assertIn("<summary>Improvement Preview</summary>", html)
+        self.assertIn("Planning infrastructure for future preview generation", html)
+        self.assertIn("No image comparison UI, image processing, provider calls, generated outputs, or execution.", html)
+        self.assertIn("Provider implementations", html)
+        self.assertIn("preview-workspace", html)
+        self.assertIn("No preview image generated. Original image remains the only image displayed.", html)
+        self.assertIn("Preview status", html)
+        self.assertIn("Approval state", html)
+        self.assertIn("Approval changes update <code>improvement_preview.json</code> only", html)
+        self.assertIn("/api/preview-approval", html)
+        self.assertIn("does not generate previews or process images", html)
         self.assertIn("Show Next Review Set", html)
         self.assertIn("This only changes filters and selection.", html)
         self.assertIn("Clear Filters", html)
@@ -858,6 +998,7 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Set Aside Intent is workflow intent only", html)
         self.assertIn("No current review finding. Not a guarantee.", html)
         self.assertIn("review_decisions.json", html)
+        self.assertIn("improvement_preview.json", html)
         self.assertIn('id="zoomViewer"', html)
         self.assertIn('tabindex="0" role="button" aria-label="Open zoom viewer for', html)
         self.assertIn("Actual size: 100% pixels", html)
@@ -904,6 +1045,37 @@ class ReviewServerHttpTests(unittest.TestCase):
 
         self.assertEqual(data["summary"]["already_reviewed_count"], 1)
         self.assertEqual(payload["decisions"][0]["decision"], "KEEP")
+
+    def test_post_writes_preview_approval(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            _write_improvement_preview(output, image)
+            server = create_review_server(output, port=0)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base = f"http://{LOCAL_REVIEW_HOST}:{server.server_port}"
+                request = urllib.request.Request(
+                    base + "/api/preview-approval",
+                    data=json.dumps({
+                        "image_path": str(image),
+                        "approval_state": "REJECTED",
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                response = urllib.request.urlopen(request, timeout=5)
+                data = json.loads(response.read().decode("utf-8"))
+                payload = json.loads(
+                    (output / "improvement_preview.json").read_text(encoding="utf-8")
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertEqual(data["improvement_preview"]["records"][0]["approval_state"], "REJECTED")
+        self.assertEqual(payload["preview_records"][0]["approval_state"], "REJECTED")
 
     def test_post_rejects_invalid_decision(self) -> None:
         with TemporaryDirectory() as tmp:

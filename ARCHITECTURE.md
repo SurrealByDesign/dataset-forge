@@ -17,7 +17,8 @@ inspect
 -> review in the local Review Desk
 -> record human decisions
 -> compare runs
--> plan / preview
+-> plan
+-> improvement preview
 ```
 
 Dataset Forge does not support cleanup, export, execution, repair, quarantine
@@ -137,9 +138,25 @@ effective analyzer policies, counts, and compatibility metadata.
 `comparison_summary.json` and `.md` compare existing sidecars and include
 advisory manifest compatibility when provenance is available.
 
-`review_decisions.json` is the only file written by the Review Desk. It records
-human decisions, workflow state, and notes. It does not move, delete, export,
-or modify source images.
+`review_decisions.json` records human decisions, workflow state, and notes.
+The Review Desk writes it when users save review decisions. It does not move,
+delete, export, or modify source images.
+
+`improvement_preview.json` and `.md` are planning infrastructure for future
+preview generation. They are built from existing sidecars and record image,
+review decision, current findings, recommended operation, operation rationale,
+confidence, required provider type, preview status, and approval state.
+
+Improvement Preview provider types are capability descriptors only:
+`LOCAL_CLASSICAL`, `COMFYUI`, `KREA`, `MANUAL`, and `UNKNOWN`. v1.6 does not
+implement providers, call APIs, use networking, process images, generate
+preview images, generate prompts, modify datasets, or execute improvements.
+
+The Review Desk consumes `improvement_preview.json` when present and displays a
+selected-image preview workspace with the original image, planning operation,
+rationale, evidence summary, confidence, required provider, preview status, and
+approval state. The only Review Desk write to this sidecar is approval-state
+metadata. No preview image is rendered or generated.
 
 ---
 
@@ -176,14 +193,16 @@ not call analyzers or live descriptor/profile registries.
 
 `review_desk.py` builds deterministic sidecar-derived payloads.
 
-`review_server.py` owns localhost routing, image serving, browser shell, and
-the `review_decisions.json` save endpoint.
+`review_server.py` owns localhost routing, image serving, browser shell, the
+`review_decisions.json` save endpoint, and the Improvement Preview
+approval-state save endpoint.
 
 The Review Desk must:
 
 - bind locally
 - consume generated sidecars
-- write only `review_decisions.json`
+- write only `review_decisions.json` plus approval-state metadata in
+  `improvement_preview.json` when that optional sidecar exists
 - preserve the review decision schema
 - keep image review as the primary workflow
 - make read-only scope visible
@@ -227,7 +246,8 @@ Before a v1.x release:
 - confirm CLI public surface
 - confirm expected sidecars are written
 - confirm Review Desk launches locally
-- confirm Review Desk writes only `review_decisions.json`
+- confirm Review Desk writes `review_decisions.json` and only preview approval
+  state in `improvement_preview.json` when that optional sidecar exists
 - confirm source image hashes are preserved
 - confirm plan/preview remain execution-free
 - confirm docs do not imply unavailable features

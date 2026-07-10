@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-09. v1.4.0 conservative perceptual near-duplicate analyzer prep.*
+*Last updated: 2026-07-10. v1.6.0 Review Desk Preview Workspace.*
 
 ---
 
@@ -16,7 +16,9 @@ inspect
 -> review in the local Review Desk
 -> record human decisions
 -> compare runs
--> plan / preview
+-> plan
+-> improvement preview
+-> preview workspace review
 ```
 
 Source images are never modified. Cleanup, export, repair, execution,
@@ -34,7 +36,7 @@ Supported public commands:
 - `dataset-forge compare <before_inspect_output> <after_inspect_output>
   --output <comparison_output>`
 - `dataset-forge plan <inspect_output>`
-- `dataset-forge preview <improvement_plan.json>`
+- `dataset-forge preview <inspect_output>`
 - `dataset-forge --help`
 - `dataset-forge --version`
 
@@ -58,9 +60,11 @@ not part of the public v1.x product.
 - `review_decisions_template.json`
 - optional visual review artifacts when requested
 
-`review` reads generated sidecars and writes only:
+`review` reads generated sidecars and writes:
 
 - `review_decisions.json`
+- `improvement_preview.json` approval state only, when that optional sidecar
+  exists
 
 `compare` writes:
 
@@ -77,7 +81,18 @@ not part of the public v1.x product.
 - `improvement_preview.json`
 - `improvement_preview.md`
 
-Plan and preview are advisory and execution-free.
+Plan is advisory and execution-free. Improvement Preview is planning
+infrastructure for future preview generation and is also execution-free.
+
+`improvement_preview.json` records image-centered planning metadata only:
+recommended operation, rationale, required provider type, preview status, and
+approval state. It does not contain image data, prompts, generated outputs, or
+provider calls.
+
+The Review Desk displays Improvement Preview records beside the selected
+original image, shows a placeholder when no preview image exists, and lets the
+reviewer update approval state only. It does not generate previews, process
+images, call providers, execute improvements, or modify source files.
 
 ---
 
@@ -145,7 +160,8 @@ Validated by automated tests:
 - Review Desk data contract and localhost server behavior
 - Review Decision schema v2 and migration behavior
 - manifest-aware comparison
-- advisory Improvement Planning and execution-free Preview
+- advisory Improvement Planning, planning-only Improvement Preview, and Review
+  Desk preview workspace behavior
 - public CLI surface
 
 Validated by project/private review work:
@@ -176,9 +192,11 @@ Before tagging a v1.x release:
 - Confirm public help exposes only intended commands.
 - Confirm inspect writes expected sidecars.
 - Confirm the Review Desk launches locally.
-- Confirm the Review Desk writes only `review_decisions.json`.
+- Confirm the Review Desk writes `review_decisions.json` and only preview
+  approval state in `improvement_preview.json` when that optional sidecar exists.
 - Confirm source image hashes are unchanged after inspect/review/compare/plan/preview.
-- Confirm plan and preview clearly state execution is not implemented.
+- Confirm plan and preview clearly state execution and provider implementations
+  are not implemented.
 - Confirm docs do not imply cleanup, export, execution, repair, profile toggles,
   analyzer toggles, or image modification are available.
 - Confirm Review Desk wording does not imply file movement, deletion,

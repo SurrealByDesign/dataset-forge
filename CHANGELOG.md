@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.6.0
+
+- Added the Review Desk Preview Workspace for `improvement_preview.json`.
+- The selected-image detail pane now displays the original image alongside
+  Improvement Preview planning metadata: operation, rationale, evidence
+  summary, confidence, required provider, preview status, and approval state.
+- Added a clear placeholder when no preview image exists. Dataset Forge still
+  does not generate preview images.
+- Added approval-state updates for preview plans. These update
+  `improvement_preview.json` only and do not execute improvements.
+- Preserved existing schemas, sidecars, analyzers, thresholds, Review Desk
+  workflow, comparison, image handling, and public command surface.
+- Did not add image processing, ComfyUI integration, Krea integration, API
+  calls, networking, provider implementations, generated outputs, cleanup,
+  repair, export, dataset modification, source-image modification, or
+  improvement execution.
+
+## v1.5.0
+
+- Added the Improvement Preview Framework as planning infrastructure for future
+  preview generation.
+- `dataset-forge preview <inspect_output>` now writes
+  `improvement_preview.json` and `improvement_preview.md` from existing
+  inspection, recommendation, and review decision sidecars.
+- Added deterministic preview records with image, review decision, current
+  findings, recommended operation, rationale, confidence, required provider
+  type, preview status, and approval state.
+- Added provider capability descriptors for `LOCAL_CLASSICAL`, `COMFYUI`,
+  `KREA`, `MANUAL`, and `UNKNOWN` without provider implementations.
+- Added a read-only Review Desk Improvement Preview section that displays the
+  preview sidecar when present.
+- Did not add image processing, ComfyUI integration, Krea integration, API
+  calls, networking, prompt generation, preview image generation, dataset
+  modification, cleanup, repair, export, or improvement execution.
+
 ## v1.4.0
 
 - Added `perceptual_duplicate_analyzer/v1` for conservative perceptual

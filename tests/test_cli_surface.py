@@ -63,7 +63,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 1.4.0")
+        self.assertEqual(stdout.strip(), "dataset-forge 1.6.0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -164,14 +164,40 @@ class PublicCliSurfaceTests(unittest.TestCase):
         self.assertNotIn("cleanup", stdout.lower())
         self.assertNotIn("export", stdout.lower())
 
-    def test_preview_requires_improvement_plan(self) -> None:
+    def test_preview_requires_inspection_sidecars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            missing = Path(tmp) / "improvement_plan.json"
-            exit_code, stdout, stderr = self._run(["preview", str(missing)])
+            exit_code, stdout, stderr = self._run(["preview", tmp])
 
         self.assertEqual(exit_code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("Missing improvement plan", stderr)
+        self.assertIn("Missing inspection report", stderr)
+
+    def test_preview_writes_improvement_preview_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output = root / "inspect_output"
+            output.mkdir()
+            (output / "inspection_report.json").write_text(
+                '{"schema":"dataset-forge/inspection/v1","findings":[]}',
+                encoding="utf-8",
+            )
+            (output / "recommendation_summary.json").write_text(
+                (
+                    '{"schema":"dataset-forge/recommendation-summary/v1",'
+                    '"source_report_schema":"dataset-forge/inspection/v1",'
+                    '"summary":{"image_count":0},"recommendations":[]}'
+                ),
+                encoding="utf-8",
+            )
+
+            exit_code, stdout, stderr = self._run(["preview", str(output)])
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stderr, "")
+            self.assertIn("Improvement Preview written", stdout)
+            self.assertIn("Provider implementations: Not Implemented", stdout)
+            self.assertTrue((output / "improvement_preview.json").is_file())
+            self.assertTrue((output / "improvement_preview.md").is_file())
 
     def test_inspect_prints_recommendation_summary_counts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

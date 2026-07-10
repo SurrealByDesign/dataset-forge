@@ -179,12 +179,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     preview_parser = commands.add_parser(
         "preview",
-        help="Write an execution-free Improvement Preview from an Improvement Plan.",
+        help="Write an execution-free Improvement Preview from existing sidecars.",
     )
     preview_parser.add_argument(
-        "improvement_plan",
+        "inspect_output",
         type=Path,
-        help="Path to improvement_plan.json.",
+        help="Folder produced by dataset-forge inspect.",
     )
     return parser
 
@@ -614,6 +614,7 @@ def _review_main(argv: list[str]) -> int:
         description=(
             "Open the local-only Review Desk for an inspect output folder.\n"
             "Use this after inspect to record human decisions in review_decisions.json.\n"
+            "When improvement_preview.json exists, preview approval state can be updated there.\n"
             "Source images and reports are not modified."
         ),
     )
@@ -636,7 +637,7 @@ def _review_main(argv: list[str]) -> int:
         print("=========================")
         print(f"Inspect output: {output_dir}")
         print(f"Serving:        http://{LOCAL_REVIEW_HOST}:{args.port}")
-        print("Writes only:    review_decisions.json")
+        print("Writes only:    review_decisions.json; improvement_preview.json approval state when present")
         print("Consumes only:  generated JSON sidecars")
         print("Source images and reports will not be modified.")
         print("Press Ctrl+C to stop.")
@@ -755,33 +756,35 @@ def _preview_main(argv: list[str]) -> int:
         prog="dataset-forge preview",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
-            "Write an execution-free Improvement Preview from improvement_plan.json.\n"
-            "Preview is documentation only. Source images are not modified."
+            "Write an execution-free Improvement Preview from existing sidecars.\n"
+            "Preview is planning metadata only. Source images are not modified."
         ),
     )
     parser.add_argument(
-        "improvement_plan",
+        "inspect_output",
         type=Path,
-        help="Path to improvement_plan.json.",
+        help="Folder produced by dataset-forge inspect.",
     )
     args = parser.parse_args(argv[1:])
 
-    plan_path = args.improvement_plan.expanduser().resolve()
+    inspect_output = args.inspect_output.expanduser().resolve()
     try:
-        json_path, markdown_path = write_improvement_preview(plan_path)
+        json_path, markdown_path = write_improvement_preview(inspect_output)
     except (ImprovementPreviewError, OSError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
 
     print("Dataset Forge Preview")
     print("=====================")
-    print(f"Improvement plan: {plan_path}")
+    print(f"Inspect output: {inspect_output}")
     print()
     print("Improvement Preview written:")
     print(f"  {json_path}")
     print(f"  {markdown_path}")
     print()
     print("Execution availability: Not Implemented.")
+    print("Provider implementations: Not Implemented.")
+    print("Generated preview images: 0.")
     print("Source images and existing sidecars were not modified.")
     return 0
 

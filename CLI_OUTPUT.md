@@ -21,7 +21,7 @@ dataset-forge inspect <dataset>
 dataset-forge review <inspect_output>
 dataset-forge compare <before> <after> --output <comparison_output>
 dataset-forge plan <inspect_output>
-dataset-forge preview <improvement_plan.json>
+dataset-forge preview <inspect_output>
 dataset-forge --help
 dataset-forge --version
 ```
@@ -105,7 +105,7 @@ Dataset Forge Review Desk
 =========================
 Inspect output: path/to/dataset/inspect_output
 Serving:        http://127.0.0.1:8765
-Writes only:    review_decisions.json
+Writes only:    review_decisions.json; improvement_preview.json approval state when present
 Consumes only:  generated JSON sidecars
 Source images and reports will not be modified.
 Press Ctrl+C to stop.
@@ -115,7 +115,8 @@ The Review Desk must communicate that it:
 
 - serves localhost only
 - consumes generated sidecars
-- writes only `review_decisions.json`
+- writes `review_decisions.json`
+- when `improvement_preview.json` exists, updates preview approval state only
 - does not run analyzers
 - does not modify source images or reports
 - does not move files or create quarantine folders
@@ -132,8 +133,17 @@ better or worse unless the sidecars themselves directly say so.
 Improvement Planning is advisory and planning-only. It writes plan sidecars; it
 does not execute changes.
 
-Improvement Preview is execution-free. It explains plan entries; it does not
-process images, modify files, or trigger cleanup.
+Improvement Preview is planning infrastructure for future preview generation.
+It writes `improvement_preview.json` and `improvement_preview.md` from existing
+sidecars. It records recommended operation, rationale, required provider type,
+preview status, and approval state. It does not process images, generate
+preview images, generate prompts, call providers, modify files, or trigger
+cleanup.
+
+The Review Desk can display `improvement_preview.json` records beside the
+selected original image and update preview approval state only. It still does
+not render providers, create preview images, process images, or execute
+improvements.
 
 ---
 

@@ -4,7 +4,7 @@ This roadmap reflects the v1.x read-only curation workstation direction.
 
 Dataset Forge is a read-only dataset curation workstation. The architecture is
 kept stable around inspect, Review Desk, sidecars, comparison, planning, and
-preview.
+improvement preview.
 
 ---
 
@@ -161,24 +161,60 @@ removal recommendations.
 
 ## Post-v1.4 Direction
 
-Post-v1.4 work should shift away from adding analyzers and toward validation,
-Review Desk ergonomics, and making Improvement Preview the flagship advisory
-planning surface.
+The analyzer roadmap is complete.
 
-Likely priorities:
+---
 
-- strengthen analyzer validation and calibration notes
-- add legally safe real-world validation fixtures if available
-- improve Review Desk ergonomics only where real review sessions show friction
-- improve Improvement Preview clarity without adding execution
+## v1.5: Improvement Preview Framework
 
-Later possibilities:
+v1.5 adds planning infrastructure for future preview generation.
 
-- public configurable review signals and profile selection, using the existing
-  descriptor/profile/policy/manifest foundation
-- diversity/style-consistency review signals
-- non-destructive export or copy workflows only after human-review trust is
-  strong
+`dataset-forge preview <inspect_output>` writes:
+
+- `improvement_preview.json`
+- `improvement_preview.md`
+
+The sidecar records planning metadata only:
+
+- image
+- review decision
+- current findings
+- recommended operation
+- operation rationale
+- confidence
+- required provider type
+- preview status
+- approval state
+
+Provider types are capability descriptors only. v1.5 does not implement
+ComfyUI, Krea, local classical/OpenCV preview generation, manual preview
+import, API calls, networking, image processing, prompt generation, preview
+image generation, dataset modification, or improvement execution.
 
 Cleanup, repair, and execution remain future-only and should not be treated as
 the natural next step after v1.0.
+
+---
+
+## v1.6: Review Desk Preview Workspace
+
+v1.6 adds browser support for reviewing Improvement Preview planning records.
+
+The Review Desk consumes `improvement_preview.json` when present and displays:
+
+- original image
+- recommended operation
+- operation rationale
+- evidence summary
+- confidence
+- required provider type
+- preview status
+- approval state
+
+If no preview image exists, the Review Desk shows a clear placeholder. Preview
+approval changes update approval-state metadata in `improvement_preview.json`
+only.
+
+v1.6 does not generate preview images, perform image processing, integrate
+ComfyUI or Krea, call APIs, render providers, execute improvements, modify
+datasets, or modify source images.
