@@ -70,7 +70,8 @@ source images were not touched.
    exclusion, cleanup, quality scoring, or training readiness.
 
 5. Public surface hygiene.
-   The public CLI remains limited to inspect/review/compare/plan/preview.
+   The public CLI remains limited to inspect/review/compare/plan/preview and
+   explicit isolated `preview-import`.
 
 6. Release checks.
    Run the targeted CLI and Review Desk tests, the full suite, and
@@ -239,3 +240,25 @@ v1.7 does not add provider implementations, plugin discovery, credentials,
 configuration, networking, external API calls, subprocesses, image processing,
 preview generation, candidate import, cleanup, export, dataset modification,
 or improvement execution.
+
+---
+
+## v1.8: Manual Preview Import and Browser A/B Comparison
+
+v1.8 proves the preview-review loop with a candidate created outside Dataset
+Forge. `dataset-forge preview-import <inspect_output> <image-reference>
+<candidate-image>` validates and copies one candidate image into the isolated
+inspect-output `preview_artifacts/` directory.
+
+`preview_artifacts.json` uses `dataset-forge/preview-artifact/v1` and records
+deterministic artifact identity, relative artifact reference, hashes,
+dimensions, format, provenance, and metadata warnings. The existing
+`dataset-forge/improvement-preview/v1` sidecar remains compatible. The Review
+Desk joins the artifact sidecar at load time and provides original/candidate
+side-by-side, original-only, and candidate-only A/B views.
+
+Manual import is not provider execution. v1.8 does not generate, process,
+edit, resize, crop, repair, export, replace, or move source images. It does not
+add Krea or ComfyUI integration, APIs, networking, subprocesses, credentials,
+batch import, drag-and-drop upload, provider retries, or automatic candidate
+selection.

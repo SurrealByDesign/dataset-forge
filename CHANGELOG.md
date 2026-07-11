@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.8.0
+
+- Added `dataset-forge preview-import` for one explicit, externally created
+  manual candidate image per existing Improvement Preview record.
+- Added isolated `preview_artifacts/` storage and authoritative
+  `dataset-forge/preview-artifact/v1` provenance metadata with relative
+  references, hashes, dimensions, format, and review warnings.
+- Added Review Desk original/candidate side-by-side A/B review with original-only
+  and candidate-only controls, Manual Import provenance, and allow-listed
+  candidate serving by artifact ID.
+- Preserved `dataset-forge/improvement-preview/v1`; legacy preview records are
+  not rewritten to normalize them.
+- Did not add candidate generation, image processing, cleanup, repair, export,
+  provider execution, ComfyUI/Krea integration, networking, subprocesses,
+  credentials, source replacement, or source-image modification.
+
 ## v1.7.0
 
 - Added provider-neutral preview contracts and deterministic capability

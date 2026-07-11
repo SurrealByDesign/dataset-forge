@@ -1,4 +1,5 @@
 import io
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -29,6 +30,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
         self.assertIn("compare", stdout)
         self.assertIn("plan", stdout)
         self.assertIn("preview", stdout)
+        self.assertIn("preview-import", stdout)
         self.assertIn("--help", stdout)
         self.assertIn("--version", stdout)
         for hidden in (
@@ -63,7 +65,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 1.7.0")
+        self.assertEqual(stdout.strip(), "dataset-forge 1.8.0")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -171,6 +173,49 @@ class PublicCliSurfaceTests(unittest.TestCase):
         self.assertEqual(exit_code, 2)
         self.assertEqual(stdout, "")
         self.assertIn("Missing inspection report", stderr)
+
+    def test_preview_import_help_and_successful_isolated_copy(self) -> None:
+        exit_code, stdout, stderr = self._run(["preview-import", "--help"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("dataset-forge preview-import", stdout)
+        self.assertIn("does not generate, process, export, or replace images", stdout)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output = root / "inspect_output"
+            output.mkdir()
+            source = root / "source.png"
+            candidate = root / "candidate.png"
+            Image.fromarray(np.full((16, 16, 3), 80, dtype=np.uint8)).save(source)
+            Image.fromarray(np.full((16, 16, 3), 160, dtype=np.uint8)).save(candidate)
+            record = {
+                "image": {"path": str(source), "filename": source.name},
+                "recommended_operation": "REPLACE_SOURCE",
+                "current_findings": [],
+                "required_provider_type": "MANUAL",
+                "preview_status": "WAITING_FOR_PROVIDER",
+                "approval_state": "NOT_REQUESTED",
+            }
+            (output / "improvement_preview.json").write_text(
+                json.dumps({
+                    "schema": "dataset-forge/improvement-preview/v1",
+                    "preview_records": [record],
+                    "preview_entries": [record],
+                }),
+                encoding="utf-8",
+            )
+
+            exit_code, stdout, stderr = self._run([
+                "preview-import", str(output), str(source), str(candidate),
+            ])
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stderr, "")
+            self.assertIn("Dataset Forge Preview Import", stdout)
+            self.assertTrue((output / "preview_artifacts.json").is_file())
+            self.assertTrue(any((output / "preview_artifacts").rglob("candidate-*")))
 
     def test_preview_writes_improvement_preview_sidecar(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

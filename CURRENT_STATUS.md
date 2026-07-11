@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-10. v1.7.0 Preview Provider Contract and Capability Model.*
+*Last updated: 2026-07-10. v1.8.0 Manual Preview Import and Browser A/B Comparison.*
 
 ---
 
@@ -37,6 +37,7 @@ Supported public commands:
   --output <comparison_output>`
 - `dataset-forge plan <inspect_output>`
 - `dataset-forge preview <inspect_output>`
+- `dataset-forge preview-import <inspect_output> <image-reference> <candidate-image>`
 - `dataset-forge --help`
 - `dataset-forge --version`
 
@@ -81,6 +82,11 @@ not part of the public v1.x product.
 - `improvement_preview.json`
 - `improvement_preview.md`
 
+`preview-import` writes only within the inspect-output workspace:
+
+- `preview_artifacts.json`
+- an isolated copy below `preview_artifacts/`
+
 Plan is advisory and execution-free. Improvement Preview is planning
 infrastructure for future preview generation and is also execution-free.
 
@@ -94,17 +100,21 @@ original image, shows a placeholder when no preview image exists, and lets the
 reviewer update approval state only. It does not generate previews, process
 images, call providers, execute improvements, or modify source files.
 
-v1.7 defines provider-neutral preview contracts and static capability
-matching. Provider descriptors can describe operation support, local/remote
-metadata, network or credential requirements, reproducibility characteristics,
-and implementation status. Request, result, artifact-reference, and execution
-policy models are contracts only. The Review Desk may display derived
-compatibility, required capabilities, and execution-unavailable status without
-changing `improvement_preview.json` v1.
+v1.8 accepts one explicitly supplied candidate image for an existing preview
+plan, validates it with Pillow, copies its unchanged bytes into an isolated
+inspect-output artifact directory, and records provenance in
+`dataset-forge/preview-artifact/v1`. The Review Desk can show the original and
+candidate side by side for A/B review. Candidate approval or rejection affects
+preview workflow metadata only; it cannot execute, export, or replace images.
+
+`improvement_preview.json` remains on its v1 schema. Artifact metadata joins
+to it by a deterministic record identifier and does not rewrite legacy preview
+records merely to normalize them.
 
 No provider implementation, discovery, live availability check, credential
-storage, networking, subprocess execution, image processing, candidate import,
-preview generation, dataset export, or improvement execution exists.
+storage, networking, subprocess execution, image processing, candidate
+generation, preview generation, dataset export, source replacement, or
+improvement execution exists.
 
 ---
 
@@ -176,6 +186,8 @@ Validated by automated tests:
   Desk preview workspace behavior
 - provider contract validation, isolated artifact-reference rules, and
   deterministic capability matching
+- manual candidate import, isolated artifact provenance, and Review Desk A/B
+  candidate display
 - public CLI surface
 
 Validated by project/private review work:
@@ -226,7 +238,7 @@ Before tagging a v1.x release:
 - repair
 - quarantine folder creation
 - source-image modification
-- file movement or copying
+- source-dataset file movement or copying
 - broad image similarity or semantic duplicate detection
 - duplicate cleanup, file movement, or automatic exclusion
 - JPEG cleanup, denoising, upscaling, or repair

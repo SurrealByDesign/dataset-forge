@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 
 from dataset_forge.improvement_preview import IMPROVEMENT_PREVIEW_SCHEMA
+from dataset_forge.preview_artifacts import import_manual_preview_candidate
 from dataset_forge.review_decisions import REVIEW_DECISIONS_SCHEMA
 from dataset_forge.review_desk import (
     REVIEW_DESK_DATA_SCHEMA,
@@ -842,11 +843,30 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertEqual(data["improvement_preview"]["records"][0]["approval_state"], "APPROVED")
         self.assertEqual(payload["preview_records"][0]["approval_state"], "APPROVED")
         self.assertEqual(payload["preview_entries"][0]["approval_state"], "APPROVED")
+        self.assertEqual(payload["preview_records"][0]["preview_status"], "APPROVED")
         self.assertEqual(payload["summary"]["approval_state_counts"], {"APPROVED": 1})
         self.assertEqual(image_after, image_before)
         self.assertEqual(inspection_after, inspection_before)
         self.assertEqual(recommendation_after, recommendation_before)
         self.assertFalse(review_decisions_exists)
+
+    def test_preview_approval_reset_returns_record_to_ready(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            _write_improvement_preview(output, image)
+            update_preview_approval(output, {
+                "image_path": str(image),
+                "approval_state": "APPROVED",
+            })
+
+            update_preview_approval(output, {
+                "image_path": str(image),
+                "approval_state": "NOT_REQUESTED",
+            })
+            payload = json.loads((output / "improvement_preview.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["preview_records"][0]["approval_state"], "NOT_REQUESTED")
+        self.assertEqual(payload["preview_records"][0]["preview_status"], "READY")
 
     def test_preview_approval_requires_existing_record_and_known_state(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1000,17 +1020,17 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("<summary>Dataset Characteristics</summary>", html)
         self.assertIn("<summary>Unresolved Evidence Categories</summary>", html)
         self.assertIn("<summary>Improvement Preview</summary>", html)
-        self.assertIn("Planning infrastructure for future preview generation", html)
-        self.assertIn("No image comparison UI, image processing, provider calls, generated outputs, or execution.", html)
+        self.assertIn("Preview planning and imported-candidate review", html)
+        self.assertIn("No image generation, processing, provider calls, or execution.", html)
         self.assertIn("Provider implementations", html)
-        self.assertIn("Provider-neutral preview contracts and capability matching", html)
+        self.assertIn("Candidate images are isolated preview artifacts only", html)
         self.assertIn("Required capabilities", html)
         self.assertIn("Capability compatibility", html)
         self.assertIn("Execution unavailable", html)
         self.assertIn("Capability matching uses static provider descriptors only", html)
         self.assertIn("Raw category", html)
         self.assertIn("preview-workspace", html)
-        self.assertIn("No preview image generated. Original image remains the only image displayed.", html)
+        self.assertIn("No imported candidate is available.", html)
         self.assertIn("Preview status", html)
         self.assertIn("Approval state", html)
         self.assertIn("Approval changes update <code>improvement_preview.json</code> only", html)
@@ -1162,6 +1182,63 @@ class ReviewServerHttpTests(unittest.TestCase):
 
         self.assertEqual(data["improvement_preview"]["records"][0]["approval_state"], "REJECTED")
         self.assertEqual(payload["preview_records"][0]["approval_state"], "REJECTED")
+
+    def test_review_desk_serves_isolated_candidate_and_refreshes_approval(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output, image = _write_workspace(root)
+            candidate = root / "candidate.png"
+            Image.fromarray(np.full((32, 48, 3), 180, dtype=np.uint8)).save(candidate)
+            _write_improvement_preview(output, image)
+            imported = import_manual_preview_candidate(output, image, candidate)
+            server = create_review_server(output, port=0)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base = f"http://{LOCAL_REVIEW_HOST}:{server.server_port}"
+                data = json.loads(
+                    urllib.request.urlopen(base + "/api/review-data", timeout=5)
+                    .read()
+                    .decode("utf-8")
+                )
+                record = data["improvement_preview"]["records"][0]
+                artifact = record["candidate_artifact"]
+                image_bytes = urllib.request.urlopen(
+                    base + artifact["image_url"], timeout=5
+                ).read()
+                artifact_bytes = Path(imported["artifact_path"]).read_bytes()
+                with self.assertRaises(urllib.error.HTTPError) as unsafe:
+                    urllib.request.urlopen(
+                        base + "/preview-artifact?id=../candidate.png", timeout=5
+                    )
+                request = urllib.request.Request(
+                    base + "/api/preview-approval",
+                    data=json.dumps({
+                        "image_path": str(image),
+                        "approval_state": "APPROVED",
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                refreshed = json.loads(urllib.request.urlopen(request, timeout=5).read().decode("utf-8"))
+                html = urllib.request.urlopen(base + "/", timeout=5).read().decode("utf-8")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertTrue(artifact["available"])
+        self.assertEqual(artifact["provider_display_name"], "Manual Import")
+        self.assertTrue(artifact["image_url"].startswith("/preview-artifact?id=artifact-"))
+        self.assertEqual(image_bytes, artifact_bytes)
+        self.assertEqual(unsafe.exception.code, 404)
+        refreshed_record = refreshed["improvement_preview"]["records"][0]
+        self.assertEqual(refreshed_record["approval_state"], "APPROVED")
+        self.assertEqual(refreshed_record["preview_status"], "APPROVED")
+        self.assertIn("Imported candidate preview", html)
+        self.assertIn("Side by side", html)
+        self.assertIn("Candidate previews", html)
+        self.assertNotIn("Generated previews", html)
 
     def test_post_rejects_invalid_decision(self) -> None:
         with TemporaryDirectory() as tmp:

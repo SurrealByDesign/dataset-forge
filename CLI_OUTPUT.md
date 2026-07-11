@@ -22,6 +22,7 @@ dataset-forge review <inspect_output>
 dataset-forge compare <before> <after> --output <comparison_output>
 dataset-forge plan <inspect_output>
 dataset-forge preview <inspect_output>
+dataset-forge preview-import <inspect_output> <image-reference> <candidate-image>
 dataset-forge --help
 dataset-forge --version
 ```
@@ -145,10 +146,16 @@ selected original image and update preview approval state only. It still does
 not render providers, create preview images, process images, or execute
 improvements.
 
-v1.7 may also display provider descriptor metadata, required capabilities,
-and deterministic compatibility status. Capability matching is descriptive
-only. `Execution unavailable` must remain visible; a compatible capability
-match does not imply that a provider is installed, connected, or callable.
+`preview-import` accepts one externally created candidate for an existing
+Improvement Preview record. It copies the candidate only into the isolated
+inspect-output `preview_artifacts/` workspace and writes
+`preview_artifacts.json` provenance. It never modifies the source image, source
+captions, or the original candidate file.
+
+The Review Desk can display an imported candidate beside the original source
+image for browser-only A/B review. Approval or rejection updates preview
+workflow metadata only. `Execution unavailable` remains visible; a candidate
+is not an improved dataset image and cannot be exported or applied.
 
 ---
 

@@ -512,6 +512,7 @@ _IMAGE_PREVIEW_CAPABILITIES = PreviewProviderCapabilities(
 )
 _MANUAL_CAPABILITIES = PreviewProviderCapabilities(
     parameter_provenance=True,
+    candidate_image_output=True,
     metadata_only_manual_import=True,
 )
 

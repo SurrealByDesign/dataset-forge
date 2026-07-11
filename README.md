@@ -4,8 +4,9 @@ Dataset Forge is a read-only LoRA/image dataset curation workstation.
 
 It helps you inspect image datasets, review deterministic evidence, record
 human decisions, compare inspection runs, prepare advisory improvement plans,
-write planning-only Improvement Preview sidecars, and review those preview
-plans in the browser before training. Source images are never modified.
+write planning-only Improvement Preview sidecars, import externally created
+candidate previews into an isolated workspace, and review those plans in the
+browser before training. Source images are never modified.
 
 The primary workflow is:
 
@@ -21,8 +22,9 @@ inspect
 ```
 
 Dataset Forge does not clean, repair, export, move, delete, quarantine, or edit
-images. It does not train models. Findings are advisory review signals, not
-automatic judgments.
+source dataset images. A v1.8 candidate copy is permitted only inside the
+isolated inspect-output preview workspace. It does not train models. Findings
+are advisory review signals, not automatic judgments.
 
 ---
 
@@ -68,6 +70,7 @@ review_decisions.json
 | `dataset-forge compare <before> <after> --output <dir>` | Compare two existing inspect outputs. |
 | `dataset-forge plan <inspect_output>` | Write an advisory Improvement Plan from sidecars. |
 | `dataset-forge preview <inspect_output>` | Write planning-only Improvement Preview sidecars from existing sidecars. |
+| `dataset-forge preview-import <inspect_output> <image-reference> <candidate-image>` | Copy one externally created candidate into isolated preview artifacts for A/B review. |
 
 There is no public cleanup, repair, export, execution, profile selection,
 analyzer toggle, plugin, database, cloud, or hosted-review command.
@@ -92,6 +95,7 @@ Common files in `inspect_output/`:
 | `comparison_summary.json` / `.md` | Optional comparison output. |
 | `improvement_plan.json` / `.md` | Optional advisory plan. |
 | `improvement_preview.json` / `.md` | Optional planning infrastructure for future preview generation. |
+| `preview_artifacts.json` | Optional provenance for isolated manually imported preview candidates. |
 
 Optional visual aids:
 
@@ -219,6 +223,9 @@ files.
 - `compare` reads existing sidecars and writes comparison summaries only.
 - `plan` writes advisory Improvement Plan files only.
 - `preview` writes planning-only Improvement Preview files only.
+- `preview-import` copies a supplied candidate only into the inspect-output
+  `preview_artifacts/` workspace and writes `preview_artifacts.json`; it never
+  modifies the source image, source captions, or the original candidate file.
 - Dataset Forge does not execute cleanup, repair images, export datasets, train
   models, contact cloud services, or use a database.
 
@@ -233,20 +240,20 @@ findings, recommended operation, operation rationale, confidence, required
 provider type, preview status, and approval state.
 
 The Review Desk can display these planning records beside the original image,
-show a placeholder when no preview image exists, and update the record's
-approval state in `improvement_preview.json`. Approval changes do not execute
+show a placeholder when no candidate exists, and update the record's approval
+state in `improvement_preview.json`. Approval changes do not execute
 improvements.
 
-v1.7 adds provider-neutral preview contracts and deterministic capability
-matching. Static descriptors record supported operations, capability claims,
-local/remote and reproducibility metadata, and implementation status. The
-Review Desk derives compatibility from those descriptors and the existing
-planning record; `improvement_preview.json` remains on its v1 schema.
+v1.8 adds manual candidate import and browser A/B review. The candidate is a
+disposable isolated preview artifact, recorded in
+`dataset-forge/preview-artifact/v1` metadata with source/candidate hashes,
+dimensions, format, and warnings. `improvement_preview.json` remains on its
+v1 schema; the Review Desk joins artifact metadata at load time.
 
 Provider execution remains unavailable. Dataset Forge does not implement
-ComfyUI, Krea, local OpenCV/classical preview generation, manual import,
-credentials, API calls, networking, subprocess execution, image processing,
-prompt generation, preview image generation, dataset modification, or
+ComfyUI, Krea, local OpenCV/classical preview generation, credentials, API
+calls, networking, subprocess execution, image processing, prompt generation,
+preview image generation, dataset modification, export, source replacement, or
 improvement execution.
 
 ---

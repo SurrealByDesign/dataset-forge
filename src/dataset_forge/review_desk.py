@@ -21,6 +21,11 @@ from dataset_forge.preview_provider_contract import (
     preview_provider_descriptor,
     preview_provider_descriptors,
 )
+from dataset_forge.preview_artifacts import (
+    load_preview_artifacts,
+    preview_artifact_path,
+    preview_plan_record_id,
+)
 from dataset_forge.review_decisions import (
     REVIEW_DECISIONS_SCHEMA,
     ReviewDecisionSet,
@@ -208,6 +213,12 @@ def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, An
 
     preview = workspace.improvement_preview
     provider_contract = _review_provider_contract()
+    artifact_sidecar = load_preview_artifacts(workspace.output_dir)
+    artifacts_by_plan = {
+        str(artifact.get("preview_plan_record_id", "")): artifact
+        for artifact in artifact_sidecar.get("artifacts", [])
+        if isinstance(artifact, Mapping)
+    }
     if preview is None:
         return {
             "available": False,
@@ -219,6 +230,7 @@ def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, An
             "preview_statuses": [],
             "approval_states": [],
             "provider_contract": provider_contract,
+            "artifacts": artifact_sidecar,
             "scope": {
                 "read_only": True,
                 "sidecar_only": True,
@@ -231,7 +243,7 @@ def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, An
     if not isinstance(records, list):
         records = []
     review_records = [
-        _review_preview_record(record)
+        _review_preview_record(record, workspace.output_dir, artifacts_by_plan)
         for record in records
         if isinstance(record, Mapping)
     ]
@@ -249,6 +261,7 @@ def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, An
         if isinstance(preview.get("approval_states"), list)
         else [],
         "provider_contract": provider_contract,
+        "artifacts": artifact_sidecar,
         "scope": preview.get("scope", {}) if isinstance(preview.get("scope"), Mapping) else {},
     }
 
@@ -266,7 +279,11 @@ def _review_provider_contract() -> dict[str, Any]:
     }
 
 
-def _review_preview_record(record: Mapping[str, Any]) -> dict[str, Any]:
+def _review_preview_record(
+    record: Mapping[str, Any],
+    output_dir: Path,
+    artifacts_by_plan: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
     """Add derived capability context without changing the source sidecar record."""
 
     result = dict(record)
@@ -312,7 +329,60 @@ def _review_preview_record(record: Mapping[str, Any]) -> dict[str, Any]:
         descriptor.to_dict() if descriptor is not None else None
     )
     result["provider_compatibility"] = compatibility
+    try:
+        record_id = preview_plan_record_id(record)
+    except ValueError:
+        record_id = ""
+    result["preview_record_id"] = record_id
+    result["candidate_artifact"] = _review_candidate_artifact(
+        output_dir,
+        artifacts_by_plan.get(record_id),
+    )
     return result
+
+
+def _review_candidate_artifact(
+    output_dir: Path,
+    artifact: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Expose safe browser-facing candidate metadata without a filesystem path."""
+
+    if artifact is None:
+        return {"available": False, "reason": "No imported candidate is associated with this preview plan."}
+    candidate = artifact.get("candidate")
+    if not isinstance(candidate, Mapping):
+        return {"available": False, "reason": "Imported candidate metadata is incomplete."}
+    artifact_id = str(artifact.get("artifact_id", ""))
+    path = preview_artifact_path(output_dir, artifact)
+    if path is None:
+        return {
+            "available": False,
+            "artifact_id": artifact_id,
+            "reason": "Imported candidate artifact is unavailable or no longer matches its recorded hash.",
+        }
+    source = artifact.get("source") if isinstance(artifact.get("source"), Mapping) else {}
+    provider = artifact.get("provider") if isinstance(artifact.get("provider"), Mapping) else {}
+    return {
+        "available": True,
+        "artifact_id": artifact_id,
+        "image_url": f"/preview-artifact?id={quote(artifact_id)}",
+        "provider_type": str(provider.get("type", "MANUAL")),
+        "provider_display_name": str(provider.get("display_name", "Manual Import")),
+        "status": str(artifact.get("status", "READY")),
+        "original_filename": str(candidate.get("original_filename", "")),
+        "sha256": str(candidate.get("sha256", "")),
+        "byte_size": candidate.get("byte_size", 0),
+        "width": candidate.get("width", 0),
+        "height": candidate.get("height", 0),
+        "format": str(candidate.get("format", "")),
+        "source_sha256": str(source.get("sha256", "")),
+        "source_width": source.get("width", 0),
+        "source_height": source.get("height", 0),
+        "source_format": str(source.get("format", "")),
+        "warnings": list(artifact.get("warnings", [])) if isinstance(artifact.get("warnings"), list) else [],
+        "imported_at": str(artifact.get("imported_at", "")),
+        "execution_available": False,
+    }
 
 
 def build_dataset_intelligence(

@@ -22,7 +22,8 @@ inspect
 ```
 
 Dataset Forge does not support cleanup, export, execution, repair, quarantine
-folder creation, image modification, file movement, cloud state, databases,
+folder creation, source-image modification, source-dataset file movement,
+cloud state, databases,
 profile editing, analyzer toggles, quality scores, readiness scores, grades, or
 pass/fail labels.
 
@@ -147,6 +148,14 @@ preview generation. They are built from existing sidecars and record image,
 review decision, current findings, recommended operation, operation rationale,
 confidence, required provider type, preview status, and approval state.
 
+`preview_artifacts.json` is an optional v1.8 sidecar with schema
+`dataset-forge/preview-artifact/v1`. It is the single authoritative record for
+one manually imported candidate per deterministic preview-plan record. It
+stores only relative artifact references below the inspect-output
+`preview_artifacts/` workspace, plus hashes, dimensions, format, provenance,
+and descriptive mismatch warnings. It does not change
+`dataset-forge/improvement-preview/v1`.
+
 Improvement Preview provider types are capability descriptors only:
 `LOCAL_CLASSICAL`, `COMFYUI`, `KREA`, `MANUAL`, and `UNKNOWN`.
 
@@ -163,11 +172,14 @@ while the Review Desk derives richer capability compatibility at load time
 from static contract descriptors. This derived browser data is not persisted
 to the planning sidecar.
 
-The Review Desk consumes `improvement_preview.json` when present and displays a
-selected-image preview workspace with the original image, planning operation,
-rationale, evidence summary, confidence, required provider, preview status, and
-approval state. The only Review Desk write to this sidecar is approval-state
-metadata. No preview image is rendered or generated.
+The Review Desk consumes `improvement_preview.json` and optional
+`preview_artifacts.json` when present. It displays a selected-image workspace
+with the original source image, planning operation, provenance, candidate
+metadata, and side-by-side A/B view when a manually imported artifact is
+available. Candidate images are served only by allow-listed artifact ID, never
+by a browser-supplied filesystem path. The only Review Desk write to the plan
+sidecar is approval-state workflow metadata. No preview image is rendered or
+generated.
 
 Provider compatibility means only that a static descriptor claims the
 operation and required capabilities. It never means a provider is installed,
@@ -209,9 +221,10 @@ not call analyzers or live descriptor/profile registries.
 
 `review_desk.py` builds deterministic sidecar-derived payloads.
 
-`review_server.py` owns localhost routing, image serving, browser shell, the
-`review_decisions.json` save endpoint, and the Improvement Preview
-approval-state save endpoint.
+`review_server.py` owns localhost routing, allow-listed source/candidate image
+serving, browser shell, the `review_decisions.json` save endpoint, and the
+Improvement Preview approval-state save endpoint. `preview_artifacts.py` owns
+the narrow CLI import service and atomic artifact-sidecar writes.
 
 The Review Desk must:
 
@@ -219,6 +232,8 @@ The Review Desk must:
 - consume generated sidecars
 - write only `review_decisions.json` plus approval-state metadata in
   `improvement_preview.json` when that optional sidecar exists
+- read optional artifact metadata and candidate bytes without accepting
+  arbitrary artifact paths from the browser
 - preserve the review decision schema
 - keep image review as the primary workflow
 - make read-only scope visible

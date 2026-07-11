@@ -40,6 +40,10 @@ from dataset_forge.core.structured import load_structured_file
 from dataset_forge.discovery import discover_images
 from dataset_forge.improvement_plan import ImprovementPlanError, write_improvement_plan
 from dataset_forge.improvement_preview import ImprovementPreviewError, write_improvement_preview
+from dataset_forge.preview_artifacts import (
+    PreviewArtifactError,
+    import_manual_preview_candidate,
+)
 from dataset_forge.analysis.texture import generate_texture_report
 from dataset_forge.analysis.health import generate_health_report
 from dataset_forge.inspect import run_inspect
@@ -186,6 +190,25 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Folder produced by dataset-forge inspect.",
     )
+    preview_import_parser = commands.add_parser(
+        "preview-import",
+        help="Import one manual candidate into isolated preview artifacts.",
+    )
+    preview_import_parser.add_argument(
+        "inspect_output",
+        type=Path,
+        help="Folder containing improvement_preview.json.",
+    )
+    preview_import_parser.add_argument(
+        "image_reference",
+        type=Path,
+        help="Exact source image reference from an existing Improvement Preview record.",
+    )
+    preview_import_parser.add_argument(
+        "candidate_image",
+        type=Path,
+        help="Externally created candidate image to copy into isolated preview artifacts.",
+    )
     return parser
 
 
@@ -230,10 +253,16 @@ def main(argv: list[str] | None = None) -> int:
             return _preview_main(arguments)
         except SystemExit as exc:
             return int(exc.code or 0)
+    if arguments[0] == "preview-import":
+        try:
+            return _preview_import_main(arguments)
+        except SystemExit as exc:
+            return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
             "Error: this command is not part of the public Dataset Forge CLI. "
             "Use 'dataset-forge inspect', 'review', 'compare', 'plan', 'preview', "
+            "'preview-import', "
             "'--help', or '--version'.",
             file=sys.stderr,
         )
@@ -786,6 +815,54 @@ def _preview_main(argv: list[str]) -> int:
     print("Provider implementations: Not Implemented.")
     print("Generated preview images: 0.")
     print("Source images and existing sidecars were not modified.")
+    return 0
+
+
+def _preview_import_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="dataset-forge preview-import",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Copy one externally created candidate image into an isolated preview-artifact "
+            "workspace for an existing Improvement Preview record.\n"
+            "This does not generate, process, export, or replace images."
+        ),
+    )
+    parser.add_argument("inspect_output", type=Path)
+    parser.add_argument(
+        "image_reference",
+        type=Path,
+        help="Exact source image reference from an existing Improvement Preview record.",
+    )
+    parser.add_argument(
+        "candidate_image",
+        type=Path,
+        help="Candidate image supplied by the user; its original file is never modified.",
+    )
+    args = parser.parse_args(argv[1:])
+
+    inspect_output = args.inspect_output.expanduser().resolve()
+    try:
+        result = import_manual_preview_candidate(
+            inspect_output,
+            args.image_reference,
+            args.candidate_image,
+        )
+    except (PreviewArtifactError, OSError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
+    artifact = result["artifact"]
+    print("Dataset Forge Preview Import")
+    print("============================")
+    print(f"Inspect output: {inspect_output}")
+    print(f"Preview artifact: {artifact['artifact_id']}")
+    print(f"Status: {artifact['status']}")
+    print(f"Imported: {'yes' if result['imported'] else 'already present'}")
+    print()
+    print("The candidate was copied only into the isolated inspect-output preview workspace.")
+    print("Source images, source captions, and the original candidate file were not modified.")
+    print("No image generation, processing, provider execution, export, or replacement occurred.")
     return 0
 
 

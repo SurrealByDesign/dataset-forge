@@ -37,6 +37,7 @@ from dataset_forge.review_decisions import (
     parse_review_decisions,
 )
 from dataset_forge.improvement_preview import APPROVAL_STATES
+from dataset_forge.preview_artifacts import resolve_preview_artifact
 
 ReviewServerError = ReviewDeskError
 
@@ -119,27 +120,29 @@ def update_preview_approval(output_dir: Path, payload: Mapping[str, Any]) -> dic
     if not isinstance(records, list):
         raise ReviewServerError("improvement_preview.json preview_records must be a list")
 
-    next_records: list[dict[str, Any]] = []
-    matched = False
-    for record in records:
-        if not isinstance(record, Mapping):
-            continue
-        next_record = dict(record)
-        image = next_record.get("image", {})
-        record_path = str(image.get("path", "")) if isinstance(image, Mapping) else ""
-        if record_path == image_path:
-            next_record["approval_state"] = approval_state
-            matched = True
-        next_records.append(next_record)
+    matched = any(
+        isinstance(record, Mapping) and _preview_record_image_path(record) == image_path
+        for record in records
+    )
     if not matched:
         raise ReviewServerError(f"No Improvement Preview record found for image: {image_path}")
 
     next_preview = dict(preview)
-    next_preview["preview_records"] = next_records
-    if "preview_entries" in next_preview:
-        next_preview["preview_entries"] = next_records
+    for key in ("preview_records", "preview_entries"):
+        current = preview.get(key)
+        if not isinstance(current, list):
+            continue
+        next_preview[key] = [
+            _updated_preview_record(record, image_path, approval_state)
+            if isinstance(record, Mapping)
+            else record
+            for record in current
+        ]
     summary = dict(next_preview.get("summary", {})) if isinstance(next_preview.get("summary"), Mapping) else {}
-    summary["approval_state_counts"] = _approval_counts(next_records)
+    updated_records = next_preview.get("preview_records", next_preview.get("preview_entries", []))
+    summary["approval_state_counts"] = _approval_counts(
+        [record for record in updated_records if isinstance(record, Mapping)]
+    )
     next_preview["summary"] = summary
     atomic_write_json(workspace.improvement_preview_path, next_preview)
     return build_review_data(output_dir)
@@ -152,6 +155,34 @@ def _approval_counts(records: list[Mapping[str, Any]]) -> dict[str, int]:
         if state:
             counts[state] = counts.get(state, 0) + 1
     return {key: value for key, value in counts.items() if value}
+
+
+def _preview_record_image_path(record: Mapping[str, Any]) -> str:
+    image = record.get("image")
+    if isinstance(image, Mapping) and isinstance(image.get("path"), str):
+        return str(image["path"])
+    value = record.get("image_path")
+    return str(value) if isinstance(value, str) else ""
+
+
+def _updated_preview_record(
+    record: Mapping[str, Any],
+    image_path: str,
+    approval_state: str,
+) -> dict[str, Any]:
+    next_record = dict(record)
+    if _preview_record_image_path(next_record) != image_path:
+        return next_record
+    next_record["approval_state"] = approval_state
+    if approval_state == "APPROVED":
+        next_record["preview_status"] = "APPROVED"
+    elif approval_state == "REJECTED":
+        next_record["preview_status"] = "REJECTED"
+    elif approval_state == "NOT_REQUESTED":
+        # Returning to the neutral planning state must not leave a stale
+        # approval status behind after a reviewer changes their mind.
+        next_record["preview_status"] = "READY"
+    return next_record
 
 
 def atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
@@ -237,6 +268,9 @@ class _ReviewRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/image":
             self._send_image(parsed.query)
             return
+        if parsed.path == "/preview-artifact":
+            self._send_preview_artifact(parsed.query)
+            return
         self.send_error(404, "not found")
 
     def do_POST(self) -> None:
@@ -288,6 +322,21 @@ class _ReviewRequestHandler(BaseHTTPRequestHandler):
             return
         content_type = mimetypes.guess_type(image_path.name)[0] or "application/octet-stream"
         data = image_path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _send_preview_artifact(self, query: str) -> None:
+        params = parse_qs(query)
+        artifact_id = params.get("id", [""])[0]
+        artifact_path = resolve_preview_artifact(self.review_output_dir, artifact_id)
+        if artifact_path is None:
+            self.send_error(404, "preview artifact not found")
+            return
+        content_type = mimetypes.guess_type(artifact_path.name)[0] or "application/octet-stream"
+        data = artifact_path.read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
@@ -361,6 +410,16 @@ textarea { min-height: 90px; resize: vertical; }
 .preview-placeholder { border: 1px dashed #9aa8b8; background: #f8f9fb; color: var(--muted); padding: 12px; margin: 8px 0; text-align: center; }
 .preview-meta { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 8px 0; }
 .preview-meta p { margin: 0; }
+.comparison-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.comparison-controls button { padding: 5px 7px; font-size: .78rem; }
+.ab-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+.ab-pane { border: 1px solid var(--line); background: #fafbfc; padding: 8px; min-width: 0; }
+.ab-pane h3 { margin-bottom: 6px; }
+.ab-pane img { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #eef2f6; border: 1px solid var(--line); display: block; }
+.ab-comparison[data-view="original"] { grid-template-columns: minmax(0, 1fr); }
+.ab-comparison[data-view="original"] .candidate-pane { display: none; }
+.ab-comparison[data-view="candidate"] { grid-template-columns: minmax(0, 1fr); }
+.ab-comparison[data-view="candidate"] .original-pane { display: none; }
 .approval-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .approval-buttons button { padding: 5px 7px; font-size: .78rem; }
 .shortcut { font-size: .78rem; color: var(--muted); }
@@ -875,12 +934,12 @@ function renderImprovementPreview(preview) {
     }).join('')}</tbody></table>`
     : '<p class="muted">Improvement Preview sidecar is present but contains no planning records.</p>';
   return `
-    <p class="muted">Planning infrastructure for future preview generation. Provider-neutral preview contracts and capability matching. No image comparison UI, image processing, provider calls, generated outputs, or execution.</p>
+    <p class="muted">Preview planning and imported-candidate review. Candidate images are isolated preview artifacts only. No image generation, processing, provider calls, or execution.</p>
     <div class="overview-grid">
       ${countBox('Preview records', summary.record_count || summary.preview_entry_count || (preview.records || []).length || 0)}
       ${countBox('Execution available', summary.execution_available ? 'yes' : 'no')}
       ${countBox('Provider implementations', summary.provider_implementations_available ? 'yes' : 'no')}
-      ${countBox('Generated previews', summary.generated_preview_image_count || 0)}
+      ${countBox('Candidate previews', summary.generated_preview_image_count || 0)}
     </div>
     ${rows}`;
 }
@@ -975,10 +1034,21 @@ function renderDetail() {
   document.querySelectorAll('[data-preview-approval]').forEach(button => {
     button.addEventListener('click', () => savePreviewApproval(image, button.dataset.previewApproval));
   });
+  document.querySelectorAll('[data-comparison-view]').forEach(button => {
+    button.addEventListener('click', () => setComparisonView(button.dataset.comparisonView));
+  });
 }
 function detailDecisionButton(value, text) {
   const image = selectedImage();
   return `<button type="button" data-decision="${value}" class="${image && (image.decision || 'UNDECIDED') === value ? 'selected' : ''}">${escapeText(text)}</button>`;
+}
+function setComparisonView(view) {
+  const comparison = document.querySelector('[data-comparison-viewer]');
+  if (!comparison) return;
+  comparison.dataset.view = view;
+  document.querySelectorAll('[data-comparison-view]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.comparisonView === view);
+  });
 }
 function renderFindings(image) {
   if (!image.findings.length) return '<p>No current findings emitted.</p>';
@@ -1017,10 +1087,15 @@ function renderPreviewWorkspace(image) {
   const descriptor = compatibility.provider_descriptor || {};
   const requiredCapabilities = compatibility.required_capabilities || [];
   const missingCapabilities = compatibility.missing_capabilities || [];
+  const candidate = record.candidate_artifact || {};
+  const candidateWorkspace = candidate.available
+    ? renderCandidateComparison(image, candidate)
+    : `<div class="preview-placeholder">No imported candidate is available. The original image remains the source/reference image. Dataset Forge does not generate previews or process images here.</div>
+       <p class="muted">${escapeText(candidate.reason || 'Use dataset-forge preview-import with an existing planning record and an externally created candidate image.')}</p>`;
   return `
     <section class="preview-workspace">
       <h2>Improvement Preview</h2>
-      <div class="preview-placeholder">No preview image generated. Original image remains the only image displayed.</div>
+      ${candidateWorkspace}
       <div class="preview-meta">
         <p><strong>Operation:</strong> ${escapeText(record.recommended_operation || '')}</p>
         <p><strong>Rationale:</strong> ${escapeText(record.operation_rationale || '')}</p>
@@ -1037,8 +1112,40 @@ function renderPreviewWorkspace(image) {
       <div class="approval-buttons">
         ${states.map(state => `<button type="button" data-preview-approval="${escapeText(state)}" class="${record.approval_state === state ? 'selected' : ''}">${escapeText(label(state, approvalLabels))}</button>`).join('')}
       </div>
-      <p class="muted">Capability matching uses static provider descriptors only. Approval changes update <code>improvement_preview.json</code> only. They do not execute improvements, call providers, create preview images, or modify source files.</p>
+      <p class="muted">Capability matching uses static provider descriptors only. Approval changes update <code>improvement_preview.json</code> only. Imported candidates remain isolated preview artifacts; approval does not execute, export, replace, or modify source files.</p>
     </section>`;
+}
+function renderCandidateComparison(image, candidate) {
+  const warnings = (candidate.warnings || []).map(item => `<li>${escapeText(item)}</li>`).join('');
+  return `
+    <div class="comparison-controls" aria-label="A/B comparison view">
+      <button type="button" data-comparison-view="side-by-side" class="selected">Side by side</button>
+      <button type="button" data-comparison-view="original">Original only</button>
+      <button type="button" data-comparison-view="candidate">Candidate only</button>
+    </div>
+    <div class="ab-comparison" data-comparison-viewer data-view="side-by-side">
+      <section class="ab-pane original-pane">
+        <h3>Original source image</h3>
+        <img src="${escapeText(image.thumbnail_url)}" alt="Original source image: ${escapeText(image.filename)}">
+        <p class="muted">${escapeText(candidate.source_width)} x ${escapeText(candidate.source_height)} ${escapeText(candidate.source_format)}; SHA-256 ${escapeText(shortHash(candidate.source_sha256))}</p>
+      </section>
+      <section class="ab-pane candidate-pane">
+        <h3>Imported candidate preview</h3>
+        <img src="${escapeText(candidate.image_url)}" alt="Imported candidate preview for ${escapeText(image.filename)}">
+        <p class="muted">Manual Import <code>${escapeText(candidate.provider_type || 'MANUAL')}</code>; ${escapeText(candidate.width)} x ${escapeText(candidate.height)} ${escapeText(candidate.format)}; SHA-256 ${escapeText(shortHash(candidate.sha256))}</p>
+      </section>
+    </div>
+    <div class="preview-meta">
+      <p><strong>Candidate source:</strong> ${escapeText(candidate.original_filename || 'not recorded')}</p>
+      <p><strong>Candidate status:</strong> ${escapeText(candidate.status || 'READY')}</p>
+      <p><strong>Provider:</strong> ${escapeText(candidate.provider_display_name || 'Manual Import')} <span class="muted"><code>${escapeText(candidate.provider_type || 'MANUAL')}</code></span></p>
+      ${warnings ? `<p><strong>Review warnings:</strong></p><ul class="muted">${warnings}</ul>` : '<p class="muted">No metadata mismatch warnings were recorded.</p>'}
+    </div>
+    <p class="muted">This imported candidate is an isolated preview artifact. It is not part of the source dataset or an improved-dataset export.</p>`;
+}
+function shortHash(value) {
+  const text = String(value || 'not recorded');
+  return text.length > 16 ? `${text.slice(0, 16)}...` : text;
 }
 function renderPreviewEvidence(record) {
   const findings = record.current_findings || [];

@@ -104,13 +104,14 @@ class PreviewProviderContractTests(unittest.TestCase):
         self.assertEqual(manual.status, MATCH_INCOMPATIBLE)
         self.assertEqual(
             manual.missing_capabilities,
-            (CAPABILITY_CANDIDATE_IMAGE_OUTPUT, CAPABILITY_IMAGE_INPUT),
+            (CAPABILITY_IMAGE_INPUT,),
         )
         self.assertEqual(unknown.status, MATCH_UNKNOWN_PROVIDER)
         self.assertEqual(local, match_preview_provider(PROVIDER_LOCAL_CLASSICAL, "REDUCE_HALO"))
 
     def test_manual_metadata_operation_is_compatible_but_not_executable(self) -> None:
         match = match_preview_provider(PROVIDER_MANUAL, "REPLACE_SOURCE")
+        descriptor = preview_provider_descriptor(PROVIDER_MANUAL)
 
         self.assertEqual(match.status, MATCH_COMPATIBLE)
         self.assertEqual(
@@ -118,6 +119,9 @@ class PreviewProviderContractTests(unittest.TestCase):
             (CAPABILITY_METADATA_ONLY_MANUAL_IMPORT,),
         )
         self.assertFalse(match.execution_available)
+        assert descriptor is not None
+        self.assertTrue(descriptor.capabilities.candidate_image_output)
+        self.assertEqual(descriptor.implementation_status, "not_implemented")
 
     def test_local_remote_and_credential_flags_are_metadata_only(self) -> None:
         local = preview_provider_descriptor(PROVIDER_LOCAL_CLASSICAL)
