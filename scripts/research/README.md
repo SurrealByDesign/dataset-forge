@@ -1,8 +1,9 @@
 # scripts/research/
 
-Internal research probes. These scripts explore candidate signals for future
-analyzers. They are not part of the public API and are not required for normal
-use.
+Internal historical and current research probes. They are not part of the
+public API, do not define the current roadmap, and are not required for normal
+use. Some early reports predate analyzers that were later implemented with
+different methods and tests.
 
 ## Contents
 

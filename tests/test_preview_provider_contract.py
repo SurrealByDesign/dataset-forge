@@ -41,8 +41,16 @@ class PreviewProviderContractTests(unittest.TestCase):
             [item["provider_type"] for item in first],
             ["LOCAL_CLASSICAL", "COMFYUI", "KREA", "MANUAL", "UNKNOWN"],
         )
+        by_type = {item["provider_type"]: item for item in first}
+        self.assertEqual(by_type["LOCAL_CLASSICAL"]["implementation_status"], "local_preview_available")
+        self.assertTrue(by_type["LOCAL_CLASSICAL"]["deterministic"])
+        self.assertTrue(by_type["LOCAL_CLASSICAL"]["capabilities"]["deterministic_execution"])
         self.assertTrue(
-            all(item["implementation_status"] == "not_implemented" for item in first)
+            all(
+                item["implementation_status"] == "not_implemented"
+                for item in first
+                if item["provider_type"] != "LOCAL_CLASSICAL"
+            )
         )
         self.assertEqual(json.loads(json.dumps(first, sort_keys=True)), first)
 
@@ -133,6 +141,7 @@ class PreviewProviderContractTests(unittest.TestCase):
         self.assertFalse(local.remote)
         self.assertFalse(local.requires_network)
         self.assertFalse(local.requires_credentials)
+        self.assertEqual(local.implementation_status, "local_preview_available")
         self.assertTrue(remote.remote)
         self.assertTrue(remote.requires_network)
         self.assertTrue(remote.requires_credentials)

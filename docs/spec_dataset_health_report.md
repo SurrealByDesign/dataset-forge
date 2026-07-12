@@ -1,5 +1,9 @@
 # Spec: Dataset Health Report
 
+> **Historical design record. Superseded by descriptive Dataset Intelligence.**
+> Quality scores, readiness labels, cleanup summaries, and export guidance in
+> this document are not part of Dataset Forge v1.9.3.
+
 **Status:** Specification — not yet implemented.
 
 **Pipeline position:** After texture analysis and Decision Engine evaluation,

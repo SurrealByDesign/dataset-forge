@@ -1,7 +1,8 @@
 # Dataset Forge -- Internal Calibration Notes
 
 > Internal document. Contains private dataset calibration details, probe results,
-> and development history. Not for public release.
+> and development history. It is not user guidance, a current roadmap, or a
+> claim that advisory analyzers are fully calibrated.
 
 ---
 

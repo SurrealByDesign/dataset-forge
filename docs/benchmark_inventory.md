@@ -1,104 +1,58 @@
 # Benchmark Inventory
 
-Current state of the Dataset Forge benchmark system as of v0.1 alpha.
+This document maps the current validation assets. Analyzer status remains
+advisory even when regression fixtures exist.
 
----
+## Public Benchmark Suite
 
-## Public benchmark suite
+Run from a fresh clone:
 
-Runs immediately from a fresh clone. No private images or generation step required.
-
-```
+```powershell
 uv run python scripts/run_benchmarks.py
 ```
 
-**Status: 10 / 10 expectations passing.**
+The public manifest is `benchmarks/benchmark_manifest.json`. Committed fixtures
+under `benchmarks/synthetic_defects/` cover positive and negative cases for
+microtexture, crystalline faceting, oversharpening/halo evidence, and isolated
+high-frequency artifacts.
 
-Manifest: `benchmarks/benchmark_manifest.json`
+Analyzer-specific pytest fixtures also cover image encoding, caption metadata,
+exact duplicates, and conservative perceptual near-duplicates.
 
-### Committed fixtures (`benchmarks/synthetic_defects/`)
+## Optional Private Validation
 
-Five PNG fixtures are committed to git. They are deterministic and reproducible.
+`benchmarks/local_benchmark_manifest.json`, `benchmarks/real_samples/`, and
+`benchmarks/real_world/private/` are local and ignored. They may reference
+private datasets but must never be committed.
 
-| File | Generator script | Analyzer tested | Expected result |
-|---|---|---|---|
-| `06_crystalline_low.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | Fires LOW (grain=45.1) |
-| `07_crystalline_medium.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | Fires MEDIUM (grain=64.2) |
-| `08_crystalline_negative_smooth.png` | `generate_crystalline_fixtures.py` | CrystallineFacetingAnalyzer | No finding (smooth guard: smooth=53.2 > 52 ceiling) |
-| `09_texture_clean.png` | `generate_texture_fixtures.py` | TextureAnalyzer | No finding (micro=0.0, below absolute floor) |
-| `10_texture_positive.png` | `generate_texture_fixtures.py` | TextureAnalyzer | Fires MEDIUM (micro=88.7, z=1.0) |
-
-Generators are deterministic and seeded. Re-running them reproduces identical pixel values:
-
-```
-uv run python scripts/generate_crystalline_fixtures.py
-uv run python scripts/generate_texture_fixtures.py
+```powershell
+uv run python scripts/run_benchmarks.py `
+  --manifest benchmarks/local_benchmark_manifest.json
 ```
 
-### Skipped cases (synthetic-generated, not committed)
+Missing optional private cases are skipped rather than failed.
 
-Cases `00`, `04`, and `05` in the public manifest are marked `private: true`
-and are skipped automatically when the referenced images are absent. Cases `01`,
-`02`, and `03` are not in the public manifest (files exist locally if generated,
-but are gitignored and have no manifest expectations). A local reference image
-is required to generate any of these via `scripts/generate_benchmark_defects.py`.
-Skipped cases do not count as failures.
+## Real-World Corpus Framework
 
----
+`benchmarks/real_world/manifest.json` defines public placeholder and optional
+private validation groups. Placeholder fixtures prove wiring and schema
+compatibility; they are not evidence of broad real-world reliability.
 
-## Local benchmark suite (optional)
+## Generated Results
 
-Manifest: `benchmarks/local_benchmark_manifest.json` (gitignored -- never commit this)
+Benchmark and research output belongs under `benchmarks/results/`, which is
+ignored. Do not cite a local result as public calibration evidence unless its
+inputs, labels, licensing, and reproduction steps are committed.
 
-References private real-sample images in `benchmarks/real_samples/` (also gitignored).
-Place images there manually. Missing images are skipped, not failed.
+## Known Limits
 
-```
-uv run python scripts/run_benchmarks.py --manifest benchmarks/local_benchmark_manifest.json
-```
+- Public synthetic fixtures cannot represent the diversity of real artwork.
+- Private anthropomorphic-dataset review is useful product validation but is
+  not independent calibration evidence.
+- False-positive contexts remain important even for fixture-backed analyzers.
+- Threshold or confidence changes require dedicated validation, not merely a
+  passing regression suite.
 
----
-
-## Benchmark folders
-
-| Folder | Git status | Purpose |
-|---|---|---|
-| `benchmarks/synthetic_defects/` | Committed fixtures only (see above); other generated files ignored | Synthetic fixture images |
-| `benchmarks/real_samples/` | All image files gitignored | Private calibration images (optional, local only) |
-| `benchmarks/reference/` | All image files gitignored | Local reference images for generating synthetic defects |
-| `benchmarks/results/` | Gitignored | Per-run benchmark output and research probe reports |
-
----
-
-## Benchmark coverage
-
-| Artifact family | Public fixture coverage | Analyzer tested |
-|---|---|---|
-| Microtexture | 2 cases (clean + MEDIUM) | TextureAnalyzer |
-| Crystalline faceting | 3 cases (LOW, MEDIUM, negative) | CrystallineFacetingAnalyzer |
-| Speck / glitter | None | Not yet implemented |
-| Recursive detail overload | None | Not yet implemented |
-| Oversharpening / halos | None | Not yet implemented |
-
----
-
-## Known gaps
-
-- No synthetic fixtures for speck/glitter, recursive detail, or oversharpening families.
-- No fixture exercises the HIGH severity tier for either analyzer.
-- No fixture exercises TextureAnalyzer CRITICAL tier.
-- Real-sample benchmark cases are private and optional; not reproducible from a fresh clone.
-- Benchmark results history is not versioned (results/ is gitignored).
-
----
-
-## Analyzer regression tests
-
-In addition to the benchmark manifests, committed fixtures have dedicated
-regression tests:
-
-| Test file | Fixtures tested | Tests |
-|---|---|---|
-| `tests/test_crystalline_fixtures.py` | 06, 07, 08 | 32 |
-| `tests/test_texture_fixtures.py` | 09, 10 | 21 |
-| `tests/test_benchmark.py` | Benchmark framework | 29 |
+See [../benchmarks/README.md](../benchmarks/README.md) for fixture details and
+[internal_calibration_notes.md](internal_calibration_notes.md) for clearly
+labeled internal history.

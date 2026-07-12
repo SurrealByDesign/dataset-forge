@@ -11,6 +11,7 @@ from dataset_forge.improvement_preview import (
     OPERATION_NO_ACTION,
     OPERATION_REDUCE_HALO,
     OPERATION_REMOVE_DUPLICATE,
+    PROVIDER_LOCAL_CLASSICAL,
     PROVIDER_MANUAL,
     PROVIDER_UNKNOWN,
     STATUS_NOT_AVAILABLE,
@@ -150,6 +151,7 @@ class ImprovementPreviewTests(unittest.TestCase):
             )
 
             preview = build_improvement_preview(output)
+            self.assertTrue(preview["summary"]["provider_implementations_available"])
 
         self.assertEqual(preview["schema"], IMPROVEMENT_PREVIEW_SCHEMA)
         self.assertTrue(preview["deterministic"])
@@ -157,7 +159,7 @@ class ImprovementPreviewTests(unittest.TestCase):
         record = preview["preview_records"][0]
         self.assertEqual(record["image"]["path"], "dataset/img.png")
         self.assertEqual(record["recommended_operation"], OPERATION_REDUCE_HALO)
-        self.assertEqual(record["required_provider_type"], PROVIDER_UNKNOWN)
+        self.assertEqual(record["required_provider_type"], PROVIDER_LOCAL_CLASSICAL)
         self.assertEqual(record["preview_status"], STATUS_WAITING_FOR_PROVIDER)
         self.assertEqual(record["approval_state"], "APPROVED")
         self.assertEqual(json.loads(json.dumps(preview)), preview)
@@ -242,10 +244,26 @@ class ImprovementPreviewTests(unittest.TestCase):
             [descriptor["provider_type"] for descriptor in descriptors],
             ["LOCAL_CLASSICAL", "COMFYUI", "KREA", "MANUAL", "UNKNOWN"],
         )
-        self.assertTrue(all(descriptor["implementation_status"] == "not_implemented" for descriptor in descriptors))
+        by_type = {descriptor["provider_type"]: descriptor for descriptor in descriptors}
+        self.assertEqual(by_type["LOCAL_CLASSICAL"]["implementation_status"], "local_preview_available")
+        self.assertTrue(
+            all(
+                descriptor["implementation_status"] == "not_implemented"
+                for descriptor in descriptors
+                if descriptor["provider_type"] != "LOCAL_CLASSICAL"
+            )
+        )
         self.assertTrue(all(not descriptor["network_access"] for descriptor in descriptors))
         self.assertTrue(all(not descriptor["modifies_source_images"] for descriptor in descriptors))
-        self.assertTrue(all(not descriptor["generates_preview_images"] for descriptor in descriptors))
+        self.assertTrue(by_type["LOCAL_CLASSICAL"]["generates_preview_images"])
+        self.assertTrue(by_type["LOCAL_CLASSICAL"]["processes_images"])
+        self.assertTrue(
+            all(
+                not descriptor["generates_preview_images"]
+                for descriptor in descriptors
+                if descriptor["provider_type"] != "LOCAL_CLASSICAL"
+            )
+        )
         self.assertTrue(all(set(descriptor) == {
             "provider_type",
             "display_name",
@@ -313,7 +331,7 @@ class ImprovementPreviewTests(unittest.TestCase):
             markdown = render_improvement_preview_markdown(preview)
 
         self.assertIn("# Improvement Preview", markdown)
-        self.assertIn("Planning infrastructure for future preview generation", markdown)
+        self.assertIn("Planning infrastructure for preview candidate review", markdown)
         self.assertIn("Recommended operation", markdown)
         self.assertIn("Required provider type", markdown)
         self.assertIn("No provider implementation was called", markdown)

@@ -31,6 +31,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
         self.assertIn("plan", stdout)
         self.assertIn("preview", stdout)
         self.assertIn("preview-import", stdout)
+        self.assertIn("preview-generate", stdout)
         self.assertIn("--help", stdout)
         self.assertIn("--version", stdout)
         for hidden in (
@@ -65,7 +66,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout.strip(), "dataset-forge 1.8.0")
+        self.assertEqual(stdout.strip(), "dataset-forge 1.9.3")
 
     def test_future_commands_are_not_public(self) -> None:
         for command in (
@@ -217,6 +218,60 @@ class PublicCliSurfaceTests(unittest.TestCase):
             self.assertTrue((output / "preview_artifacts.json").is_file())
             self.assertTrue(any((output / "preview_artifacts").rglob("candidate-*")))
 
+    def test_preview_generate_help_and_successful_isolated_candidate(self) -> None:
+        exit_code, stdout, stderr = self._run(["preview-generate", "--help"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("dataset-forge preview-generate", stdout)
+        self.assertIn("does not modify source images", stdout)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output = root / "inspect_output"
+            output.mkdir()
+            source = root / "source.png"
+            arr = np.zeros((24, 24, 3), dtype=np.uint8)
+            arr[:, :12] = 20
+            arr[:, 12:] = 230
+            Image.fromarray(arr).save(source)
+            source_before = source.read_bytes()
+            record = {
+                "image": {"path": str(source), "filename": source.name},
+                "recommended_operation": "REDUCE_HALO",
+                "current_findings": [
+                    {
+                        "category": "artifact.oversharpening_halo",
+                        "analyzer": "oversharpening_halo_analyzer/v1",
+                        "severity": "MEDIUM",
+                    }
+                ],
+                "required_provider_type": "LOCAL_CLASSICAL",
+                "preview_status": "WAITING_FOR_PROVIDER",
+                "approval_state": "NOT_REQUESTED",
+            }
+            (output / "improvement_preview.json").write_text(
+                json.dumps({
+                    "schema": "dataset-forge/improvement-preview/v1",
+                    "preview_records": [record],
+                    "preview_entries": [record],
+                }),
+                encoding="utf-8",
+            )
+
+            exit_code, stdout, stderr = self._run([
+                "preview-generate", str(output), str(source),
+            ])
+
+            sidecar = json.loads((output / "preview_artifacts.json").read_text(encoding="utf-8"))
+            source_after = source.read_bytes()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Dataset Forge Preview Generate", stdout)
+        self.assertEqual(source_after, source_before)
+        self.assertEqual(sidecar["artifacts"][0]["provider"]["type"], "LOCAL_CLASSICAL")
+
     def test_preview_writes_improvement_preview_sidecar(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -240,7 +295,7 @@ class PublicCliSurfaceTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertEqual(stderr, "")
             self.assertIn("Improvement Preview written", stdout)
-            self.assertIn("Provider implementations: Not Implemented", stdout)
+            self.assertIn("Local Classical preview generation", stdout)
             self.assertTrue((output / "improvement_preview.json").is_file())
             self.assertTrue((output / "improvement_preview.md").is_file())
 

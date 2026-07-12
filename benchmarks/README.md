@@ -104,8 +104,8 @@ Filenames and expected scores are documented in `local_benchmark_manifest.json`
 
 ## Real-world validation corpus (`benchmarks/real_world/`)
 
-v0.6.0-alpha adds a corpus framework for labeled real-world validation datasets.
-It is methodology only: no analyzer thresholds, inspect output, CLI behavior,
+The real-world corpus framework supports labeled validation datasets. It is
+methodology only: no analyzer thresholds, inspect output, CLI behavior,
 repair planning, cleanup, repair, export, or UI behavior changes.
 
 The committed corpus currently includes a public synthetic placeholder group to

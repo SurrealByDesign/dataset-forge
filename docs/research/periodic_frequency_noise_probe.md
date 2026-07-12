@@ -1,5 +1,8 @@
 # Periodic Frequency Noise Probe
 
+> **Internal research record.** This probe did not become a public analyzer and
+> does not describe a current Dataset Forge capability or roadmap commitment.
+
 Status: researched; not approved for implementation.
 
 Probe script:

@@ -1,6 +1,6 @@
 # Dataset Forge -- Current Status
 
-*Last updated: 2026-07-10. v1.8.0 Manual Preview Import and Browser A/B Comparison.*
+*Last updated: 2026-07-11. v1.9.3 Review Desk UX Polish.*
 
 ---
 
@@ -38,6 +38,7 @@ Supported public commands:
 - `dataset-forge plan <inspect_output>`
 - `dataset-forge preview <inspect_output>`
 - `dataset-forge preview-import <inspect_output> <image-reference> <candidate-image>`
+- `dataset-forge preview-generate <inspect_output> <image-reference>`
 - `dataset-forge --help`
 - `dataset-forge --version`
 
@@ -87,8 +88,15 @@ not part of the public v1.x product.
 - `preview_artifacts.json`
 - an isolated copy below `preview_artifacts/`
 
+`preview-generate` writes only within the inspect-output workspace:
+
+- `preview_artifacts.json`
+- one deterministic LOCAL_CLASSICAL candidate below `preview_artifacts/`
+- `improvement_preview.json` preview status / approval metadata
+
 Plan is advisory and execution-free. Improvement Preview is planning
-infrastructure for future preview generation and is also execution-free.
+infrastructure plus isolated preview artifacts; it never applies changes to the
+source dataset.
 
 `improvement_preview.json` records image-centered planning metadata only:
 recommended operation, rationale, required provider type, preview status, and
@@ -96,25 +104,51 @@ approval state. It does not contain image data, prompts, generated outputs, or
 provider calls.
 
 The Review Desk displays Improvement Preview records beside the selected
-original image, shows a placeholder when no preview image exists, and lets the
-reviewer update approval state only. It does not generate previews, process
-images, call providers, execute improvements, or modify source files.
+original image, shows a placeholder when no candidate preview exists, and lets
+the reviewer update approval state only. Candidate generation is an explicit
+CLI action; the browser does not generate candidates, call providers, execute
+improvements, or modify source files.
 
 v1.8 accepts one explicitly supplied candidate image for an existing preview
 plan, validates it with Pillow, copies its unchanged bytes into an isolated
 inspect-output artifact directory, and records provenance in
-`dataset-forge/preview-artifact/v1`. The Review Desk can show the original and
-candidate side by side for A/B review. Candidate approval or rejection affects
-preview workflow metadata only; it cannot execute, export, or replace images.
+`dataset-forge/preview-artifact/v1`.
+
+v1.9 adds LOCAL_CLASSICAL preview generation for compatible preview-plan
+records. It uses deterministic Pillow/NumPy operations only, currently
+`REDUCE_HALO` and `REDUCE_ENCODING_ARTIFACTS`. Generated candidates are
+disposable preview artifacts, not source images and not exported dataset
+images. The Review Desk can show the original and candidate side by side for
+A/B review. Candidate approval or rejection affects preview workflow metadata
+only; it cannot execute, export, or replace images.
 
 `improvement_preview.json` remains on its v1 schema. Artifact metadata joins
 to it by a deterministic record identifier and does not rewrite legacy preview
 records merely to normalize them.
 
-No provider implementation, discovery, live availability check, credential
-storage, networking, subprocess execution, image processing, candidate
-generation, preview generation, dataset export, source replacement, or
-improvement execution exists.
+No provider discovery, live availability check, credential storage,
+networking, subprocess execution, ComfyUI/Krea integration, dataset export,
+source replacement, or improvement execution exists. LOCAL_CLASSICAL is the
+only implemented preview generator and writes isolated disposable artifacts
+only.
+
+v1.9.1 is a stabilization release. It corrects preview-workspace terminology,
+serializes localhost sidecar writes, rejects ambiguous duplicate preview-plan
+records, improves browser save-failure feedback, and synchronizes release
+documentation. It does not add product capabilities or change schemas.
+
+v1.9.2 reorganizes and rewrites the public documentation, standardizes product
+terminology, archives obsolete design specifications, and adds focused user,
+Review Desk, preview, provider, schema, developer, FAQ, and troubleshooting
+guides. Runtime behavior and public sidecar contracts are unchanged.
+
+v1.9.3 continues the stabilization and polish phase. It shortens the Review
+Desk's initial viewport, keeps decisions accessible while reviewing evidence,
+clarifies plan and candidate-preview states, separates decision progress from
+the Review Complete workflow stage, and orders Priority Review work using
+existing evidence deterministically. It also handles malformed legacy ordering
+values safely. Schemas, analyzers, providers, workflows, and persistence
+semantics are unchanged.
 
 ---
 
@@ -221,8 +255,9 @@ Before tagging a v1.x release:
 - Confirm the Review Desk writes `review_decisions.json` and only preview
   approval state in `improvement_preview.json` when that optional sidecar exists.
 - Confirm source image hashes are unchanged after inspect/review/compare/plan/preview.
-- Confirm plan and preview clearly state execution and provider implementations
-  are not implemented.
+- Confirm plan and preview clearly distinguish implemented LOCAL_CLASSICAL
+  candidate generation from unavailable dataset execution and descriptor-only
+  external providers.
 - Confirm docs do not imply cleanup, export, execution, repair, profile toggles,
   analyzer toggles, or image modification are available.
 - Confirm Review Desk wording does not imply file movement, deletion,

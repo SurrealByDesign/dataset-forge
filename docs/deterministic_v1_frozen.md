@@ -1,5 +1,9 @@
 # Deterministic Cleanup Pipeline — Version 1 (Frozen)
 
+> **Historical design record. Not part of Dataset Forge v1.9.3.** This file
+> documents an earlier cleanup experiment. No public cleanup command or source
+> dataset application workflow exists. Do not treat it as current guidance.
+
 **Status:** Frozen. Do not modify parameters, add operations, or re-run tuning experiments
 on this profile. The ceiling has been empirically established.
 

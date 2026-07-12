@@ -1,6 +1,6 @@
 # Real-World Validation Corpus
 
-This directory defines the v0.6.0-alpha real-world validation corpus framework.
+This directory defines the optional real-world validation corpus framework.
 
 The corpus is methodology only for now. It does not add analyzers, change thresholds,
 modify images, expose cleanup, implement repair planning, or change `inspect` output.

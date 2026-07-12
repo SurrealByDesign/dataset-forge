@@ -2,14 +2,14 @@
 
 Read these documents in order before doing anything else:
 
-1. `PROJECT_BIBLE.md`  --  constitution, highest priority, changes rarely
-2. `DIRECTION.md`  --  current milestone and immediate priorities
-3. `WHY.md`  --  reasoning behind major design decisions
-4. `ARCHITECTURE.md`  --  system design, contracts, data flow
-5. `ROADMAP.md`  --  versioned milestones
-6. `CURRENT_STATUS.md`  --  where work currently stands; resume from here
-7. `CLI_OUTPUT.md`  --  acceptance criteria; what "done" looks like
-8. `CLAUDE.md`  --  this file; lightweight bootstrap only
+1. `PROJECT_BIBLE.md` -- product constitution
+2. `DIRECTION.md` -- current release and scope
+3. `CURRENT_STATUS.md` -- implemented behavior
+4. `ARCHITECTURE.md` -- system design and contracts
+5. `docs/developer-guide.md` -- current module boundaries and test rules
+6. `CLI_OUTPUT.md` -- public command and wording contract
+7. `ROADMAP.md` -- completed release sequence
+8. `docs/README.md` -- public documentation map
 
 Do not begin implementation until you understand:
 - what the project is (`PROJECT_BIBLE.md`)

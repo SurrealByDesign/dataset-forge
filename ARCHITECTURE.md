@@ -1,5 +1,8 @@
 # Dataset Forge -- Architecture
 
+v1.9.2 is a documentation and product-language release. The architecture and
+runtime workflow remain unchanged from v1.9.1.
+
 Dataset Forge is an evidence-first, deterministic, read-only, sidecar-based
 LoRA/image dataset curation workstation.
 
@@ -148,23 +151,31 @@ preview generation. They are built from existing sidecars and record image,
 review decision, current findings, recommended operation, operation rationale,
 confidence, required provider type, preview status, and approval state.
 
-`preview_artifacts.json` is an optional v1.8 sidecar with schema
+`preview_artifacts.json` is an optional v1.8+ sidecar with schema
 `dataset-forge/preview-artifact/v1`. It is the single authoritative record for
-one manually imported candidate per deterministic preview-plan record. It
-stores only relative artifact references below the inspect-output
-`preview_artifacts/` workspace, plus hashes, dimensions, format, provenance,
-and descriptive mismatch warnings. It does not change
+one preview candidate per deterministic preview-plan record. Candidates may be
+manual imports or deterministic LOCAL_CLASSICAL preview artifacts. It stores
+only relative artifact references below the inspect-output `preview_artifacts/`
+workspace, plus hashes, dimensions, format, provider provenance, generation
+parameters when present, and descriptive mismatch warnings. It does not change
 `dataset-forge/improvement-preview/v1`.
 
-Improvement Preview provider types are capability descriptors only:
-`LOCAL_CLASSICAL`, `COMFYUI`, `KREA`, `MANUAL`, and `UNKNOWN`.
+Improvement Preview provider types are `LOCAL_CLASSICAL`, `COMFYUI`, `KREA`,
+`MANUAL`, and `UNKNOWN`. LOCAL_CLASSICAL is the only implemented preview
+generator. ComfyUI and Krea remain descriptor-only and unavailable.
 
 `preview_provider_contract.py` owns the immutable, provider-neutral v1.7
 contract: provider descriptors, capability metadata, request/result records,
 isolated artifact references, execution safety policy, and deterministic
 capability matching. It contains no executable provider base class, plugin
-discovery, live availability checks, networking, subprocess, image-processing,
-credential, or provider-specific implementation path.
+discovery, live availability checks, networking, subprocess, credential, or
+future-provider implementation path.
+
+`local_classical_preview.py` owns the narrow v1.9 LOCAL_CLASSICAL preview
+generator. It uses deterministic Pillow/NumPy operations for compatible
+Improvement Preview records and writes candidates only through
+`preview_artifacts.py`. It is not a cleanup engine, repair pipeline, export
+path, provider framework, or source-image writer.
 
 The existing `dataset-forge/improvement-preview/v1` sidecar remains unchanged.
 `improvement_preview.py` retains its compatible embedded descriptor snapshot,
@@ -175,16 +186,17 @@ to the planning sidecar.
 The Review Desk consumes `improvement_preview.json` and optional
 `preview_artifacts.json` when present. It displays a selected-image workspace
 with the original source image, planning operation, provenance, candidate
-metadata, and side-by-side A/B view when a manually imported artifact is
+metadata, and side-by-side A/B view when a candidate artifact is
 available. Candidate images are served only by allow-listed artifact ID, never
 by a browser-supplied filesystem path. The only Review Desk write to the plan
-sidecar is approval-state workflow metadata. No preview image is rendered or
-generated.
+sidecar is approval-state workflow metadata. Candidate generation remains an
+explicit CLI action outside the browser server.
 
 Provider compatibility means only that a static descriptor claims the
-operation and required capabilities. It never means a provider is installed,
-available, connected, or executable. v1.7 keeps execution explicitly
-unavailable.
+operation and required capabilities. For LOCAL_CLASSICAL, v1.9 provides a
+local deterministic preview generator. It still never means source-dataset
+modification, export, cleanup execution, external provider access, or training
+readiness.
 
 ---
 
@@ -224,7 +236,10 @@ not call analyzers or live descriptor/profile registries.
 `review_server.py` owns localhost routing, allow-listed source/candidate image
 serving, browser shell, the `review_decisions.json` save endpoint, and the
 Improvement Preview approval-state save endpoint. `preview_artifacts.py` owns
-the narrow CLI import service and atomic artifact-sidecar writes.
+the narrow CLI import/generation artifact services and atomic artifact-sidecar
+writes. The localhost server serializes its read-modify-write sidecar updates
+within one process so overlapping autosaves cannot silently overwrite each
+other.
 
 The Review Desk must:
 
@@ -288,8 +303,7 @@ Before a v1.x release:
 ## Future Work Boundary
 
 Semantic caption evaluation, broad image similarity, public configurable review
-signals, profile editing, export, cleanup, repair, and execution are future
-possibilities only. JPEG cleanup, denoising, upscaling, image repair, caption
-rewriting, prompt generation, automatic duplicate removal, and image search
-remain out of scope. Future work should be considered only when the read-only
-workstation remains stable and trusted.
+signals, profile editing, export, cleanup, repair, and dataset execution are not
+current product capabilities or roadmap commitments. JPEG cleanup, denoising,
+upscaling, image repair, caption rewriting, prompt generation, automatic
+duplicate removal, and image search remain out of scope.

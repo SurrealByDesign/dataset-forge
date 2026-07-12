@@ -33,7 +33,11 @@ AVAILABILITY_STATES = (
 )
 
 IMPLEMENTATION_NOT_IMPLEMENTED = "not_implemented"
-IMPLEMENTATION_STATUSES = (IMPLEMENTATION_NOT_IMPLEMENTED,)
+IMPLEMENTATION_LOCAL_PREVIEW_AVAILABLE = "local_preview_available"
+IMPLEMENTATION_STATUSES = (
+    IMPLEMENTATION_NOT_IMPLEMENTED,
+    IMPLEMENTATION_LOCAL_PREVIEW_AVAILABLE,
+)
 
 CAPABILITY_IMAGE_INPUT = "image_input"
 CAPABILITY_MASK_INPUT = "mask_input"
@@ -504,6 +508,12 @@ class ProviderCapabilityMatch:
         }
 
 
+_LOCAL_CLASSICAL_CAPABILITIES = PreviewProviderCapabilities(
+    image_input=True,
+    deterministic_execution=True,
+    parameter_provenance=True,
+    candidate_image_output=True,
+)
 _IMAGE_PREVIEW_CAPABILITIES = PreviewProviderCapabilities(
     image_input=True,
     seed=True,
@@ -520,19 +530,19 @@ BUILT_IN_PREVIEW_PROVIDER_DESCRIPTORS = (
     PreviewProviderDescriptor(
         provider_id="local_classical/contract-v1",
         display_name="Local Classical",
-        provider_version="contract-v1",
+        provider_version="v1",
         provider_type=PROVIDER_LOCAL_CLASSICAL,
         supported_operations=("REDUCE_ENCODING_ARTIFACTS", "REDUCE_HALO"),
         availability_state=AVAILABILITY_DESCRIPTOR_ONLY,
-        deterministic=False,
+        deterministic=True,
         remote=False,
         requires_network=False,
         requires_credentials=False,
-        supports_seed=True,
+        supports_seed=False,
         supports_reproducible_parameters=True,
         supports_difference_metadata=False,
-        implementation_status=IMPLEMENTATION_NOT_IMPLEMENTED,
-        capabilities=_IMAGE_PREVIEW_CAPABILITIES,
+        implementation_status=IMPLEMENTATION_LOCAL_PREVIEW_AVAILABLE,
+        capabilities=_LOCAL_CLASSICAL_CAPABILITIES,
     ),
     PreviewProviderDescriptor(
         provider_id="comfyui/contract-v1",
@@ -699,6 +709,7 @@ __all__ = [
     "CAPABILITY_IDS",
     "CURRENT_OPERATIONS",
     "DEFAULT_PROVIDER_EXECUTION_POLICY",
+    "IMPLEMENTATION_LOCAL_PREVIEW_AVAILABLE",
     "MATCH_COMPATIBLE",
     "MATCH_INCOMPATIBLE",
     "MATCH_UNKNOWN_PROVIDER",

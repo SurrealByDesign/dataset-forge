@@ -8,6 +8,7 @@ run analyzers, write files, or modify source images.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -234,9 +235,10 @@ def build_review_improvement_preview(workspace: ReviewWorkspace) -> dict[str, An
             "scope": {
                 "read_only": True,
                 "sidecar_only": True,
-                "does_not_generate_images": True,
+                "candidate_generation_available_via_cli": True,
+                "review_desk_does_not_generate_images": True,
                 "does_not_execute_improvements": True,
-                "does_not_modify_images": True,
+                "does_not_modify_source_images": True,
             },
         }
     records = preview.get("preview_records", preview.get("preview_entries", []))
@@ -348,26 +350,28 @@ def _review_candidate_artifact(
     """Expose safe browser-facing candidate metadata without a filesystem path."""
 
     if artifact is None:
-        return {"available": False, "reason": "No imported candidate is associated with this preview plan."}
+        return {"available": False, "reason": "No candidate artifact is associated with this preview plan."}
     candidate = artifact.get("candidate")
     if not isinstance(candidate, Mapping):
-        return {"available": False, "reason": "Imported candidate metadata is incomplete."}
+        return {"available": False, "reason": "Candidate artifact metadata is incomplete."}
     artifact_id = str(artifact.get("artifact_id", ""))
     path = preview_artifact_path(output_dir, artifact)
     if path is None:
         return {
             "available": False,
             "artifact_id": artifact_id,
-            "reason": "Imported candidate artifact is unavailable or no longer matches its recorded hash.",
+            "reason": "Candidate artifact is unavailable or no longer matches its recorded hash.",
         }
     source = artifact.get("source") if isinstance(artifact.get("source"), Mapping) else {}
     provider = artifact.get("provider") if isinstance(artifact.get("provider"), Mapping) else {}
+    generation = artifact.get("generation") if isinstance(artifact.get("generation"), Mapping) else {}
     return {
         "available": True,
         "artifact_id": artifact_id,
         "image_url": f"/preview-artifact?id={quote(artifact_id)}",
         "provider_type": str(provider.get("type", "MANUAL")),
         "provider_display_name": str(provider.get("display_name", "Manual Import")),
+        "provider_version": str(provider.get("provider_version", "")),
         "status": str(artifact.get("status", "READY")),
         "original_filename": str(candidate.get("original_filename", "")),
         "sha256": str(candidate.get("sha256", "")),
@@ -381,6 +385,7 @@ def _review_candidate_artifact(
         "source_format": str(source.get("format", "")),
         "warnings": list(artifact.get("warnings", [])) if isinstance(artifact.get("warnings"), list) else [],
         "imported_at": str(artifact.get("imported_at", "")),
+        "generation": dict(generation),
         "execution_available": False,
     }
 
@@ -796,7 +801,7 @@ def build_next_action(images: list[dict[str, Any]]) -> dict[str, Any]:
             and image["decision"] in (None, ReviewDecisionValue.UNDECIDED.value)
         ]
         if matches:
-            first = sorted(matches, key=lambda image: image["filename"])[0]
+            first = sorted(matches, key=_review_urgency_key)[0]
             return {
                 "label": label,
                 "reason": reason,
@@ -814,6 +819,40 @@ def build_next_action(images: list[dict[str, Any]]) -> dict[str, Any]:
         "target_image_id": None,
         "target_filename": None,
     }
+
+
+def _review_urgency_key(image: Mapping[str, Any]) -> tuple[Any, ...]:
+    """Order unresolved review work using existing evidence only."""
+
+    severity_rank = {
+        "CRITICAL": 4,
+        "HIGH": 3,
+        "MEDIUM": 2,
+        "LOW": 1,
+    }
+    severities = image.get("severities", [])
+    highest_severity = max(
+        (severity_rank.get(str(value), 0) for value in severities),
+        default=0,
+    ) if isinstance(severities, list) else 0
+    decision = image.get("decision")
+    decision_recorded = decision not in (None, ReviewDecisionValue.UNDECIDED.value)
+    return (
+        1 if decision_recorded else 0,
+        -highest_severity,
+        -_safe_order_number(image.get("finding_count")),
+        -_safe_order_number(image.get("max_confidence")),
+        str(image.get("filename", "")).casefold(),
+        str(image.get("image_path", "")),
+    )
+
+
+def _safe_order_number(value: Any) -> float:
+    try:
+        number = float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    return number if math.isfinite(number) else 0.0
 
 
 def build_review_images(workspace: ReviewWorkspace) -> list[dict[str, Any]]:

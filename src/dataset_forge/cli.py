@@ -40,6 +40,10 @@ from dataset_forge.core.structured import load_structured_file
 from dataset_forge.discovery import discover_images
 from dataset_forge.improvement_plan import ImprovementPlanError, write_improvement_plan
 from dataset_forge.improvement_preview import ImprovementPreviewError, write_improvement_preview
+from dataset_forge.local_classical_preview import (
+    LocalClassicalPreviewError,
+    generate_local_classical_preview,
+)
 from dataset_forge.preview_artifacts import (
     PreviewArtifactError,
     import_manual_preview_candidate,
@@ -209,6 +213,26 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Externally created candidate image to copy into isolated preview artifacts.",
     )
+    preview_generate_parser = commands.add_parser(
+        "preview-generate",
+        help="Generate one deterministic LOCAL_CLASSICAL preview artifact.",
+    )
+    preview_generate_parser.add_argument(
+        "inspect_output",
+        type=Path,
+        help="Folder containing improvement_preview.json.",
+    )
+    preview_generate_parser.add_argument(
+        "image_reference",
+        type=Path,
+        help="Exact source image reference from an existing LOCAL_CLASSICAL preview record.",
+    )
+    preview_generate_parser.add_argument(
+        "--replace",
+        action="store_true",
+        default=False,
+        help="Replace an existing preview artifact for this one preview plan.",
+    )
     return parser
 
 
@@ -258,11 +282,16 @@ def main(argv: list[str] | None = None) -> int:
             return _preview_import_main(arguments)
         except SystemExit as exc:
             return int(exc.code or 0)
+    if arguments[0] == "preview-generate":
+        try:
+            return _preview_generate_main(arguments)
+        except SystemExit as exc:
+            return int(exc.code or 0)
     if arguments[0] in _FUTURE_COMMANDS or arguments[0].startswith("--"):
         print(
             "Error: this command is not part of the public Dataset Forge CLI. "
             "Use 'dataset-forge inspect', 'review', 'compare', 'plan', 'preview', "
-            "'preview-import', "
+            "'preview-import', 'preview-generate', "
             "'--help', or '--version'.",
             file=sys.stderr,
         )
@@ -812,7 +841,7 @@ def _preview_main(argv: list[str]) -> int:
     print(f"  {markdown_path}")
     print()
     print("Execution availability: Not Implemented.")
-    print("Provider implementations: Not Implemented.")
+    print("Local Classical preview generation: use 'dataset-forge preview-generate <inspect_output> <image-reference>'.")
     print("Generated preview images: 0.")
     print("Source images and existing sidecars were not modified.")
     return 0
@@ -863,6 +892,63 @@ def _preview_import_main(argv: list[str]) -> int:
     print("The candidate was copied only into the isolated inspect-output preview workspace.")
     print("Source images, source captions, and the original candidate file were not modified.")
     print("No image generation, processing, provider execution, export, or replacement occurred.")
+    return 0
+
+
+def _preview_generate_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="dataset-forge preview-generate",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Generate one deterministic LOCAL_CLASSICAL candidate into isolated "
+            "preview artifacts for an existing Improvement Preview record.\n"
+            "This does not modify source images, export datasets, or execute improvements."
+        ),
+    )
+    parser.add_argument("inspect_output", type=Path)
+    parser.add_argument(
+        "image_reference",
+        type=Path,
+        help="Exact source image reference from an existing LOCAL_CLASSICAL preview record.",
+    )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        default=False,
+        help="Replace the existing artifact for this one preview plan.",
+    )
+    args = parser.parse_args(argv[1:])
+
+    inspect_output = args.inspect_output.expanduser().resolve()
+    try:
+        result = generate_local_classical_preview(
+            inspect_output,
+            args.image_reference,
+            replace_existing=args.replace,
+        )
+    except (
+        LocalClassicalPreviewError,
+        PreviewArtifactError,
+        OSError,
+        ValueError,
+    ) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
+    artifact = result["artifact"]
+    generation = artifact.get("generation", {})
+    print("Dataset Forge Preview Generate")
+    print("==============================")
+    print(f"Inspect output: {inspect_output}")
+    print(f"Preview artifact: {artifact['artifact_id']}")
+    print(f"Provider: {artifact['provider']['display_name']}")
+    print(f"Operation: {generation.get('operation', '')}")
+    print(f"Status: {artifact['status']}")
+    print(f"Generated: {'yes' if result['generated'] else 'already present'}")
+    print()
+    print("The candidate was written only into the isolated inspect-output preview workspace.")
+    print("Source images, source captions, and existing source files were not modified.")
+    print("No external provider, networking, export, source replacement, or improvement execution occurred.")
     return 0
 
 

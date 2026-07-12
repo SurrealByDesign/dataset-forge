@@ -96,7 +96,7 @@ class ProviderDescriptor:
     """Capability metadata for future preview providers.
 
     This is not an implementation hook. Dataset Forge v1.5 records provider
-    capability names only so future preview generation can extend the contract
+    capability names only so preview generation can extend the contract
     without changing the sidecar shape.
     """
 
@@ -130,7 +130,7 @@ _LEGACY_PROVIDER_DISPLAY_NAMES = {
     PROVIDER_UNKNOWN: "Unknown Provider",
 }
 _LEGACY_PROVIDER_CAPABILITIES = {
-    PROVIDER_LOCAL_CLASSICAL: ("future_local_classical_preview",),
+    PROVIDER_LOCAL_CLASSICAL: ("local_classical_preview_generation",),
     PROVIDER_COMFYUI: ("future_external_preview",),
     PROVIDER_KREA: ("future_external_preview",),
     PROVIDER_MANUAL: ("human_supplied_review_or_replacement",),
@@ -147,6 +147,8 @@ BUILT_IN_PROVIDER_DESCRIPTORS = tuple(
         display_name=_LEGACY_PROVIDER_DISPLAY_NAMES[descriptor.provider_type],
         capabilities=_LEGACY_PROVIDER_CAPABILITIES[descriptor.provider_type],
         implementation_status=descriptor.implementation_status,
+        processes_images=descriptor.provider_type == PROVIDER_LOCAL_CLASSICAL,
+        generates_preview_images=descriptor.provider_type == PROVIDER_LOCAL_CLASSICAL,
     )
     for descriptor in preview_provider_descriptors()
 )
@@ -214,7 +216,7 @@ def build_improvement_preview(inspect_output: Path) -> dict[str, Any]:
             "preview_status_counts": status_counts,
             "approval_state_counts": _approval_counts(records),
             "execution_available": False,
-            "provider_implementations_available": False,
+            "provider_implementations_available": True,
             "generated_preview_image_count": 0,
         },
         "preview_records": records,
@@ -229,7 +231,7 @@ def render_improvement_preview_markdown(preview: Mapping[str, Any]) -> str:
     lines = [
         "# Improvement Preview",
         "",
-        "Planning infrastructure for future preview generation.",
+        "Planning infrastructure for preview candidate review.",
         "",
         "No image processing, provider integration, preview image generation, "
         "dataset modification, or improvement execution was performed.",
@@ -505,16 +507,16 @@ def _operation_from_categories(categories: list[str]) -> tuple[str, str, str, st
     if "artifact.oversharpening_halo" in category_set:
         return (
             OPERATION_REDUCE_HALO,
-            PROVIDER_UNKNOWN,
+            PROVIDER_LOCAL_CLASSICAL,
             STATUS_WAITING_FOR_PROVIDER,
-            "Halo findings indicate a future halo-reduction preview could be appropriate.",
+            "Halo findings indicate a deterministic local classical halo-reduction preview could be appropriate.",
         )
     if any(category.startswith("source_encoding.") for category in category_set):
         return (
             OPERATION_REDUCE_ENCODING_ARTIFACTS,
-            PROVIDER_UNKNOWN,
+            PROVIDER_LOCAL_CLASSICAL,
             STATUS_WAITING_FOR_PROVIDER,
-            "Source-encoding findings indicate a future encoding-artifact preview could be appropriate.",
+            "Source-encoding findings indicate a deterministic local classical encoding-artifact preview could be appropriate.",
         )
     return (
         OPERATION_REPLACE_SOURCE,

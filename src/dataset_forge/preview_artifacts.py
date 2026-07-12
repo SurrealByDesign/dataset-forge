@@ -1,14 +1,16 @@
-"""Manual Improvement Preview artifact import and read helpers.
+"""Improvement Preview artifact storage and read helpers.
 
-This module accepts an explicitly supplied candidate image, copies its bytes into
-an isolated inspect-output workspace, and records transparent provenance. It
-does not generate, transform, execute, or overwrite images.
+This module stores manual imports or provider-generated candidate bytes in an
+isolated inspect-output workspace and records transparent provenance. Image
+processing belongs to providers; this module never modifies source images,
+executes improvements, or exports datasets.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+from io import BytesIO
 import json
 import os
 from pathlib import Path
@@ -80,9 +82,13 @@ def import_manual_preview_candidate(
         preview_record_id=preview_record_id,
         source_path=source_path,
         source_metadata=source_metadata,
-        candidate_path=candidate_path,
+        candidate_original_filename=candidate_path.name,
         candidate_metadata=candidate_metadata,
         artifact_reference=artifact_reference,
+        provider=_manual_provider_metadata(),
+        event_key="imported_at",
+        event_timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        importer={"tool": "dataset-forge", "version": __version__},
     )
 
     artifacts_path = root / PREVIEW_ARTIFACTS_FILENAME
@@ -137,6 +143,116 @@ def import_manual_preview_candidate(
         "artifact": artifact_record,
         "artifact_path": artifact_path,
         "imported": True,
+        "idempotent": False,
+    }
+
+
+def write_generated_preview_candidate(
+    inspect_output: Path,
+    image_reference: Path | str,
+    candidate_bytes: bytes,
+    *,
+    candidate_filename: str,
+    provider: Mapping[str, Any],
+    generation: Mapping[str, Any],
+    replace_existing: bool = False,
+) -> dict[str, Any]:
+    """Store one generated candidate as an isolated preview artifact."""
+
+    root = inspect_output.expanduser().resolve()
+    preview_path = root / "improvement_preview.json"
+    preview_before = _read_json_text(preview_path, "improvement_preview.json")
+    preview = _parse_json_object(preview_before, "improvement_preview.json")
+    _require_schema(preview, IMPROVEMENT_PREVIEW_SCHEMA, "improvement_preview.json")
+
+    source_path = _resolve_existing_file(image_reference, "image reference")
+    plan_record = _find_plan_record(preview, source_path)
+    preview_record_id = preview_plan_record_id(plan_record)
+    source_metadata = _image_metadata(source_path, "source image")
+    candidate_metadata = _image_metadata_from_bytes(candidate_bytes, "generated candidate")
+    if source_metadata["sha256"] == candidate_metadata["sha256"]:
+        raise PreviewArtifactError(
+            "generated candidate has the same SHA-256 as the source image and provides no A/B value"
+        )
+
+    artifact_id = _artifact_id(preview_record_id, candidate_metadata["sha256"])
+    artifact_reference = _artifact_reference(
+        preview_record_id,
+        candidate_metadata["sha256"],
+        candidate_metadata["format"],
+    )
+    artifact_path = _artifact_path(root, artifact_reference)
+    artifact_record = _artifact_record(
+        artifact_id=artifact_id,
+        preview_record_id=preview_record_id,
+        source_path=source_path,
+        source_metadata=source_metadata,
+        candidate_original_filename=candidate_filename,
+        candidate_metadata=candidate_metadata,
+        artifact_reference=artifact_reference,
+        provider=provider,
+        generation=generation,
+    )
+
+    artifacts_path = root / PREVIEW_ARTIFACTS_FILENAME
+    artifacts_before = artifacts_path.read_bytes() if artifacts_path.is_file() else None
+    artifacts = _load_artifact_sidecar(root)
+    existing = _artifact_for_plan(artifacts["artifacts"], preview_record_id)
+    if (
+        existing is not None
+        and existing.get("candidate", {}).get("sha256") == candidate_metadata["sha256"]
+        and not replace_existing
+    ):
+        return {
+            "artifact": existing,
+            "artifact_path": artifact_path,
+            "generated": False,
+            "idempotent": True,
+        }
+    if existing is not None and not replace_existing:
+        raise PreviewArtifactError(
+            "a preview artifact already exists for this plan; pass --replace to replace it"
+        )
+
+    wrote_candidate = False
+    if not artifact_path.is_file():
+        _write_candidate_bytes(candidate_bytes, artifact_path, candidate_metadata["sha256"], root)
+        wrote_candidate = True
+    elif _sha256_file(artifact_path) != candidate_metadata["sha256"]:
+        raise PreviewArtifactError("existing isolated artifact does not match generated candidate hash")
+
+    next_artifacts = [
+        item
+        for item in artifacts["artifacts"]
+        if item.get("preview_plan_record_id") != preview_record_id
+    ]
+    next_artifacts.append(artifact_record)
+    next_artifacts.sort(key=lambda item: str(item.get("preview_plan_record_id", "")))
+    next_payload = _artifact_sidecar(next_artifacts)
+    next_preview = _update_preview_record(
+        preview,
+        preview_record_id,
+        preview_status="READY",
+        approval_state="NOT_REQUESTED",
+    )
+
+    try:
+        _atomic_write_json(artifacts_path, next_payload)
+        _atomic_write_json(preview_path, next_preview)
+    except Exception:
+        _restore_bytes(artifacts_path, artifacts_before)
+        _atomic_write_bytes(preview_path, preview_before.encode("utf-8"))
+        if wrote_candidate:
+            _remove_isolated_artifact(root, artifact_path)
+        raise
+
+    if existing is not None:
+        _remove_prior_artifact(root, existing, artifact_path)
+
+    return {
+        "artifact": artifact_record,
+        "artifact_path": artifact_path,
+        "generated": True,
         "idempotent": False,
     }
 
@@ -305,26 +421,23 @@ def _artifact_record(
     preview_record_id: str,
     source_path: Path,
     source_metadata: Mapping[str, Any],
-    candidate_path: Path,
+    candidate_original_filename: str,
     candidate_metadata: Mapping[str, Any],
     artifact_reference: str,
+    provider: Mapping[str, Any],
+    event_key: str | None = None,
+    event_timestamp: str | None = None,
+    importer: Mapping[str, Any] | None = None,
+    generation: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    record = {
         "artifact_id": artifact_id,
         "preview_plan_record_id": preview_record_id,
         "image_reference": _canonical_path_text(source_path),
-        "provider": {
-            "type": "MANUAL",
-            "display_name": "Manual Import",
-            "execution_available": False,
-            "network_access": False,
-            "credentials_required": False,
-            "generative": False,
-            "provenance_available": True,
-        },
+        "provider": dict(provider),
         "status": "READY",
         "candidate": {
-            "original_filename": candidate_path.name,
+            "original_filename": candidate_original_filename,
             "artifact_reference": PreviewArtifactReference(
                 relative_path=artifact_reference,
                 media_type=f"image/{candidate_metadata['format'].lower()}",
@@ -333,8 +446,25 @@ def _artifact_record(
         },
         "source": dict(source_metadata),
         "warnings": _warnings(source_metadata, candidate_metadata),
-        "imported_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "importer": {"tool": "dataset-forge", "version": __version__},
+    }
+    if event_key and event_timestamp:
+        record[event_key] = event_timestamp
+    if importer is not None:
+        record["importer"] = dict(importer)
+    if generation is not None:
+        record["generation"] = dict(generation)
+    return record
+
+
+def _manual_provider_metadata() -> dict[str, Any]:
+    return {
+        "type": "MANUAL",
+        "display_name": "Manual Import",
+        "execution_available": False,
+        "network_access": False,
+        "credentials_required": False,
+        "generative": False,
+        "provenance_available": True,
     }
 
 
@@ -371,6 +501,28 @@ def _image_metadata(path: Path, label: str) -> dict[str, Any]:
     return {
         "sha256": _sha256_file(path),
         "byte_size": path.stat().st_size,
+        "width": width,
+        "height": height,
+        "format": image_format,
+    }
+
+
+def _image_metadata_from_bytes(payload: bytes, label: str) -> dict[str, Any]:
+    if not payload:
+        raise PreviewArtifactError(f"{label} is empty")
+    try:
+        with Image.open(BytesIO(payload)) as image:
+            image.verify()
+        with Image.open(BytesIO(payload)) as image:
+            image_format = str(image.format or "").upper()
+            width, height = image.size
+    except (OSError, UnidentifiedImageError) as exc:
+        raise PreviewArtifactError(f"{label} is not a readable supported image") from exc
+    if image_format not in _SUPPORTED_FORMATS or width <= 0 or height <= 0:
+        raise PreviewArtifactError(f"{label} has an unsupported image format")
+    return {
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "byte_size": len(payload),
         "width": width,
         "height": height,
         "format": image_format,
@@ -420,6 +572,27 @@ def _copy_candidate(candidate: Path, destination: Path, expected_hash: str, root
             os.unlink(temporary)
 
 
+def _write_candidate_bytes(payload: bytes, destination: Path, expected_hash: str, root: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_no_link_ancestor(destination.parent, root)
+    fd: int | None = None
+    temporary = ""
+    try:
+        fd, temporary = tempfile.mkstemp(prefix=".candidate-", suffix=".tmp", dir=destination.parent)
+        with os.fdopen(fd, "wb") as output:
+            fd = None
+            output.write(payload)
+        temporary_path = Path(temporary)
+        if _sha256_file(temporary_path) != expected_hash:
+            raise PreviewArtifactError("generated candidate changed while it was being stored")
+        os.replace(temporary_path, destination)
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def _load_artifact_sidecar(root: Path) -> dict[str, Any]:
     path = root / PREVIEW_ARTIFACTS_FILENAME
     if not path.is_file():
@@ -447,9 +620,9 @@ def _artifact_sidecar(artifacts: list[Mapping[str, Any]]) -> dict[str, Any]:
         "scope": {
             "isolated_preview_artifacts": True,
             "does_not_modify_source_images": True,
-            "does_not_generate_images": True,
-            "does_not_process_images": True,
             "does_not_execute_improvements": True,
+            "does_not_export_datasets": True,
+            "candidate_artifacts_are_disposable": True,
         },
         "artifacts": [dict(item) for item in artifacts],
     }
@@ -643,4 +816,5 @@ __all__ = [
     "preview_artifact_path",
     "preview_plan_record_id",
     "resolve_preview_artifact",
+    "write_generated_preview_candidate",
 ]

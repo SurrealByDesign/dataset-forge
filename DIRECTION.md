@@ -1,79 +1,43 @@
 # Dataset Forge -- Current Direction
 
-> This document defines what the project is doing right now.
-> Unlike PROJECT_BIBLE.md, it is expected to evolve as milestones are reached.
+## Current Release
 
----
+**v1.9.2 -- Documentation, Terminology, and Product Polish**
 
-## Current Objective
-
-**v0.24.0-alpha** -- make Dataset Comparison manifest-aware while preserving
-the same user-facing behavior.
-
-The Review Desk remains the primary human-facing interface. `compare` now reads
-optional `inspection_manifest.json` sidecars and explains whether two inspect
-outputs were produced under comparable conditions.
-
----
+This release changes documentation and product language only. It adds no
+analyzers, providers, schemas, workflows, or runtime behavior.
 
 ## Product Identity
 
-Dataset Forge is an evidence-first, deterministic, non-destructive LoRA
-dataset curation workstation.
+Dataset Forge is a deterministic, evidence-first, advisory, sidecar-based
+workstation for curating LoRA and image datasets. The localhost Review Desk is
+the primary interface. Source datasets remain read-only.
 
-It helps users:
+The product helps users:
 
-- inspect image datasets
-- understand evidence
-- make human review decisions
-- document those decisions before training
+- inspect images and adjacent caption metadata;
+- understand advisory findings and dataset-level evidence;
+- record human decisions, workflow state, and notes;
+- compare inspection runs with provenance warnings;
+- document possible improvement operations;
+- review isolated manual or LOCAL_CLASSICAL candidate previews.
 
-The product reduces uncertainty. It does not automate judgment.
+## Current Boundary
 
----
+Dataset Forge does not apply preview candidates, modify source images or
+captions, export improved datasets, train models, call cloud providers, or
+perform automatic cleanup. ComfyUI and Krea are descriptor metadata only.
 
-## What Is In Scope Now
+## Documentation Authority
 
-- advisory `inspection_compatibility` in `comparison_summary.json`
-- an Inspection Compatibility section in `comparison_summary.md`
-- warnings for missing manifests and manifest differences
-- compatibility checks for manifest schema, profile, tool version, analyzer
-  participation, analyzer versions, display policy, and triage policy
-- tests proving existing comparison fields and behavior remain stable
+Start with [README.md](README.md) and [docs/README.md](docs/README.md).
+Historical files labeled as design records are not current product plans.
 
----
+## Release Test
 
-## What Is Out of Scope Now
+Before accepting a change, ask:
 
-- cleanup
-- execution
-- repair
-- export
-- source-image modification
-- moving, copying, deleting, renaming, or quarantining files
-- quarantine folder creation
-- analyzer threshold changes
-- new analyzer families
-- configurable review signals
-- profile UI or analyzer toggles
-- blocking comparison behavior
-- hosted/cloud review
-- database-backed state
+> Does this help a human understand evidence or record a decision while
+> preserving the source dataset and current sidecar contracts?
 
-`cleanup/`, `execution/`, `transforms/`, and `exporters/` remain legacy or
-future-only code paths. They are not part of the public v0.24 workflow and
-should not be expanded for this release.
-
----
-
-## Primary Reference Dataset
-
-The anthropomorphic character dataset remains the real-world validation set for
-review workflow decisions.
-
-Before implementing a feature, ask:
-
-> "Does this help a human safely decide what to do with this real dataset
-> before training, without modifying files?"
-
-If no, postpone it.
+If not, it is outside the current direction.

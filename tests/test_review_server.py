@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
@@ -738,6 +739,73 @@ class ReviewServerDataTests(unittest.TestCase):
         self.assertEqual(second["label"], "Review Needs Review images")
         self.assertEqual(second["target_filter"]["triage_status"], "Needs Review")
 
+    def test_next_action_prioritizes_unresolved_severity_and_evidence(self) -> None:
+        images = [
+            {
+                "id": "low-many",
+                "filename": "a.png",
+                "image_path": "a.png",
+                "triage_status": "Priority Review",
+                "decision": "UNDECIDED",
+                "severities": ["LOW"],
+                "finding_count": 5,
+                "max_confidence": 0.9,
+            },
+            {
+                "id": "high-one",
+                "filename": "z.png",
+                "image_path": "z.png",
+                "triage_status": "Priority Review",
+                "decision": None,
+                "severities": ["HIGH"],
+                "finding_count": 1,
+                "max_confidence": 0.2,
+            },
+            {
+                "id": "decided-critical",
+                "filename": "critical.png",
+                "image_path": "critical.png",
+                "triage_status": "Priority Review",
+                "decision": "KEEP",
+                "severities": ["CRITICAL"],
+                "finding_count": 8,
+                "max_confidence": 1.0,
+            },
+        ]
+
+        first = build_next_action(images)
+        second = build_next_action(list(reversed(images)))
+
+        self.assertEqual(first["target_image_id"], "high-one")
+        self.assertEqual(second, first)
+
+    def test_next_action_orders_malformed_legacy_values_deterministically(self) -> None:
+        images = [
+            {
+                "id": "z-malformed",
+                "filename": "z.png",
+                "image_path": "z.png",
+                "triage_status": "Priority Review",
+                "decision": "UNDECIDED",
+                "severities": None,
+                "finding_count": "unknown",
+                "max_confidence": "unknown",
+            },
+            {
+                "id": "a-missing",
+                "filename": "a.png",
+                "image_path": "a.png",
+                "triage_status": "Priority Review",
+                "decision": "UNDECIDED",
+            },
+        ]
+
+        first = build_next_action(images)
+        second = build_next_action(list(reversed(images)))
+
+        self.assertEqual(first["target_image_id"], "a-missing")
+        self.assertEqual(second, first)
+
     def test_overview_top_categories_are_sorted_by_count_then_name(self) -> None:
         with TemporaryDirectory() as tmp:
             output, _image = _write_workspace(Path(tmp), include_needs_review=True)
@@ -884,6 +952,24 @@ class ReviewServerDataTests(unittest.TestCase):
                     "approval_state": "APPROVED",
                 })
 
+    def test_preview_approval_rejects_ambiguous_duplicate_records(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            _write_improvement_preview(output, image)
+            path = output / "improvement_preview.json"
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["preview_records"].append(dict(payload["preview_records"][0]))
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            before = path.read_bytes()
+
+            with self.assertRaisesRegex(ReviewServerError, "approval is ambiguous"):
+                update_preview_approval(output, {
+                    "image_path": str(image),
+                    "approval_state": "APPROVED",
+                })
+
+            self.assertEqual(path.read_bytes(), before)
+
     def test_same_scope_decision_updates_and_unrelated_decisions_are_preserved(self) -> None:
         with TemporaryDirectory() as tmp:
             output, image = _write_workspace(Path(tmp))
@@ -1011,7 +1097,9 @@ class ReviewServerHttpTests(unittest.TestCase):
                 thread.join(timeout=5)
 
         self.assertIn("Dataset Forge Review Desk", html)
+        self.assertIn("Review Overview", html)
         self.assertIn("Dataset Intelligence", html)
+        self.assertIn('<summary>Dataset Intelligence</summary>', html)
         self.assertIn("Overview from existing sidecars. No scoring, no automation.", html)
         self.assertIn("<summary>Review Status</summary>", html)
         self.assertIn("<summary>Evidence Summary</summary>", html)
@@ -1020,24 +1108,26 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("<summary>Dataset Characteristics</summary>", html)
         self.assertIn("<summary>Unresolved Evidence Categories</summary>", html)
         self.assertIn("<summary>Improvement Preview</summary>", html)
-        self.assertIn("Preview planning and imported-candidate review", html)
-        self.assertIn("No image generation, processing, provider calls, or execution.", html)
+        self.assertIn("Planning records and candidate review", html)
+        self.assertIn("Candidate creation happens only through explicit CLI commands", html)
         self.assertIn("Provider implementations", html)
-        self.assertIn("Candidate images are isolated preview artifacts only", html)
+        self.assertIn("This candidate is an isolated preview artifact", html)
         self.assertIn("Required capabilities", html)
-        self.assertIn("Capability compatibility", html)
-        self.assertIn("Execution unavailable", html)
-        self.assertIn("Capability matching uses static provider descriptors only", html)
+        self.assertIn("Descriptor check", html)
+        self.assertIn("Provider availability", html)
+        self.assertIn("The descriptor check compares static metadata only", html)
         self.assertIn("Raw category", html)
         self.assertIn("preview-workspace", html)
-        self.assertIn("No imported candidate is available.", html)
-        self.assertIn("Preview status", html)
-        self.assertIn("Approval state", html)
-        self.assertIn("Approval changes update <code>improvement_preview.json</code> only", html)
+        self.assertIn("No candidate preview exists.", html)
+        self.assertIn("Plan state", html)
+        self.assertIn("Plan decision", html)
+        self.assertIn("Candidate decision", html)
+        self.assertIn("This decision updates <code>improvement_preview.json</code> only", html)
         self.assertIn("/api/preview-approval", html)
-        self.assertIn("does not generate previews or process images", html)
+        self.assertIn("This plan describes manual caption review; no image candidate is expected.", html)
+        self.assertIn("Your change was not saved.", html)
         self.assertIn("Show Next Review Set", html)
-        self.assertIn("This only changes filters and selection.", html)
+        self.assertIn("Show Next Review Set changes filters and selection only.", html)
         self.assertIn("Clear Filters", html)
         self.assertIn("Review Queue", html)
         self.assertIn("Accepted Style", html)
@@ -1045,7 +1135,14 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Exclude Candidate", html)
         self.assertNotIn("Removal Candidate", html)
         self.assertNotIn("'Removal Candidate'", html)
-        self.assertIn("All decisions save to <code>review_decisions.json</code>", html)
+        self.assertIn("Decision progress and workflow stage are tracked separately", html)
+        self.assertIn("Decisions recorded", html)
+        self.assertIn("Decisions remaining", html)
+        self.assertIn("Review Complete", html)
+        self.assertIn("review-controls", html)
+        self.assertIn("document.getElementById('detail').scrollTop = 0", html)
+        self.assertIn("compareReviewOrder", html)
+        self.assertIn("Unresolved first, then severity and evidence", html)
         self.assertIn('id="saveStatus"', html)
         self.assertIn("Saving...", html)
         self.assertIn("No images match this group with the current filters.", html)
@@ -1098,11 +1195,11 @@ class ReviewServerHttpTests(unittest.TestCase):
         self.assertIn("Evidence Summary", html)
         self.assertIn("Analyzer Contribution", html)
         self.assertIn("Dataset Coverage", html)
-        self.assertIn("Dataset Intelligence scope", html)
+        self.assertIn("Dataset Intelligence is descriptive only", html)
         self.assertIn("no quality score", html)
         self.assertIn("Set Aside Intent (no files moved)", html)
         self.assertIn("Set Aside Intent is workflow intent only", html)
-        self.assertIn("No current review finding. Not a guarantee.", html)
+        self.assertIn("No Findings Emitted means no current review finding. It is not a guarantee.", html)
         self.assertIn("review_decisions.json", html)
         self.assertIn("improvement_preview.json", html)
         self.assertIn('id="zoomViewer"', html)
@@ -1151,6 +1248,38 @@ class ReviewServerHttpTests(unittest.TestCase):
 
         self.assertEqual(data["summary"]["already_reviewed_count"], 1)
         self.assertEqual(payload["decisions"][0]["decision"], "KEEP")
+
+    def test_post_reports_sidecar_write_failure_as_json(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output, image = _write_workspace(Path(tmp))
+            server = create_review_server(output, port=0)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base = f"http://{LOCAL_REVIEW_HOST}:{server.server_port}"
+                request = urllib.request.Request(
+                    base + "/api/decision",
+                    data=json.dumps({
+                        "image_path": str(image),
+                        "decision": "KEEP",
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with patch(
+                    "dataset_forge.review_server.atomic_write_json",
+                    side_effect=OSError("disk full"),
+                ):
+                    with self.assertRaises(urllib.error.HTTPError) as failed:
+                        urllib.request.urlopen(request, timeout=5)
+                    body = json.loads(failed.exception.read().decode("utf-8"))
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertEqual(failed.exception.code, 500)
+        self.assertIn("Could not save the sidecar update", body["error"])
 
     def test_post_writes_preview_approval(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -1235,7 +1364,7 @@ class ReviewServerHttpTests(unittest.TestCase):
         refreshed_record = refreshed["improvement_preview"]["records"][0]
         self.assertEqual(refreshed_record["approval_state"], "APPROVED")
         self.assertEqual(refreshed_record["preview_status"], "APPROVED")
-        self.assertIn("Imported candidate preview", html)
+        self.assertIn("Candidate preview", html)
         self.assertIn("Side by side", html)
         self.assertIn("Candidate previews", html)
         self.assertNotIn("Generated previews", html)

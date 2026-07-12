@@ -1,5 +1,9 @@
 # Spec: LoRA Export Prep
 
+> **Historical design record. Not on the current product roadmap.** Dataset
+> Forge v1.9.3 does not export datasets, copy captions for training, or create
+> trainer-ready folders.
+
 **Status:** Specification — not yet implemented.
 
 **Stage in pipeline:** Final stage after analysis and cleanup. Consumes selected

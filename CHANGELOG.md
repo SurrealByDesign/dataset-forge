@@ -1,5 +1,87 @@
 # Changelog
 
+## v1.9.3
+
+Review Desk UX polish.
+
+- Kept decision controls visible while reviewing long image evidence and reset
+  the detail pane predictably when switching images.
+- Clarified the distinction among Preview Plans, Candidate Previews, provider
+  descriptor compatibility, provider availability, and actual candidate
+  availability.
+- Distinguished `Decisions recorded` progress from the `Review Complete`
+  workflow stage without changing the underlying enum values.
+- Ordered Priority Review images deterministically by unresolved state,
+  severity, finding count, confidence, and path tie-breaker.
+- Collapsed deeper Dataset Intelligence sections by default and moved the
+  Review Queue earlier in the initial viewport.
+- Safely handled malformed, missing, or non-finite legacy `finding_count` and
+  `max_confidence` values during review ordering.
+- Updated terminology guidance for decision progress, workflow completion,
+  preview plans, and candidate decisions.
+- Added no schemas, analyzers, providers, workflows, persistence-semantic
+  changes, or new product capabilities.
+
+## v1.9.2
+
+Documentation, terminology, and product polish.
+
+- Rewrote the README as a first-time-user product homepage.
+- Added task-focused guides for getting started, product philosophy, complete
+  use, Review Desk, Improvement Preview, providers, development, JSON sidecars,
+  FAQ, and troubleshooting.
+- Added a documentation index and Mermaid diagrams for the public workflow and
+  internal module boundaries.
+- Standardized current user-facing terminology for candidate previews, Review
+  Desk decisions, workflow intent, provider status, and No Findings Emitted.
+- Rewrote the current direction, project constitution, product rationale,
+  non-goals, and product brief around the shipped read-only workstation.
+- Clearly labeled obsolete cleanup, export, health-score, and plugin documents
+  as historical design records rather than current product plans.
+- Verified CLI examples, documentation links, screenshot references, version
+  metadata, and the complete test suite.
+- Changed no runtime behavior, analyzers, providers, sidecars, schemas,
+  workflows, thresholds, source-image handling, or public commands.
+
+## v1.9.1
+
+Product hardening and release polish.
+
+- Corrected Review Desk placeholder and scope wording now that explicit
+  `LOCAL_CLASSICAL` candidate generation exists through the CLI.
+- Corrected Improvement Preview summary metadata so it reports the built-in
+  LOCAL_CLASSICAL provider implementation as available.
+- Serialized localhost Review Desk sidecar writes to prevent overlapping
+  decision or approval updates from losing state within one server process.
+- Reject ambiguous duplicate preview-plan records instead of updating several
+  records silently.
+- Return a clear JSON error for sidecar persistence failures and keep browser
+  save feedback from remaining stuck at `Saving...` after a connection error.
+- Clarified manual and generated candidate artifact terminology without
+  changing preview schemas, artifact schemas, or workflow semantics.
+- Added focused regression coverage for ambiguous approval records and HTTP
+  persistence failures.
+- Added no analyzers, providers, operations, sidecars, schemas, networking,
+  source modification, export, execution, or workflow expansion.
+
+## v1.9.0
+
+- Added `dataset-forge preview-generate <inspect_output> <image-reference>`
+  for one explicit deterministic LOCAL_CLASSICAL preview candidate per
+  compatible Improvement Preview record.
+- Added `local_classical_preview.py` with conservative Pillow/NumPy-only
+  `REDUCE_HALO` and `REDUCE_ENCODING_ARTIFACTS` preview operations.
+- Stored generated candidates in the existing isolated `preview_artifacts/`
+  workspace and `dataset-forge/preview-artifact/v1` sidecar with provider,
+  operation, parameter, hash, dimension, format, and warning provenance.
+- Kept `dataset-forge/improvement-preview/v1` compatible; generated candidates
+  join to preview plans at Review Desk load time like manual candidates.
+- Updated Review Desk A/B display to show provider-neutral candidate previews
+  with generated-operation provenance when present.
+- Did not add cleanup, repair, enhancement, source replacement, improved-dataset
+  export, Krea/ComfyUI integration, networking, subprocesses, ML, diffusion,
+  new analyzers, or source-image/caption modification.
+
 ## v1.8.0
 
 - Added `dataset-forge preview-import` for one explicit, externally created

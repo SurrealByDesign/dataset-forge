@@ -11,6 +11,7 @@ import json
 import mimetypes
 import os
 import tempfile
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Mapping
@@ -44,6 +45,7 @@ ReviewServerError = ReviewDeskError
 _DECISION_VALUES = {value.value for value in ReviewDecisionValue}
 _WORKFLOW_STATES = {value.value for value in ReviewWorkflowState}
 _APPROVAL_STATES = set(APPROVAL_STATES)
+_SIDECAR_WRITE_LOCK = threading.RLock()
 
 
 def create_review_server(
@@ -82,6 +84,16 @@ def serve_review_server(
 def update_review_decision(output_dir: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
     """Validate and persist one review decision update from the server endpoint."""
 
+    with _SIDECAR_WRITE_LOCK:
+        return _update_review_decision_locked(output_dir, payload)
+
+
+def _update_review_decision_locked(
+    output_dir: Path,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Apply one decision while localhost sidecar writes are serialized."""
+
     workspace = load_review_workspace(output_dir)
     decision = _decision_from_payload(payload)
     existing = list(workspace.review_decisions.decisions)
@@ -100,6 +112,16 @@ def update_review_decision(output_dir: Path, payload: Mapping[str, Any]) -> dict
 
 def update_preview_approval(output_dir: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
     """Validate and persist one Improvement Preview approval state update."""
+
+    with _SIDECAR_WRITE_LOCK:
+        return _update_preview_approval_locked(output_dir, payload)
+
+
+def _update_preview_approval_locked(
+    output_dir: Path,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Apply one approval while localhost sidecar writes are serialized."""
 
     workspace = load_review_workspace(output_dir)
     preview = workspace.improvement_preview
@@ -120,12 +142,16 @@ def update_preview_approval(output_dir: Path, payload: Mapping[str, Any]) -> dic
     if not isinstance(records, list):
         raise ReviewServerError("improvement_preview.json preview_records must be a list")
 
-    matched = any(
+    matches = sum(
         isinstance(record, Mapping) and _preview_record_image_path(record) == image_path
         for record in records
     )
-    if not matched:
+    if not matches:
         raise ReviewServerError(f"No Improvement Preview record found for image: {image_path}")
+    if matches > 1:
+        raise ReviewServerError(
+            "Multiple Improvement Preview records match this image; approval is ambiguous"
+        )
 
     next_preview = dict(preview)
     for key in ("preview_records", "preview_entries"):
@@ -291,6 +317,12 @@ class _ReviewRequestHandler(BaseHTTPRequestHandler):
         except (json.JSONDecodeError, ReviewServerError, ValueError) as exc:
             self._send_json({"error": str(exc)}, status=400)
             return
+        except OSError:
+            self._send_json(
+                {"error": "Could not save the sidecar update. Check workspace permissions and free space."},
+                status=500,
+            )
+            return
         self._send_json(data)
 
     def _send_json(self, payload: Mapping[str, Any], *, status: int = 200) -> None:
@@ -358,7 +390,7 @@ button, input, select, textarea { font: inherit; }
 button { border: 1px solid #9aa8b8; background: #fff; color: var(--ink); cursor: pointer; }
 button:hover, button.selected { border-color: var(--accent); color: var(--accent); }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible, .preview:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.app { display: grid; grid-template-columns: 280px minmax(360px, 1fr) 360px; min-height: 100vh; }
+.app { display: grid; grid-template-columns: 260px minmax(420px, 1fr) 360px; min-height: 100vh; }
 aside, main { min-width: 0; }
 .left, .right { background: var(--panel); border-color: var(--line); border-style: solid; overflow: auto; max-height: 100vh; }
 .left { border-width: 0 1px 0 0; padding: 16px; }
@@ -374,7 +406,16 @@ textarea { min-height: 90px; resize: vertical; }
 .counts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .count { border: 1px solid var(--line); padding: 8px; background: #fafbfc; }
 .count strong { display: block; font-size: 1.15rem; }
-.overview { background: var(--panel); border: 1px solid var(--line); padding: 12px; margin-bottom: 14px; }
+.overview { background: var(--panel); border: 1px solid var(--line); padding: 10px 12px; margin-bottom: 10px; }
+.overview > h2 { margin: 0 0 6px; }
+.overview-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.overview-summary p { margin-bottom: 4px; }
+.overview-core { display: grid; grid-template-columns: repeat(4, minmax(95px, 1fr)); gap: 6px; margin: 8px 0; }
+.overview-core .count { padding: 6px; }
+.overview-core .count strong { font-size: 1rem; }
+.intelligence-details { border-top: 1px solid var(--line); padding-top: 7px; margin-top: 7px; }
+.intelligence-details > summary { cursor: pointer; font-weight: 700; }
+.intelligence-body { padding-top: 2px; }
 .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 10px 0; }
 .overview-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .overview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -387,7 +428,8 @@ textarea { min-height: 90px; resize: vertical; }
 .intelligence-note { border-left: 3px solid var(--accent); padding-left: 8px; margin: 8px 0; }
 .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
 .toolbar input { width: 180px; }
-.group-title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-top: 18px; }
+.group-title { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-top: 18px; }
+.group-title-meta { display: flex; gap: 10px; align-items: baseline; text-align: right; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--thumb-size, 170px), 1fr)); gap: 10px; }
 .card { background: var(--panel); border: 3px solid var(--line); padding: 8px; min-width: 0; }
 .card.priority { border-color: var(--danger); }
@@ -402,7 +444,14 @@ textarea { min-height: 90px; resize: vertical; }
 .actions { display: flex; flex-wrap: wrap; gap: 4px; }
 .actions button, .decision-buttons button { padding: 5px 7px; font-size: .78rem; }
 .decision-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
-.preview { width: 100%; max-height: 360px; object-fit: contain; background: #eef2f6; border: 1px solid var(--line); cursor: zoom-in; }
+.preview { width: 100%; max-height: 300px; object-fit: contain; background: #eef2f6; border: 1px solid var(--line); cursor: zoom-in; }
+.review-controls { position: sticky; top: -16px; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 16px 0 10px; margin-bottom: 12px; box-shadow: 0 5px 8px rgba(23, 32, 42, .06); }
+.review-controls h2 { margin: 0 0 5px; }
+.review-controls .decision-buttons { margin-bottom: 6px; }
+.review-controls-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.review-controls-row label { margin-top: 4px; }
+.review-controls-row .save-status { min-width: 68px; text-align: right; margin: 0; }
+.path-value { overflow-wrap: anywhere; word-break: break-word; }
 .finding { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
 .muted { color: var(--muted); }
 .save-status { min-height: 1.2em; }
@@ -543,15 +592,15 @@ const capabilityLabels = {
   metadata_only_manual_import: 'Manual metadata workflow'
 };
 const compatibilityLabels = {
-  compatible: 'Capabilities match',
-  incompatible: 'Capabilities do not match',
+  compatible: 'Descriptor requirements match',
+  incompatible: 'Descriptor requirements do not match',
   unknown_provider: 'Provider not selected',
   invalid_plan: 'Plan compatibility unavailable'
 };
 const workflowLabels = {
   IN_DATASET: 'In Dataset',
   QUARANTINE_PLANNED: 'Set Aside Intent (no files moved)',
-  REVIEWED: 'Reviewed'
+  REVIEWED: 'Review Complete'
 };
 const categoryLabels = {
   'artifact.crystalline_faceting': 'Crystal-like Surface Pattern',
@@ -696,7 +745,31 @@ function currentImages() {
       && (!category || image.finding_categories.includes(category))
       && (!severity || image.severities.includes(severity))
       && (!confidence || Number(image.max_confidence || 0) >= confidence);
-  });
+  }).sort(compareReviewOrder);
+}
+function compareReviewOrder(left, right) {
+  const triageRank = {'Priority Review': 0, 'Needs Review': 1, 'No Findings Emitted': 2};
+  const severityRank = {CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1};
+  const leftDecision = !left.decision || left.decision === 'UNDECIDED' ? 0 : 1;
+  const rightDecision = !right.decision || right.decision === 'UNDECIDED' ? 0 : 1;
+  const leftSeverity = Math.max(0, ...(left.severities || []).map(value => severityRank[value] || 0));
+  const rightSeverity = Math.max(0, ...(right.severities || []).map(value => severityRank[value] || 0));
+  return (triageRank[left.triage_status] ?? 99) - (triageRank[right.triage_status] ?? 99)
+    || leftDecision - rightDecision
+    || rightSeverity - leftSeverity
+    || safeOrderNumber(right.finding_count) - safeOrderNumber(left.finding_count)
+    || safeOrderNumber(right.max_confidence) - safeOrderNumber(left.max_confidence)
+    || compareStableText(left.filename, right.filename)
+    || compareStableText(left.image_path, right.image_path);
+}
+function safeOrderNumber(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+function compareStableText(left, right) {
+  const leftText = String(left || '').toLowerCase();
+  const rightText = String(right || '').toLowerCase();
+  return leftText < rightText ? -1 : leftText > rightText ? 1 : 0;
 }
 function renderCard(image) {
   const card = document.createElement('article');
@@ -742,8 +815,14 @@ function triageClass(image) {
   if (image.recommendation === 'NEEDS_REVIEW') return 'needs';
   return 'none';
 }
-function groupTitle(label, count) { return `<div class="group-title"><h2>${escapeText(label)}</h2><span class="muted">${count}</span></div>`; }
+function groupTitle(label, count) {
+  const ordering = label === 'Priority Review'
+    ? '<span class="muted">Unresolved first, then severity and evidence</span>'
+    : '';
+  return `<div class="group-title"><h2>${escapeText(label)}</h2><div class="group-title-meta">${ordering}<span class="muted">${count}</span></div></div>`;
+}
 function renderGroups() {
+  const previousSelectedId = selectedId;
   const visibleImages = currentImages();
   if (visibleImages.length && !visibleImages.some(image => image.id === selectedId)) {
     selectedId = visibleImages[0].id;
@@ -771,13 +850,14 @@ function renderGroups() {
   }
   document.getElementById('visibleCount').textContent = `${visible} visible`;
   document.getElementById('filterSummary').textContent = currentFilterSummary();
+  if (previousSelectedId !== selectedId) document.getElementById('detail').scrollTop = 0;
 }
 function renderCounts() {
   document.getElementById('counts').innerHTML =
     countBox('Images', data.summary.image_count) +
-    countBox('Reviewed', data.summary.already_reviewed_count) +
+    countBox('Decisions recorded', data.summary.already_reviewed_count) +
     countBox('Priority', data.summary.priority_review_count) +
-    countBox('Remaining', data.summary.pending_review_count);
+    countBox('Decisions remaining', data.summary.pending_review_count);
 }
 function renderOverview() {
   const overview = data.overview || {};
@@ -790,7 +870,6 @@ function renderOverview() {
   const characteristics = intelligence.dataset_characteristics || {};
   const guidance = intelligence.review_guidance || {};
   const provenance = intelligence.provenance || {};
-  const scope = intelligence.scope || {};
   const preview = data.improvement_preview || {};
   const progress = overview.review_progress || {};
   const triage = overview.triage_counts || {};
@@ -834,75 +913,81 @@ function renderOverview() {
     ? unresolvedRows.map(item => `<span class="badge">${escapeText(categoryLabel(item.finding_category))}: ${item.undecided_image_count} undecided images <span class="muted">${escapeText(item.finding_category)}</span></span>`).join('')
     : '<span class="muted">No unresolved evidence categories emitted by current filters.</span>';
   document.getElementById('overview').innerHTML = `
-    <h2>Dataset Intelligence</h2>
-    <p>Overview from existing sidecars. No scoring, no automation.</p>
-    <h2>Next Action</h2>
-    <p><strong>${escapeText(next.label || 'Review dataset')}</strong></p>
-    <p>${escapeText(next.reason || '')}</p>
-    <p class="muted">This only changes filters and selection.</p>
-    <div class="overview-actions">
-      <button id="applyNextAction" type="button">Show Next Review Set</button>
-      <button id="overviewClearFilters" type="button">Clear Filters</button>
+    <h2>Review Overview</h2>
+    <div class="overview-summary">
+      <div>
+        <p><strong>Next: ${escapeText(next.label || 'Review dataset')}</strong></p>
+        <p>${escapeText(next.reason || '')}</p>
+        <p class="muted">Show Next Review Set changes filters and selection only.</p>
+      </div>
+      <div class="overview-actions">
+        <button id="applyNextAction" type="button">Show Next Review Set</button>
+      </div>
     </div>
-    <div class="overview-grid">
+    <div class="overview-core">
       ${countBox('Total images', overview.image_count || 0)}
-      ${countBox('Priority Review', triage['Priority Review'] || 0)}
-      ${countBox('Needs Review', triage['Needs Review'] || 0)}
-      ${countBox('No Findings Emitted', triage['No Findings Emitted'] || 0)}
-      ${countBox('Reviewed', progress.reviewed_count || 0)}
-      ${countBox('Pending', progress.pending_review_count || 0)}
-      ${countBox('Complete', (progress.completion_percent || 0) + '%')}
+      ${countBox('Decisions recorded', progress.reviewed_count || 0)}
+      ${countBox('Decisions remaining', progress.pending_review_count || 0)}
+      ${countBox('Decision progress', (progress.completion_percent || 0) + '%')}
     </div>
-    <details>
-      <summary>Review Status</summary>
-      <div class="overview-grid">
-        ${countBox('Remaining Priority Review', remaining['Priority Review'] || 0)}
-        ${countBox('Remaining Needs Review', remaining['Needs Review'] || 0)}
-        ${countBox('Remaining No Findings Emitted', remaining['No Findings Emitted'] || 0)}
-        ${countBox('Decision completion', percent(reviewStatus.decision_completion_percent))}
+    <details class="intelligence-details">
+      <summary>Dataset Intelligence</summary>
+      <div class="intelligence-body">
+        <p>Overview from existing sidecars. No scoring, no automation.</p>
+        <details>
+          <summary>Review Status</summary>
+          <div class="overview-grid">
+            ${countBox('Priority Review', triage['Priority Review'] || 0)}
+            ${countBox('Needs Review', triage['Needs Review'] || 0)}
+            ${countBox('No Findings Emitted', triage['No Findings Emitted'] || 0)}
+            ${countBox('Remaining Priority Review', remaining['Priority Review'] || 0)}
+            ${countBox('Remaining Needs Review', remaining['Needs Review'] || 0)}
+            ${countBox('Remaining No Findings Emitted', remaining['No Findings Emitted'] || 0)}
+            ${countBox('Decision completion', percent(reviewStatus.decision_completion_percent))}
+          </div>
+        </details>
+        <details>
+          <summary>Evidence Summary</summary>
+          <p class="intelligence-note">Top category: ${escapeText(concentration.top_category || 'none')} on ${concentration.top_category_image_count || 0} images (${percent(concentration.top_category_percentage)}).</p>
+          ${evidenceTable}
+          <h3>Top Finding Category Filters</h3>
+          <div class="overview-list">${categoryButtons}</div>
+        </details>
+        <details>
+          <summary>Analyzer Contribution</summary>
+          ${analyzerTable}
+          <h3>Analyzer Coverage</h3>
+          <div class="overview-list">${analyzerRows}</div>
+        </details>
+        <details>
+          <summary>Dataset Coverage</summary>
+          <div class="overview-grid">
+            ${countBox('Manifest', coverage.manifest_available ? 'yes' : 'no')}
+            ${countBox('Review decisions', coverage.review_decisions_available ? 'yes' : 'no')}
+            ${countBox('Comparison', coverage.comparison_available ? 'yes' : 'no')}
+            ${countBox('Analyzer errors', coverage.error_count || 0)}
+          </div>
+          <p class="muted">Optional sidecars: triage dossiers ${sidecars['triage_dossiers.json'] ? 'present' : 'missing'}, manifest ${sidecars['inspection_manifest.json'] ? 'present' : 'missing'}, review decisions ${sidecars['review_decisions.json'] ? 'present' : 'missing'}, comparison ${sidecars['comparison_summary.json'] ? 'present' : 'missing'}, improvement preview ${sidecars['improvement_preview.json'] ? 'present' : 'missing'}.</p>
+        </details>
+        <details>
+          <summary>Dataset Characteristics</summary>
+          <p class="muted">Profile: ${escapeText((profile && profile.id) || 'not recorded')} ${escapeText((profile && profile.version) || '')}. Dataset Forge version: ${escapeText(provenance.dataset_forge_version || characteristics.dataset_forge_version || 'not recorded')}. Inspection completed: ${escapeText(characteristics.inspection_completed_at || 'not recorded')}.</p>
+        </details>
+        <details>
+          <summary>Unresolved Evidence Categories</summary>
+          <div class="overview-list">${unresolved}</div>
+        </details>
+        <details>
+          <summary>Improvement Preview</summary>
+          ${renderImprovementPreview(preview)}
+        </details>
+        <p class="muted">No Findings Emitted means no current review finding. It is not a guarantee.</p>
+        <p class="muted">Dataset Intelligence is descriptive only: no quality score, analyzer execution, or source-image modification.</p>
+        <p class="muted">Set Aside Intent is workflow intent only. Dataset Forge does not create quarantine folders or move files.</p>
       </div>
-    </details>
-    <details>
-      <summary>Evidence Summary</summary>
-      <p class="intelligence-note">Top category: ${escapeText(concentration.top_category || 'none')} on ${concentration.top_category_image_count || 0} images (${percent(concentration.top_category_percentage)}).</p>
-      ${evidenceTable}
-      <h3>Top Finding Category Filters</h3>
-      <div class="overview-list">${categoryButtons}</div>
-    </details>
-    <details>
-      <summary>Analyzer Contribution</summary>
-      ${analyzerTable}
-      <h3>Analyzer Coverage</h3>
-      <div class="overview-list">${analyzerRows}</div>
-    </details>
-    <details>
-      <summary>Dataset Coverage</summary>
-      <div class="overview-grid">
-        ${countBox('Manifest', coverage.manifest_available ? 'yes' : 'no')}
-        ${countBox('Review decisions', coverage.review_decisions_available ? 'yes' : 'no')}
-        ${countBox('Comparison', coverage.comparison_available ? 'yes' : 'no')}
-        ${countBox('Analyzer errors', coverage.error_count || 0)}
-      </div>
-      <p class="muted">Optional sidecars: triage dossiers ${sidecars['triage_dossiers.json'] ? 'present' : 'missing'}, manifest ${sidecars['inspection_manifest.json'] ? 'present' : 'missing'}, review decisions ${sidecars['review_decisions.json'] ? 'present' : 'missing'}, comparison ${sidecars['comparison_summary.json'] ? 'present' : 'missing'}, improvement preview ${sidecars['improvement_preview.json'] ? 'present' : 'missing'}.</p>
-    </details>
-    <details>
-      <summary>Dataset Characteristics</summary>
-      <p class="muted">Profile: ${escapeText((profile && profile.id) || 'not recorded')} ${escapeText((profile && profile.version) || '')}. Dataset Forge version: ${escapeText(provenance.dataset_forge_version || characteristics.dataset_forge_version || 'not recorded')}. Inspection completed: ${escapeText(characteristics.inspection_completed_at || 'not recorded')}.</p>
-    </details>
-    <details>
-      <summary>Unresolved Evidence Categories</summary>
-      <div class="overview-list">${unresolved}</div>
-    </details>
-    <details>
-      <summary>Improvement Preview</summary>
-      ${renderImprovementPreview(preview)}
-    </details>
-    <p class="muted">No current review finding. Not a guarantee.</p>
-    <p class="muted">Dataset Intelligence scope: descriptive only ${scope.descriptive_only ? 'yes' : 'no'}; no quality score ${scope.no_quality_score ? 'yes' : 'no'}; does not run analyzers ${scope.does_not_run_analyzers ? 'yes' : 'no'}; does not modify images ${scope.does_not_modify_images ? 'yes' : 'no'}.</p>
-    <p class="muted">Set Aside Intent is workflow intent only. Dataset Forge does not create quarantine folders or move files.</p>`;
+    </details>`;
   restoreOverviewDetails();
   document.getElementById('applyNextAction').addEventListener('click', applyNextAction);
-  document.getElementById('overviewClearFilters').addEventListener('click', clearFilters);
   document.querySelectorAll('#overview [data-category]').forEach(button => {
     button.addEventListener('click', () => {
       document.getElementById('categoryFilter').value = button.dataset.category;
@@ -914,27 +999,28 @@ function renderOverview() {
 }
 function renderImprovementPreview(preview) {
   if (!preview || !preview.available) {
-    return '<p class="muted">No <code>improvement_preview.json</code> sidecar found. Run <code>dataset-forge preview &lt;inspect_output&gt;</code> after review decisions to generate planning metadata. No image processing or provider execution is available.</p>';
+    return '<p class="muted">No <code>improvement_preview.json</code> sidecar found. Run <code>dataset-forge preview &lt;inspect_output&gt;</code> after review decisions to generate planning metadata. No candidate generation occurs in the Review Desk.</p>';
   }
   const records = (preview.records || []).slice(0, 8);
   const summary = preview.summary || {};
   const rows = records.length
-    ? `<table class="intelligence-table"><thead><tr><th>Image</th><th>Operation</th><th>Reason</th><th>Provider</th><th>Compatibility</th><th>Status</th><th>Approval</th></tr></thead><tbody>${records.map(record => {
+    ? `<table class="intelligence-table"><thead><tr><th>Image</th><th>Operation</th><th>Reason</th><th>Provider</th><th>Descriptor check</th><th>Plan state</th><th>Decision</th></tr></thead><tbody>${records.map(record => {
       const image = record.image || {};
       const compatibility = record.provider_compatibility || {};
+      const candidate = record.candidate_artifact || {};
       return `<tr>
         <td>${escapeText(image.filename || image.path || '')}</td>
         <td>${escapeText(record.recommended_operation || '')}</td>
         <td>${escapeText(record.operation_rationale || '')}</td>
         <td>${escapeText(providerLabel(record.required_provider_type))}<br><span class="muted"><code>${escapeText(record.required_provider_type || '')}</code></span></td>
         <td>${escapeText(compatibilityLabels[compatibility.status] || compatibility.status || 'Unavailable')}</td>
-        <td>${escapeText(record.preview_status || '')}</td>
-        <td>${escapeText(record.approval_state || '')}</td>
+        <td>${escapeText(previewStatusDescription(record, candidate))}</td>
+        <td>${escapeText(previewApprovalLabel(record.approval_state, Boolean(candidate.available)))}</td>
       </tr>`;
     }).join('')}</tbody></table>`
     : '<p class="muted">Improvement Preview sidecar is present but contains no planning records.</p>';
   return `
-    <p class="muted">Preview planning and imported-candidate review. Candidate images are isolated preview artifacts only. No image generation, processing, provider calls, or execution.</p>
+    <p class="muted">Planning records and candidate review. Candidate creation happens only through explicit CLI commands; the Review Desk does not call providers or execute improvements.</p>
     <div class="overview-grid">
       ${countBox('Preview records', summary.record_count || summary.preview_entry_count || (preview.records || []).length || 0)}
       ${countBox('Execution available', summary.execution_available ? 'yes' : 'no')}
@@ -954,9 +1040,11 @@ function populateFilters() {
   severities.forEach(value => document.getElementById('severityFilter').insertAdjacentHTML('beforeend', `<option value="${escapeText(value)}">${escapeText(value)}</option>`));
 }
 function selectImage(id) {
+  const selectionChanged = selectedId !== id;
   selectedId = id;
   renderGroups();
   renderDetail();
+  if (selectionChanged) document.getElementById('detail').scrollTop = 0;
   writeUiState();
 }
 function selectedImage() {
@@ -991,23 +1079,29 @@ function renderDetail() {
   if (!image) return;
   selectedId = image.id;
   document.getElementById('detail').innerHTML = `
+    <div class="review-controls">
+      <h2>${escapeText(image.filename)}</h2>
+      <p><strong>Triage:</strong> ${escapeText(image.triage_status)}</p>
+      <div class="decision-buttons" aria-label="Decision for ${escapeText(image.filename)}">
+        ${detailDecisionButton('KEEP', '1 Keep')}
+        ${detailDecisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', '2 Accepted Style / False Positive')}
+        ${detailDecisionButton('IMPROVEMENT_CANDIDATE', '3 Improvement Candidate')}
+        ${detailDecisionButton('REMOVAL_CANDIDATE', '4 Exclude Candidate')}
+        ${detailDecisionButton('UNDECIDED', 'U Undecided')}
+      </div>
+      <div class="review-controls-row">
+        <div>
+          <label for="workflowState">Workflow stage</label>
+          <select id="workflowState">${data.workflow_states.map(value => `<option value="${value}" ${value === image.workflow_state ? 'selected' : ''}>${escapeText(label(value, workflowLabels))}</option>`).join('')}</select>
+        </div>
+        <p id="saveStatus" class="muted save-status" role="status" aria-live="polite">Saved</p>
+      </div>
+      <p class="muted">Decision progress and workflow stage are tracked separately. Saves go to <code>review_decisions.json</code>.</p>
+    </div>
     <img class="preview" src="${escapeText(image.thumbnail_url)}" alt="${escapeText(image.filename)}" tabindex="0" role="button" aria-label="Open zoom viewer for ${escapeText(image.filename)}">
-    <h2>${escapeText(image.filename)}</h2>
-    <p><strong>Path:</strong> ${escapeText(image.image_path)}</p>
-    <p><strong>Triage:</strong> ${escapeText(image.triage_status)}</p>
+    <p class="path-value"><strong>Source path:</strong> ${escapeText(image.image_path)}</p>
     <p><strong>Evidence:</strong> ${escapeText(displayEvidenceSummary(image.evidence_summary))}</p>
     <p><strong>Suggested review action:</strong> ${escapeText(image.suggested_review_action)}</p>
-    <div class="decision-buttons">
-      ${detailDecisionButton('KEEP', '1 Keep')}
-      ${detailDecisionButton('ACCEPTED_STYLE_FALSE_POSITIVE', '2 Accepted Style / False Positive')}
-      ${detailDecisionButton('IMPROVEMENT_CANDIDATE', '3 Improvement Candidate')}
-      ${detailDecisionButton('REMOVAL_CANDIDATE', '4 Exclude Candidate')}
-      ${detailDecisionButton('UNDECIDED', 'U Undecided')}
-    </div>
-    <p class="muted">All decisions save to <code>review_decisions.json</code>.</p>
-    <p id="saveStatus" class="muted save-status" role="status" aria-live="polite">Saved</p>
-    <label for="workflowState">Workflow state</label>
-    <select id="workflowState">${data.workflow_states.map(value => `<option value="${value}" ${value === image.workflow_state ? 'selected' : ''}>${escapeText(label(value, workflowLabels))}</option>`).join('')}</select>
     <label for="notes">Notes</label>
     <textarea id="notes">${escapeText(image.notes)}</textarea>
     ${renderPreviewWorkspace(image)}
@@ -1063,13 +1157,54 @@ function renderFindings(image) {
       <p>${escapeText(finding.recommendation)}</p>
     </section>`).join('');
 }
+function previewStatusDescription(record, candidate) {
+  const status = record.preview_status || '';
+  if (status === 'READY') return candidate.available
+    ? 'Candidate available for human review.'
+    : 'Planning record available for human review; no candidate exists.';
+  if (status === 'WAITING_FOR_PROVIDER') return 'Waiting for an explicit candidate creation step.';
+  if (status === 'NOT_AVAILABLE') return 'No candidate path is available for this planning record.';
+  if (status === 'APPROVED') return candidate.available
+    ? 'Candidate decision recorded: approved.'
+    : 'Plan decision recorded: accepted.';
+  if (status === 'REJECTED') return candidate.available
+    ? 'Candidate decision recorded: rejected.'
+    : 'Plan decision recorded: rejected.';
+  return status || 'Planning state not recorded.';
+}
+function providerStatusDescription(descriptor, record) {
+  const status = descriptor.implementation_status || 'not_implemented';
+  if (status === 'local_preview_available') {
+    return 'Local CLI candidate generation is available for compatible operations.';
+  }
+  if (record.required_provider_type === 'MANUAL') {
+    return 'Manual workflow only; no automated provider runs.';
+  }
+  return 'Descriptor only; no provider integration is available.';
+}
+function candidateGuidance(record, candidate) {
+  const operation = record.recommended_operation || '';
+  if (operation === 'MANUAL_CAPTION') return 'This plan describes manual caption review; no image candidate is expected.';
+  if (operation === 'REMOVE_DUPLICATE') return 'This plan describes a manual duplicate decision; no generated image candidate is expected.';
+  if (operation === 'KEEP' || operation === 'NO_ACTION') return 'This plan does not call for an image candidate.';
+  if (record.required_provider_type === 'LOCAL_CLASSICAL') return 'Use preview-generate for this compatible LOCAL_CLASSICAL plan.';
+  if (record.required_provider_type === 'MANUAL') return 'Use preview-import only when you have an external candidate for this plan.';
+  if (candidate.reason) return candidate.reason;
+  return 'No candidate creation path is available for this plan.';
+}
+function previewApprovalLabel(state, hasCandidate) {
+  if (state === 'NOT_REQUESTED') return 'Not reviewed';
+  if (state === 'APPROVED') return hasCandidate ? 'Approve candidate' : 'Accept plan';
+  if (state === 'REJECTED') return hasCandidate ? 'Reject candidate' : 'Reject plan';
+  return label(state, approvalLabels);
+}
 function renderPreviewWorkspace(image) {
   const preview = data.improvement_preview || {};
   if (!preview.available) {
     return `
       <section class="preview-workspace">
         <h2>Improvement Preview</h2>
-        <div class="preview-placeholder">No preview image exists. Dataset Forge does not generate previews or process images in this workspace.</div>
+        <div class="preview-placeholder">No candidate preview exists because no planning sidecar is loaded. The Review Desk does not generate candidates.</div>
         <p class="muted">No <code>improvement_preview.json</code> sidecar found. Run <code>dataset-forge preview &lt;inspect_output&gt;</code> after review decisions to generate planning metadata.</p>
       </section>`;
   }
@@ -1088,10 +1223,11 @@ function renderPreviewWorkspace(image) {
   const requiredCapabilities = compatibility.required_capabilities || [];
   const missingCapabilities = compatibility.missing_capabilities || [];
   const candidate = record.candidate_artifact || {};
+  const hasCandidate = Boolean(candidate.available);
   const candidateWorkspace = candidate.available
     ? renderCandidateComparison(image, candidate)
-    : `<div class="preview-placeholder">No imported candidate is available. The original image remains the source/reference image. Dataset Forge does not generate previews or process images here.</div>
-       <p class="muted">${escapeText(candidate.reason || 'Use dataset-forge preview-import with an existing planning record and an externally created candidate image.')}</p>`;
+    : `<div class="preview-placeholder">No candidate preview exists. The original image remains the source/reference image.</div>
+       <p class="muted">${escapeText(candidateGuidance(record, candidate))}</p>`;
   return `
     <section class="preview-workspace">
       <h2>Improvement Preview</h2>
@@ -1103,20 +1239,28 @@ function renderPreviewWorkspace(image) {
         <p><strong>Confidence:</strong> ${escapeText(record.confidence ?? '')}</p>
         <p><strong>Required provider:</strong> ${escapeText(descriptor.display_name || providerLabel(record.required_provider_type))} <span class="muted"><code>${escapeText(record.required_provider_type || '')}</code></span></p>
         <p><strong>Required capabilities:</strong> ${requiredCapabilities.length ? requiredCapabilities.map(value => `${escapeText(capabilityLabel(value))} <span class="muted"><code>${escapeText(value)}</code></span>`).join('; ') : 'None for this planning operation.'}</p>
-        <p><strong>Capability compatibility:</strong> ${escapeText(compatibilityLabels[compatibility.status] || compatibility.status || 'Unavailable')}</p>
+        <p><strong>Descriptor check:</strong> ${escapeText(compatibilityLabels[compatibility.status] || compatibility.status || 'Unavailable')}</p>
         ${missingCapabilities.length ? `<p class="muted"><strong>Missing capabilities:</strong> ${missingCapabilities.map(value => escapeText(capabilityLabel(value))).join(', ')}</p>` : ''}
-        <p><strong>Provider status:</strong> ${escapeText(descriptor.implementation_status || 'not_implemented')}. Execution unavailable.</p>
-        <p><strong>Preview status:</strong> ${escapeText(record.preview_status || '')}</p>
-        <p><strong>Approval state:</strong> ${escapeText(label(record.approval_state, approvalLabels))}</p>
+        <p><strong>Provider availability:</strong> ${escapeText(providerStatusDescription(descriptor, record))} <span class="muted"><code>${escapeText(descriptor.implementation_status || 'not_implemented')}</code></span></p>
+        <p><strong>Plan state:</strong> ${escapeText(previewStatusDescription(record, candidate))} <span class="muted"><code>${escapeText(record.preview_status || '')}</code></span></p>
+        <p><strong>${hasCandidate ? 'Candidate decision' : 'Plan decision'}:</strong> ${escapeText(previewApprovalLabel(record.approval_state, hasCandidate))}</p>
       </div>
+      <h3>${hasCandidate ? 'Candidate decision' : 'Plan decision'}</h3>
       <div class="approval-buttons">
-        ${states.map(state => `<button type="button" data-preview-approval="${escapeText(state)}" class="${record.approval_state === state ? 'selected' : ''}">${escapeText(label(state, approvalLabels))}</button>`).join('')}
+        ${states.map(state => `<button type="button" data-preview-approval="${escapeText(state)}" class="${record.approval_state === state ? 'selected' : ''}">${escapeText(previewApprovalLabel(state, hasCandidate))}</button>`).join('')}
       </div>
-      <p class="muted">Capability matching uses static provider descriptors only. Approval changes update <code>improvement_preview.json</code> only. Imported candidates remain isolated preview artifacts; approval does not execute, export, replace, or modify source files.</p>
+      <p class="muted">The descriptor check compares static metadata only; it does not mean a provider is installed or connected. This decision updates <code>improvement_preview.json</code> only and never executes, exports, replaces, or modifies source files.</p>
     </section>`;
 }
 function renderCandidateComparison(image, candidate) {
   const warnings = (candidate.warnings || []).map(item => `<li>${escapeText(item)}</li>`).join('');
+  const generation = candidate.generation || {};
+  const parameters = generation.parameters || {};
+  const parameterRows = Object.keys(parameters).sort().map(key => `${escapeText(key)}=${escapeText(parameters[key])}`).join(', ');
+  const provenance = generation.operation
+    ? `<p><strong>Generated operation:</strong> ${escapeText(generation.operation)} <span class="muted">(${escapeText(generation.provider_version || candidate.provider_version || '')})</span></p>
+       <p class="muted">Parameters: ${parameterRows || 'none recorded'}</p>`
+    : '';
   return `
     <div class="comparison-controls" aria-label="A/B comparison view">
       <button type="button" data-comparison-view="side-by-side" class="selected">Side by side</button>
@@ -1130,18 +1274,19 @@ function renderCandidateComparison(image, candidate) {
         <p class="muted">${escapeText(candidate.source_width)} x ${escapeText(candidate.source_height)} ${escapeText(candidate.source_format)}; SHA-256 ${escapeText(shortHash(candidate.source_sha256))}</p>
       </section>
       <section class="ab-pane candidate-pane">
-        <h3>Imported candidate preview</h3>
-        <img src="${escapeText(candidate.image_url)}" alt="Imported candidate preview for ${escapeText(image.filename)}">
-        <p class="muted">Manual Import <code>${escapeText(candidate.provider_type || 'MANUAL')}</code>; ${escapeText(candidate.width)} x ${escapeText(candidate.height)} ${escapeText(candidate.format)}; SHA-256 ${escapeText(shortHash(candidate.sha256))}</p>
+        <h3>Candidate preview</h3>
+        <img src="${escapeText(candidate.image_url)}" alt="Candidate preview for ${escapeText(image.filename)}">
+        <p class="muted">${escapeText(candidate.provider_display_name || 'Manual Import')} <code>${escapeText(candidate.provider_type || 'MANUAL')}</code>; ${escapeText(candidate.width)} x ${escapeText(candidate.height)} ${escapeText(candidate.format)}; SHA-256 ${escapeText(shortHash(candidate.sha256))}</p>
       </section>
     </div>
     <div class="preview-meta">
       <p><strong>Candidate source:</strong> ${escapeText(candidate.original_filename || 'not recorded')}</p>
       <p><strong>Candidate status:</strong> ${escapeText(candidate.status || 'READY')}</p>
       <p><strong>Provider:</strong> ${escapeText(candidate.provider_display_name || 'Manual Import')} <span class="muted"><code>${escapeText(candidate.provider_type || 'MANUAL')}</code></span></p>
+      ${provenance}
       ${warnings ? `<p><strong>Review warnings:</strong></p><ul class="muted">${warnings}</ul>` : '<p class="muted">No metadata mismatch warnings were recorded.</p>'}
     </div>
-    <p class="muted">This imported candidate is an isolated preview artifact. It is not part of the source dataset or an improved-dataset export.</p>`;
+    <p class="muted">This candidate is an isolated preview artifact. It is not part of the source dataset or an improved-dataset export.</p>`;
 }
 function shortHash(value) {
   const text = String(value || 'not recorded');
@@ -1187,18 +1332,24 @@ async function saveDecision(image, decision, workflowState, notes) {
   const center = document.querySelector('.center');
   const previousScroll = center ? center.scrollTop : 0;
   setSaveStatus('Saving...');
-  const response = await fetch('/api/decision', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ image_path: image.image_path, recommendation: image.triage_status, decision, workflow_state: workflowState, notes })
-  });
-  if (!response.ok) {
-    const error = await response.json();
+  try {
+    const response = await fetch('/api/decision', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ image_path: image.image_path, recommendation: image.triage_status, decision, workflow_state: workflowState, notes })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setSaveStatus('Save failed');
+      alert(result.error || 'Could not save decision');
+      return;
+    }
+    data = result;
+  } catch (error) {
     setSaveStatus('Save failed');
-    alert(error.error || 'Could not save decision');
+    alert('Could not reach the local Review Desk server. Your change was not saved.');
     return;
   }
-  data = await response.json();
   renderCounts();
   renderOverview();
   renderGroups();
@@ -1211,18 +1362,24 @@ async function savePreviewApproval(image, approvalState) {
   const center = document.querySelector('.center');
   const previousScroll = center ? center.scrollTop : 0;
   setSaveStatus('Saving...');
-  const response = await fetch('/api/preview-approval', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ image_path: image.image_path, approval_state: approvalState })
-  });
-  if (!response.ok) {
-    const error = await response.json();
+  try {
+    const response = await fetch('/api/preview-approval', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ image_path: image.image_path, approval_state: approvalState })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setSaveStatus('Save failed');
+      alert(result.error || 'Could not save preview approval');
+      return;
+    }
+    data = result;
+  } catch (error) {
     setSaveStatus('Save failed');
-    alert(error.error || 'Could not save preview approval');
+    alert('Could not reach the local Review Desk server. Your change was not saved.');
     return;
   }
-  data = await response.json();
   renderOverview();
   renderDetail();
   if (center) center.scrollTop = previousScroll;

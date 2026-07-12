@@ -1,5 +1,8 @@
 # Dataset Forge -- CLI Output Specification
 
+v1.9.3 keeps the v1.9 public command set and output behavior unchanged. Public
+documentation uses the command names and safety wording defined here.
+
 The public command-line experience should make the read-only workflow obvious.
 
 The CLI should quickly answer:
@@ -23,6 +26,7 @@ dataset-forge compare <before> <after> --output <comparison_output>
 dataset-forge plan <inspect_output>
 dataset-forge preview <inspect_output>
 dataset-forge preview-import <inspect_output> <image-reference> <candidate-image>
+dataset-forge preview-generate <inspect_output> <image-reference>
 dataset-forge --help
 dataset-forge --version
 ```
@@ -134,12 +138,12 @@ better or worse unless the sidecars themselves directly say so.
 Improvement Planning is advisory and planning-only. It writes plan sidecars; it
 does not execute changes.
 
-Improvement Preview is planning infrastructure for future preview generation.
+Improvement Preview is planning infrastructure for preview candidate review.
 It writes `improvement_preview.json` and `improvement_preview.md` from existing
 sidecars. It records recommended operation, rationale, required provider type,
-preview status, and approval state. It does not process images, generate
-preview images, generate prompts, call providers, modify files, or trigger
-cleanup.
+preview status, and approval state. The `preview` command itself does not
+process images, generate preview images, generate prompts, call providers,
+modify files, or trigger cleanup.
 
 The Review Desk can display `improvement_preview.json` records beside the
 selected original image and update preview approval state only. It still does
@@ -156,6 +160,15 @@ The Review Desk can display an imported candidate beside the original source
 image for browser-only A/B review. Approval or rejection updates preview
 workflow metadata only. `Execution unavailable` remains visible; a candidate
 is not an improved dataset image and cannot be exported or applied.
+
+`preview-generate` accepts one image reference for an existing
+`LOCAL_CLASSICAL` Improvement Preview record. It generates one deterministic
+classical candidate with Pillow/NumPy and writes it only into the isolated
+inspect-output `preview_artifacts/` workspace. It never modifies the source
+image, source captions, source metadata, existing imported candidates, or the
+source dataset. It does not call Krea, ComfyUI, external APIs, subprocesses, ML,
+diffusion, or generative AI. Approval or rejection remains workflow metadata
+only.
 
 ---
 
