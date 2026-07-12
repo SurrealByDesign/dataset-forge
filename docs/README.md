@@ -25,6 +25,7 @@ LoRA and image datasets without changing source files.
 - [Architecture](../ARCHITECTURE.md) -- detailed system contracts.
 - [CLI Output Specification](../CLI_OUTPUT.md) -- public command and wording contract.
 - [Current Status](../CURRENT_STATUS.md) -- implemented behavior and validation state.
+- [RFC-0001: Applicable Operations](rfcs/RFC-0001-applicable-operations.md) -- accepted Dataset Forge 2.0 design direction; prototype validation required.
 
 ## Historical Material
 
